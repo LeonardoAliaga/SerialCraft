@@ -1,28 +1,24 @@
 package com.serialcraft.client.ui;
 
-import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Style;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.network.chat.FontDescription;
 import net.minecraft.resources.Identifier;
-import net.minecraft.client.Minecraft;
 
 
 public class NavBar {
 
     // Textura
-    private static final Identifier GATO_TEXTURE =
+    Identifier GATO_TEXTURE =
             Identifier.fromNamespaceAndPath(
                     "serialcraft",
                     "textures/gui/gato.png"
             );
-    private static final Identifier LOGO_TEXTURE =
+    Identifier LOGO_TEXTURE =
             Identifier.fromNamespaceAndPath(
                     "serialcraft",
                     "textures/gui/logo-txt.png"
             );
-    private static final Identifier ICONS_TEXTURE =
+    Identifier ICONS_TEXTURE =
             Identifier.fromNamespaceAndPath(
                     "serialcraft",
                     "textures/gui/icons.png"
@@ -86,6 +82,7 @@ public class NavBar {
                 RenderPipelines.GUI_TEXTURED,
                 ICONS_TEXTURE,
                 0, 0,
+                32, 32,
                 HOME_U, HOME_V,   // u, v en el sprite sheet
                 ICON_SIZE, ICON_SIZE,
                 SHEET_WIDTH, SHEET_HEIGHT

@@ -45,7 +45,6 @@ public class SolidButton extends AbstractWidget {
     }
 
     // --- Lógica de Click (Requerida en AbstractWidget) ---
-    @Override
     public void onClick(double mouseX, double mouseY) {
         this.onPress.onPress(this);
     }

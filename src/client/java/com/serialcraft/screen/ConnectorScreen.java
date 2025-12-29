@@ -142,8 +142,9 @@ public class ConnectorScreen extends Screen {
     }
 
     private void refreshWidgets() {
-        // CORRECCIÓN: En 1.21+ usa 'resize' en lugar de 'init' para recargar la pantalla
-        this.resize(this.minecraft, this.width, this.height);
+        // CORRECCIÓN: Llamar a init() sin argumentos reconstruye la pantalla
+        // usando las dimensiones y el cliente que ya tiene guardados.
+        this.init();
     }
     private void cycleBaudRate() {
         int nextIndex = 0;
