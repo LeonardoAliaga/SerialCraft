@@ -81,14 +81,43 @@ public class NavBar {
                 1024, 1024
         );
         // Dibujar icono HOME
-        guiGraphics.blit(
-                RenderPipelines.GUI_TEXTURED,
-                ICONS_TEXTURE,
-                0, 0,
-                HOME_U, HOME_V,
-                64, 64,
-                ICON_SIZE,ICON_SIZE,
-                SHEET_WIDTH, SHEET_HEIGHT
-        );
+        //guiGraphics.blit(
+        //        RenderPipelines.GUI_TEXTURED,
+        //        ICONS_TEXTURE,
+        //        0, 0,
+        //        HOME_U, HOME_V,
+        //        64, 64,
+        //        ICON_SIZE,ICON_SIZE,
+        //        SHEET_WIDTH, SHEET_HEIGHT
+        //);
     }
+    public int getButtonX(int screenWidth) {
+        int navBarWidth = (screenWidth * 18) / 100;
+        return (navBarWidth * 10) / 100;
+    }
+
+    public int getFirstButtonY(int screenHeight) {
+        return screenHeight / 3;
+    }
+
+    public int getBgButtonY(int screenWidth) {
+        int navBarWidth = (screenWidth * 18) / 100;
+        int catHeight = (navBarWidth * 50) / 100;
+        int catY = (navBarWidth * 40) / 100;
+        return catY + catHeight - (catHeight * 24/100);
+    }
+    public int getBgButtonX(int screenWidth) {
+        int navBarWidth = (screenWidth * 18) / 100;
+        return (navBarWidth * 10) / 100;
+    }
+
+    public int getBgButtonWidth(int screenWidth) {
+        int navBarWidth = (screenWidth * 18) / 100;
+        return (navBarWidth * 90) / 100;
+    }
+    public int getBgButtonHeight(int screenWidth) {
+        int navBarWidth = (screenWidth * 18) / 100;
+        return (navBarWidth * 95) / 100;
+    }
+
 }
