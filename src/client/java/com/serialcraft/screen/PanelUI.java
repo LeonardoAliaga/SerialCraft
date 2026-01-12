@@ -1,18 +1,35 @@
 package com.serialcraft.screen;
 
-import com.serialcraft.client.ui.NavBar; // <--- Importamos tu nueva clase
+import com.serialcraft.client.ui.NavBar;
+import com.serialcraft.client.ui.pages.HomeScreen;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import com.serialcraft.client.ui.SpriteIcon;
-import com.serialcraft.client.ui.widget.IconTextButton;
 
 public class PanelUI extends Screen {
 
+    public enum Tab {
+        HOME,
+        PLACAS,
+        EVENTS,
+    }
+
     private final NavBar navBar = new NavBar();
+    private final HomeScreen homeScreen = new HomeScreen();
+
+    private Tab currentTab = Tab.HOME;
 
     public PanelUI() {
         super(Component.literal("PanelUI"));
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+
+        navBar.init(this, this.width, this.height);
+        homeScreen.init(this, this.width, this.height); // 👈 IMPORTANTE
     }
 
     @Override
@@ -20,41 +37,37 @@ public class PanelUI extends Screen {
 
         navBar.render(guiGraphics, this.width, this.height);
 
+        if (currentTab == Tab.HOME) {
+            homeScreen.render(guiGraphics, mouseX, mouseY, this.font, this.width, this.height);
+        } else if (currentTab == Tab.PLACAS) {
+            renderPlacasContent(guiGraphics);
+        } else if (currentTab == Tab.EVENTS) {
+            renderEventsContent(guiGraphics);
+        }
+
         super.render(guiGraphics, mouseX, mouseY, delta);
     }
-    @Override
-    protected void init() {
-        super.init();
 
-        //int x = navBar.getButtonX(this.width);
-        //int y = navBar.getFirstButtonY(this.height);
-
-        int x = navBar.getBgButtonX(this.width);
-        int y = navBar.getBgButtonY(this.width);
-
-        IconTextButton homeButton = new IconTextButton(
-                ((x + navBar.getBgButtonWidth(this.width)) - 80)/2,
-                y + 15,
-                80,
-                24,
-                SpriteIcon.HOME,
-                Component.literal("Inicio"),
-                0xffe91e63,
-                0xffba184f
-        );
-        IconTextButton placasButton = new IconTextButton(
-                ((x + navBar.getBgButtonWidth(this.width)) - 80)/2,
-                y + 45,
-                80,
-                24,
-                SpriteIcon.LIST,
-                Component.literal("Placas"),
-                0xffffc107,
-                0xffcc9a05
-        );
-
-        addRenderableWidget(homeButton);
-        addRenderableWidget(placasButton);
+    private void renderPlacasContent(GuiGraphics gui) {
+        gui.drawString(this.font, "Estás en PLACAS", 300, 50, 0xff212121);
     }
 
+    private void renderEventsContent(GuiGraphics gui) {
+        gui.drawString(this.font, "Estás en EVENTOS", 300, 50, 0xff212121);
+    }
+
+    // =========================
+    // API para componentes
+    // =========================
+
+    public void setTab(Tab tab) {
+        this.currentTab = tab;
+
+        // ⬇️ Solo HOME muestra botones USB/WIFI
+        homeScreen.setVisible(tab == Tab.HOME);
+    }
+
+    public <T extends AbstractWidget> void addWidget(T widget) {
+        this.addRenderableWidget(widget);
+    }
 }
