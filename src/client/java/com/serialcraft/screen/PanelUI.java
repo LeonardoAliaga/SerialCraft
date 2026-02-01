@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.NotNull;
 
 public class PanelUI extends Screen {
 
@@ -29,11 +30,11 @@ public class PanelUI extends Screen {
         super.init();
 
         navBar.init(this, this.width, this.height);
-        homeScreen.init(this, this.width, this.height); // 👈 IMPORTANTE
+        homeScreen.init(this, this.width, this.height);
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+    public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
 
         navBar.render(guiGraphics, this.width, this.height);
 

@@ -98,7 +98,8 @@ public class NavBar {
                 // Acción: Cambiar a pestaña HOME
                 (btn) -> panel.setTab(PanelUI.Tab.HOME),
                 0xffe91e63,
-                0xffba184f
+                0xffba184f,
+                0xffffffff
         );
 
         // Botón Placas
@@ -112,7 +113,8 @@ public class NavBar {
                 // Acción: Cambiar a pestaña PLACAS
                 (btn) -> panel.setTab(PanelUI.Tab.PLACAS),
                 0xffffc107,
-                0xffcc9a05
+                0xffcc9a05,
+                0xffffffff
         );
 
         // Botón Placas
@@ -126,7 +128,8 @@ public class NavBar {
                 // Acción: Cambiar a pestaña PLACAS
                 (btn) -> panel.setTab(PanelUI.Tab.EVENTS),
                 0xff4caf50,
-                0xff3c8c40
+                0xff3c8c40,
+                0xffffffff
         );
 
         // Registramos los botones en la pantalla principal
