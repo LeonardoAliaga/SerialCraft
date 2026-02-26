@@ -53,6 +53,8 @@ dependencies {
     // Librería para comunicación serial (Arduino)
     implementation "com.fazecast:jSerialComm:2.10.4"
     include "com.fazecast:jSerialComm:2.10.4"
+    implementation 'org.jmdns:jmdns:3.5.8'
+    include 'org.jmdns:jmdns:3.5.8'
 
     modImplementation include("me.lucko:fabric-permissions-api:0.6.1")
 }
