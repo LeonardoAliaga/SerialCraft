@@ -7,7 +7,9 @@ import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
@@ -18,7 +20,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class WelcomeScreen {
 
-    private IconTextButton scanBtn;
+    // =========================
+    // TEXTURAS
+    // =========================
+    private static final Identifier LOGO_TEXTURE = Identifier.fromNamespaceAndPath("serialcraft", "textures/gui/logo-txt.png");
+
     private final List<PanelUI.DeviceInfo> dispositivos = new CopyOnWriteArrayList<>();
     private final List<IconTextButton> cardButtons = new CopyOnWriteArrayList<>();
 
@@ -27,7 +33,7 @@ public class WelcomeScreen {
     private int layoutStartY;
     private JmDNS jmdns;
 
-    // BANDERA SEGURA PARA HILOS (Thread-Safe Flag)
+    // BANDERA SEGURA PARA HILOS
     private volatile boolean needsWidgetUpdate = false;
 
     public void init(PanelUI panel, int screenWidth, int screenHeight) {
@@ -41,38 +47,47 @@ public class WelcomeScreen {
         cardButtons.clear();
         dispositivos.clear();
 
-        this.layoutStartY = 90; // Fijamos una altura más estable para evitar que se salgan de pantalla
+        // Calculamos dónde empiezan las cards debajo del logo
+        int logoWidth = 200;
+        int logoHeight = (logoWidth * 261) / 779;
+        this.layoutStartY = 20 + logoHeight + 45;
 
         int cardWidth = 340;
         int startX = (screenWidth - cardWidth) / 2;
 
-        this.scanBtn = new IconTextButton(
-                startX + cardWidth - 130, layoutStartY - 30, 130, 24, null,
+        IconTextButton scanBtn = new IconTextButton(
+                startX, layoutStartY - 10, 130, 24, SpriteIcon.WIFI,
                 Component.literal("Buscar Wi-Fi"),
                 (btn) -> scanNetworkOptIn(),
                 0xff2196f3, 0xff1976d2, 0xffffffff
         );
-        panel.addWidget(this.scanBtn);
+        panel.addWidget(scanBtn);
 
         refreshUSBOnly();
     }
 
+    public void tick() {
+        if (needsWidgetUpdate) {
+            rebuildCardButtons();
+            needsWidgetUpdate = false;
+        }
+    }
+
     private void refreshUSBOnly() {
-        System.out.println("[SerialCraft] Escaneando puertos USB locales...");
         dispositivos.removeIf(d -> d.tipo.equals("USB"));
 
         for (SerialPort port : SerialPort.getCommPorts()) {
             String sysName = port.getSystemPortName();
-            System.out.println("[SerialCraft] Dispositivo USB encontrado: " + sysName);
             dispositivos.add(new PanelUI.DeviceInfo(
                     getFriendlyBoardName(port), sysName, "USB",
                     () -> SerialCraftClient.conectar(sysName, 9600)
             ));
         }
-        this.needsWidgetUpdate = true; // Solicitamos al hilo de Minecraft que dibuje los botones
+        this.needsWidgetUpdate = true;
     }
 
     private void scanNetworkOptIn() {
+        System.out.println("[SerialCraft] El usuario ha solicitado buscar Wi-Fi manualmente.");
         refreshUSBOnly();
         iniciarEscaneoWifi();
     }
@@ -104,12 +119,9 @@ public class WelcomeScreen {
             try {
                 if (jmdns != null) jmdns.close();
 
-                System.out.println("[SerialCraft] Buscando adaptador Wi-Fi...");
                 InetAddress wifiAddress = getWifiAddress();
-
                 if (wifiAddress != null) {
                     jmdns = JmDNS.create(wifiAddress);
-                    System.out.println("[SerialCraft] JmDNS anclado a: " + wifiAddress.getHostAddress());
                 } else {
                     jmdns = JmDNS.create();
                 }
@@ -120,12 +132,13 @@ public class WelcomeScreen {
                     }
                     @Override public void serviceRemoved(ServiceEvent event) {
                         dispositivos.removeIf(d -> d.nombre.equals(event.getName()));
-                        needsWidgetUpdate = true; // Actualizamos UI si la placa se desconecta
+                        needsWidgetUpdate = true;
                     }
                     @Override public void serviceResolved(ServiceEvent event) {
                         String[] direcciones = event.getInfo().getHostAddresses();
                         if (direcciones.length == 0) return;
 
+                        // Intentamos atrapar la IPv4 primero
                         String ipPreferida = direcciones[0];
                         for (String dir : direcciones) {
                             if (!dir.contains(":")) { ipPreferida = dir; break; }
@@ -134,15 +147,33 @@ public class WelcomeScreen {
                         String ipFinal = ipPreferida;
                         int port = event.getInfo().getPort();
 
-                        boolean yaExiste = dispositivos.stream().anyMatch(d -> d.nombre.equals(event.getName()) && d.tipo.equals("WIFI"));
+                        // Buscamos si la placa ya fue registrada
+                        PanelUI.DeviceInfo existente = null;
+                        for (PanelUI.DeviceInfo d : dispositivos) {
+                            if (d.nombre.equals(event.getName()) && d.tipo.equals("WIFI")) {
+                                existente = d;
+                                break;
+                            }
+                        }
 
-                        if (!yaExiste) {
+                        if (existente == null) {
                             System.out.println("[SerialCraft] Placa WIFI detectada: " + event.getName() + " -> " + ipFinal);
                             dispositivos.add(new PanelUI.DeviceInfo(
                                     event.getName(), ipFinal + ":" + port, "WIFI",
                                     () -> System.out.println("Conectando TCP: " + ipFinal)
                             ));
-                            needsWidgetUpdate = true; // ¡LA MAGIA! Le decimos a Minecraft que dibuje el botón
+                            needsWidgetUpdate = true;
+                        } else {
+                            // MAGIA IPV4: Si la placa ya existía con IPv6, y ahora nos llegó la IPv4, la reemplazamos visualmente
+                            boolean esAntiguaIPv6 = existente.direccion.split(":").length > 2;
+                            boolean esNuevoIPv4 = !ipFinal.contains(":");
+
+                            if (esAntiguaIPv6 && esNuevoIPv4) {
+                                System.out.println("[SerialCraft] Actualizando IP de placa " + event.getName() + " a formato corto: " + ipFinal);
+                                existente.direccion = ipFinal + ":" + port;
+                                existente.accionConectar = () -> System.out.println("Conectando TCP: " + ipFinal);
+                                needsWidgetUpdate = true;
+                            }
                         }
                     }
                 };
@@ -157,7 +188,6 @@ public class WelcomeScreen {
         }).start();
     }
 
-    // Este método solo debe ejecutarse desde el Main Thread
     private void rebuildCardButtons() {
         for (IconTextButton btn : cardButtons) {
             btn.visible = false;
@@ -171,10 +201,11 @@ public class WelcomeScreen {
 
         for (PanelUI.DeviceInfo dev : dispositivos) {
             IconTextButton connectBtn = new IconTextButton(
-                    x + 230, cardY + 12, 90, 24, SpriteIcon.CONNECT,
+                    x + 230, cardY + 22, 90, 24, SpriteIcon.CONNECT,
                     Component.literal("Conectar"),
                     (btn) -> panelRef.connectDevice(dev),
-                    0xff4bad00, 0xff1e9400, 0xffffffff
+                    0xff4bad00, 0xff1e9400,
+                    0xffffffff
             );
             panelRef.addWidget(connectBtn);
             cardButtons.add(connectBtn);
@@ -197,24 +228,42 @@ public class WelcomeScreen {
     }
 
     public void render(GuiGraphics gui, int mouseX, int mouseY, Font font, int width, int height) {
-        // REVISIÓN DE HILOS: Si el hilo de red encontró algo, reconstruimos los botones de forma segura
         if (needsWidgetUpdate) {
             rebuildCardButtons();
             needsWidgetUpdate = false;
         }
 
-        float scale = 2.0f;
-        gui.pose().pushMatrix();
-        gui.pose().scale(scale, scale);
-        String text = "BIENVENIDO A SERIALCRAFT";
-        gui.drawString(font, text, (int) ((width / scale) - font.width(text)) / 2, 20, 0xFF4995b6, false);
-        gui.pose().popMatrix();
+        // =========================
+        // DIBUJO DE LOGOS
+        // =========================
+        int logoWidth = 200;
+        int logoHeight = (logoWidth * 261) / 779;
+        int logoX = (width - logoWidth) / 2;
+        int logoY = 20;
 
-        gui.drawString(font, "Selecciona una placa detectada para entrar al panel", (width - font.width("Selecciona una placa detectada para entrar al panel")) / 2, 70, 0xFF757575, false);
+        gui.fill(0, 0, width, logoHeight + 30, 0xff4995b6);
+        // Renderiza el logo principal (texto)
+        gui.blit(
+                RenderPipelines.GUI_TEXTURED,
+                LOGO_TEXTURE,
+                logoX, logoY,
+                0, 0,
+                logoWidth, logoHeight,
+                779, 261,
+                779, 261
+        );
 
+
+        // Texto descriptivo centrado debajo del logo
+        int textY = logoY + logoHeight + 24;
+        gui.drawString(font, "Selecciona una placa detectada para entrar al panel", (width - font.width("Selecciona una placa detectada para entrar al panel")) / 2, textY, 0xFF757575, false);
+
+        // =========================
+        // DIBUJO DE TARJETAS
+        // =========================
         int cardWidth = 340;
         int x = (width - cardWidth) / 2;
-        int cardY = layoutStartY + 10;
+        int cardY = layoutStartY + 20;
 
         if (dispositivos.isEmpty()) {
             gui.drawString(font, "Conecta una placa por USB o presiona 'Buscar Wi-Fi'...", x + 20, cardY + 10, 0xff888888, false);

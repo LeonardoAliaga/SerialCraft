@@ -8,10 +8,6 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
-/**
- * Botón con fondo sólido (sin texturas vanilla).
- * Corrección: Extiende de AbstractWidget en lugar de Button para evitar el método 'final'.
- */
 public class SolidButton extends AbstractWidget {
 
     // Interface funcional propia porque ya no usamos la de Button
@@ -55,7 +51,7 @@ public class SolidButton extends AbstractWidget {
         this.defaultButtonNarrationText(output);
     }
 
-    // --- Renderizado 100% Personalizado ---
+    // --- Renderizado ---
     @Override
     public void renderWidget(GuiGraphics gui, int mouseX, int mouseY, float partialTick) {
         int x = this.getX();

@@ -50,7 +50,7 @@ public class PanelUI extends Screen {
     @Override
     protected void init() {
         super.init();
-        this.clearWidgets(); // LIMPIEZA TOTAL: Asegura que no queden botones fantasmas
+        this.clearWidgets(); // LIMPIEZA TOTAL
 
         if (appState == AppState.WELCOME) {
             welcomeScreen.init(this, this.width, this.height);
@@ -60,6 +60,15 @@ public class PanelUI extends Screen {
             if (currentTab == Tab.HOME) {
                 homeScreen.init(this, this.width, this.height, activeDevice);
             }
+        }
+    }
+
+    // ¡NUEVO!: Método seguro para actualizar botones fuera del renderizado
+    @Override
+    public void tick() {
+        super.tick();
+        if (appState == AppState.WELCOME) {
+            welcomeScreen.tick();
         }
     }
 
