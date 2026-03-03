@@ -19,12 +19,16 @@ public class PanelUI extends Screen {
         public String nombre;
         public String direccion;
         public String tipo;
+        public String plataforma; // ¡NUEVO! Identificador de hardware
         public Runnable accionConectar;
 
-        public DeviceInfo(String n, String d, String t, Runnable accion) {
-            this.nombre = n; this.direccion = d; this.tipo = t; this.accionConectar = accion;
+        public DeviceInfo(String n, String d, String t, String plat, Runnable accion) {
+            this.nombre = n; this.direccion = d; this.tipo = t; this.plataforma = plat; this.accionConectar = accion;
         }
     }
+
+    // ¡MEMORIA ESTÁTICA GLOBAL! Sobrevive al cerrar la interfaz
+    public static DeviceInfo currentConnectedDevice = null;
 
     private AppState appState = AppState.WELCOME;
     private Tab currentTab = Tab.HOME;
@@ -37,33 +41,37 @@ public class PanelUI extends Screen {
     public PanelUI() {
         super(Component.literal("PanelUI"));
 
-        if (SerialCraftClient.arduinoPort != null && SerialCraftClient.arduinoPort.isOpen()) {
+        // Recuperar conexión activa de Wi-Fi o USB
+        if (currentConnectedDevice != null) {
+            this.appState = AppState.DASHBOARD;
+            this.activeDevice = currentConnectedDevice;
+        } else if (SerialCraftClient.arduinoPort != null && SerialCraftClient.arduinoPort.isOpen()) {
+            // Rescate por defecto para USB antiguo
             this.appState = AppState.DASHBOARD;
             this.activeDevice = new DeviceInfo(
                     "Arduino (Conexión Activa)",
                     SerialCraftClient.arduinoPort.getSystemPortName(),
-                    "USB", () -> {}
+                    "USB", "Arduino", () -> {}
             );
+            currentConnectedDevice = this.activeDevice;
         }
     }
 
     @Override
     protected void init() {
         super.init();
-        this.clearWidgets(); // LIMPIEZA TOTAL
+        this.clearWidgets();
 
         if (appState == AppState.WELCOME) {
             welcomeScreen.init(this, this.width, this.height);
         } else {
             navBar.init(this, this.width, this.height);
-
             if (currentTab == Tab.HOME) {
                 homeScreen.init(this, this.width, this.height, activeDevice);
             }
         }
     }
 
-    // ¡NUEVO!: Método seguro para actualizar botones fuera del renderizado
     @Override
     public void tick() {
         super.tick();
@@ -89,22 +97,23 @@ public class PanelUI extends Screen {
                 renderEventsContent(gui);
             }
         }
-
         super.render(gui, mouseX, mouseY, delta);
     }
 
     public void connectDevice(DeviceInfo device) {
         device.accionConectar.run();
 
+        currentConnectedDevice = device; // Guardamos en la memoria estática
         this.appState = AppState.DASHBOARD;
         this.activeDevice = device;
         this.currentTab = Tab.HOME;
 
-        this.init(); // Recargamos la interfaz para mostrar el Dashboard
+        this.init();
     }
 
     public void disconnectDevice() {
         SerialCraftClient.desconectar();
+        currentConnectedDevice = null; // Borramos la memoria
         this.appState = AppState.WELCOME;
         this.activeDevice = null;
         this.init();
@@ -114,6 +123,9 @@ public class PanelUI extends Screen {
     public void removed() {
         super.removed();
         welcomeScreen.onClose();
+        if (appState == AppState.DASHBOARD) {
+            homeScreen.onClose(); // Detener el ping al cerrar UI para no gastar recursos
+        }
     }
 
     public void setTab(Tab tab) {

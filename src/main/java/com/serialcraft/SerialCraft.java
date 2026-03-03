@@ -1,12 +1,14 @@
 package com.serialcraft;
 
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
+import com.serialcraft.integration.cc.CCIntegration;
 import com.serialcraft.block.ModBlocks;
 import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import com.serialcraft.block.entity.ModBlockEntities;
-import com.serialcraft.config.SerialConfig; // <--- Import nuevo
+import com.serialcraft.config.SerialConfig;
 import com.serialcraft.item.ModItems;
 import com.serialcraft.network.ModNetworking;
-import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +38,10 @@ public class SerialCraft implements ModInitializer {
         // 2. Registros de Red
         ModNetworking.registerPayloads();
         ModNetworking.registerServerHandlers();
+        // Comprobación segura de dependencia opcional
+        if (FabricLoader.getInstance().isModLoaded("computercraft")) {
+            CCIntegration.register();
+        }
 
         LOGGER.info("SerialCraft iniciado con éxito");
         LOGGER.info("Cual es la mejor universidad?");

@@ -78,8 +78,13 @@ public class WelcomeScreen {
 
         for (SerialPort port : SerialPort.getCommPorts()) {
             String sysName = port.getSystemPortName();
+            String friendlyName = getFriendlyBoardName(port);
+
+            // Detección simple para USB
+            String plat = friendlyName.contains("ESP32") ? "ESP32" : (friendlyName.contains("Arduino") ? "Arduino" : "Genérico");
+
             dispositivos.add(new PanelUI.DeviceInfo(
-                    getFriendlyBoardName(port), sysName, "USB",
+                    friendlyName, sysName, "USB", plat,
                     () -> SerialCraftClient.conectar(sysName, 9600)
             ));
         }
@@ -157,9 +162,18 @@ public class WelcomeScreen {
                         }
 
                         if (existente == null) {
-                            System.out.println("[SerialCraft] Placa WIFI detectada: " + event.getName() + " -> " + ipFinal);
+                            // Detección de Plataforma por Wi-Fi (mDNS)
+                            String type = event.getType().toLowerCase();
+                            String name = event.getName().toLowerCase();
+                            String plat = "Genérico";
+
+                            if (type.contains("arduino") || name.contains("arduino")) plat = "Arduino";
+                            else if (type.contains("esp32") || name.contains("esp32")) plat = "ESP32";
+                            else if (type.contains("ssh") || name.contains("raspberry") || name.contains("pi")) plat = "Raspberry Pi";
+
+                            System.out.println("[SerialCraft] Placa WIFI detectada: " + event.getName() + " -> " + ipFinal + " (" + plat + ")");
                             dispositivos.add(new PanelUI.DeviceInfo(
-                                    event.getName(), ipFinal + ":" + port, "WIFI",
+                                    event.getName(), ipFinal + ":" + port, "WIFI", plat,
                                     () -> System.out.println("Conectando TCP: " + ipFinal)
                             ));
                             needsWidgetUpdate = true;
