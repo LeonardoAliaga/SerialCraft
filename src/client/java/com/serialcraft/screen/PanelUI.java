@@ -3,12 +3,16 @@ package com.serialcraft.screen;
 import com.serialcraft.SerialCraftClient;
 import com.serialcraft.client.ui.NavBar;
 import com.serialcraft.client.ui.pages.HomeScreen;
+import com.serialcraft.client.ui.pages.PlacasScreen;
 import com.serialcraft.client.ui.pages.WelcomeScreen;
+import com.serialcraft.network.BoardInfo;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 public class PanelUI extends Screen {
 
@@ -19,7 +23,7 @@ public class PanelUI extends Screen {
         public String nombre;
         public String direccion;
         public String tipo;
-        public String plataforma; // ¡NUEVO! Identificador de hardware
+        public String plataforma;
         public Runnable accionConectar;
 
         public DeviceInfo(String n, String d, String t, String plat, Runnable accion) {
@@ -27,27 +31,26 @@ public class PanelUI extends Screen {
         }
     }
 
-    // ¡MEMORIA ESTÁTICA GLOBAL! Sobrevive al cerrar la interfaz
+    // Memoria estática global — sobrevive al cerrar la interfaz
     public static DeviceInfo currentConnectedDevice = null;
 
-    private AppState appState = AppState.WELCOME;
-    private Tab currentTab = Tab.HOME;
+    private AppState   appState   = AppState.WELCOME;
+    private Tab        currentTab = Tab.HOME;
     private DeviceInfo activeDevice = null;
 
-    private final NavBar navBar = new NavBar();
+    private final NavBar        navBar        = new NavBar();
     private final WelcomeScreen welcomeScreen = new WelcomeScreen();
-    private final HomeScreen homeScreen = new HomeScreen();
+    private final HomeScreen    homeScreen    = new HomeScreen();
+    private final PlacasScreen  placasScreen  = new PlacasScreen();
 
     public PanelUI() {
         super(Component.literal("PanelUI"));
 
-        // Recuperar conexión activa de Wi-Fi o USB
         if (currentConnectedDevice != null) {
-            this.appState = AppState.DASHBOARD;
+            this.appState     = AppState.DASHBOARD;
             this.activeDevice = currentConnectedDevice;
         } else if (SerialCraftClient.arduinoPort != null && SerialCraftClient.arduinoPort.isOpen()) {
-            // Rescate por defecto para USB antiguo
-            this.appState = AppState.DASHBOARD;
+            this.appState     = AppState.DASHBOARD;
             this.activeDevice = new DeviceInfo(
                     "Arduino (Conexión Activa)",
                     SerialCraftClient.arduinoPort.getSystemPortName(),
@@ -66,8 +69,10 @@ public class PanelUI extends Screen {
             welcomeScreen.init(this, this.width, this.height);
         } else {
             navBar.init(this, this.width, this.height);
-            if (currentTab == Tab.HOME) {
-                homeScreen.init(this, this.width, this.height, activeDevice);
+            switch (currentTab) {
+                case HOME   -> homeScreen.init(this, this.width, this.height, activeDevice);
+                case PLACAS -> placasScreen.init(this, this.width, this.height);
+                case EVENTS -> {} // sin widgets por ahora
             }
         }
     }
@@ -77,6 +82,10 @@ public class PanelUI extends Screen {
         super.tick();
         if (appState == AppState.WELCOME) {
             welcomeScreen.tick();
+        } else {
+            // tick del dashboard — placasScreen necesita tick() para procesar
+            // la respuesta del servidor SIN causar loops desde render()
+            placasScreen.tick();
         }
     }
 
@@ -88,34 +97,33 @@ public class PanelUI extends Screen {
             welcomeScreen.render(gui, mouseX, mouseY, this.font, this.width, this.height);
         } else {
             navBar.render(gui, this.width, this.height);
-
-            if (currentTab == Tab.HOME) {
-                homeScreen.render(gui, mouseX, mouseY, this.font, this.width, this.height);
-            } else if (currentTab == Tab.PLACAS) {
-                renderPlacasContent(gui);
-            } else if (currentTab == Tab.EVENTS) {
-                renderEventsContent(gui);
+            switch (currentTab) {
+                case HOME   -> homeScreen.render(gui, mouseX, mouseY, this.font, this.width, this.height);
+                case PLACAS -> placasScreen.render(gui, mouseX, mouseY, this.font, this.width, this.height);
+                case EVENTS -> renderEventsContent(gui);
             }
         }
+
+        // super.render dibuja todos los widgets registrados (EditBox, SolidButton, etc.)
         super.render(gui, mouseX, mouseY, delta);
     }
 
+    // ── Gestión de dispositivos ────────────────────────────────────────────
+
     public void connectDevice(DeviceInfo device) {
         device.accionConectar.run();
-
-        currentConnectedDevice = device; // Guardamos en la memoria estática
-        this.appState = AppState.DASHBOARD;
-        this.activeDevice = device;
-        this.currentTab = Tab.HOME;
-
+        currentConnectedDevice = device;
+        this.appState          = AppState.DASHBOARD;
+        this.activeDevice      = device;
+        this.currentTab        = Tab.HOME;
         this.init();
     }
 
     public void disconnectDevice() {
         SerialCraftClient.desconectar();
-        currentConnectedDevice = null; // Borramos la memoria
-        this.appState = AppState.WELCOME;
-        this.activeDevice = null;
+        currentConnectedDevice = null;
+        this.appState          = AppState.WELCOME;
+        this.activeDevice      = null;
         this.init();
     }
 
@@ -124,9 +132,12 @@ public class PanelUI extends Screen {
         super.removed();
         welcomeScreen.onClose();
         if (appState == AppState.DASHBOARD) {
-            homeScreen.onClose(); // Detener el ping al cerrar UI para no gastar recursos
+            homeScreen.onClose();
+            placasScreen.onClose();
         }
     }
+
+    // ── API para páginas ──────────────────────────────────────────────────
 
     public void setTab(Tab tab) {
         this.currentTab = tab;
@@ -137,9 +148,16 @@ public class PanelUI extends Screen {
         this.addRenderableWidget(widget);
     }
 
-    private void renderPlacasContent(GuiGraphics gui) {
-        gui.drawString(this.font, "Gestor de Placas (Próximamente)", 300, 50, 0xff212121, false);
+    /**
+     * Recibe la lista de placas IO desde SerialCraftClient y la delega a PlacasScreen.
+     * PlacasScreen la procesará en su próximo tick(), en el hilo principal.
+     */
+    public void updatePlacasList(List<BoardInfo> boards) {
+        placasScreen.updateBoardList(boards);
     }
+
+    // ── Contenido placeholder ─────────────────────────────────────────────
+
     private void renderEventsContent(GuiGraphics gui) {
         gui.drawString(this.font, "Monitor de Eventos (Próximamente)", 300, 50, 0xff212121, false);
     }

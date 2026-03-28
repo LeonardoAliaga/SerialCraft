@@ -128,7 +128,7 @@ public class HomeScreen {
                 int colorPing = currentPingMs <= 50 ? 0xff4caf50 : (currentPingMs <= 150 ? 0xffffc107 : 0xffff5252);
                 gui.drawString(font, "Ping: " + textoPing, x + 25, layoutStartY + 58, colorPing, false);
             } else {
-                gui.drawString(font, "Ping: < 1 ms (Local)", x + 25, layoutStartY + 58, 0xff4caf50, false);
+                gui.drawString(font, "Ping: Local", x + 25, layoutStartY + 58, 0xff4caf50, false);
             }
         }
     }
