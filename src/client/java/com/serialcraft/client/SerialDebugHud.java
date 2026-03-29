@@ -3,7 +3,7 @@ package com.serialcraft.client;
 import com.serialcraft.SerialCraftClient;
 import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.DeltaTracker; // Import Correcto para 1.21+
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -31,7 +31,6 @@ public class SerialDebugHud implements HudRenderCallback {
         }
     }
 
-    // Firma correcta para Minecraft 1.21+
     @Override
     public void onHudRender(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         if (!isDebugEnabled) return;
@@ -45,10 +44,21 @@ public class SerialDebugHud implements HudRenderCallback {
 
         // --- 1. CABECERA Y LOGS ---
 
-        // Info de Conexión
-        boolean connected = (SerialCraftClient.arduinoPort != null && SerialCraftClient.arduinoPort.isOpen());
-        String portInfo = connected ? SerialCraftClient.arduinoPort.getSystemPortName() : "No Conectado";
-        int baud = connected ? SerialCraftClient.arduinoPort.getBaudRate() : 0;
+        // Verificamos conexión Serial o Wi-Fi
+        boolean serialConnected = (SerialCraftClient.arduinoPort != null && SerialCraftClient.arduinoPort.isOpen());
+        boolean wifiConnected = SerialCraftClient.isWifiConnected;
+        boolean connected = serialConnected || wifiConnected;
+
+        String portInfo = "No Conectado";
+        String baudInfo = "--";
+
+        if (serialConnected) {
+            portInfo = "USB: " + SerialCraftClient.arduinoPort.getSystemPortName();
+            baudInfo = String.valueOf(SerialCraftClient.arduinoPort.getBaudRate());
+        } else if (wifiConnected) {
+            portInfo = "Wi-Fi: " + (SerialCraftClient.wifiIp != null ? SerialCraftClient.wifiIp : "Conectado");
+            baudInfo = "TCP";
+        }
 
         String speedLabel = switch (SerialCraftClient.globalSerialSpeed) {
             case 0 -> "LOW";
@@ -56,12 +66,12 @@ public class SerialDebugHud implements HudRenderCallback {
             default -> "FAST";
         };
 
-        String header = String.format("§6[SerialCraft]§r %s | Baud:%d | Spd:%s", portInfo, baud, speedLabel);
+        String header = String.format("§6[SerialCraft]§r %s | Baud/Net:%s | Spd:%s", portInfo, baudInfo, speedLabel);
         int headerColor = connected ? 0xFF55FF55 : 0xFFFF5555;
 
         // Fondo para logs
         int logHeight = (eventLog.size() * 10) + 20;
-        guiGraphics.fill(x - 2, y - 2, x + 220, y + logHeight, 0x90000000);
+        guiGraphics.fill(x - 2, y - 2, x + 240, y + logHeight, 0x90000000);
 
         guiGraphics.drawString(font, header, x, y, headerColor, true);
         y += 12;
@@ -74,7 +84,7 @@ public class SerialDebugHud implements HudRenderCallback {
             }
         }
 
-        // --- 2. INFO DEL BLOQUE (RAYCAST) - CONSERVADO ---
+        // --- 2. INFO DEL BLOQUE (RAYCAST) ---
         HitResult hit = mc.hitResult;
         if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
             BlockHitResult blockHit = (BlockHitResult) hit;
