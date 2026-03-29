@@ -4,7 +4,7 @@ export default defineConfig({
   // Configuración compartida
   title: "SerialCraft",
   description: "Arduino to Minecraft Bridge",
-  base: "/SerialCraft/",
+  base: "/",
 
   // Configuración de Idiomas
   locales: {
