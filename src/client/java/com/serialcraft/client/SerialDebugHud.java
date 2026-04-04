@@ -2,6 +2,7 @@ package com.serialcraft.client;
 
 import com.serialcraft.SerialCraftClient;
 import com.serialcraft.block.entity.ArduinoIOBlockEntity;
+import com.serialcraft.connection.ConnectionManager;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -16,12 +17,10 @@ import java.util.List;
 
 public class SerialDebugHud implements HudRenderCallback {
 
-    // Configuración
-    public static boolean isDebugEnabled = false; // Toggle con F7
+    public static boolean isDebugEnabled = false;
     private static final List<String> eventLog = new ArrayList<>();
     private static final int MAX_LOGS = 8;
 
-    // Método estático para añadir logs
     public static void addLog(String message) {
         synchronized (eventLog) {
             eventLog.add(0, message);
@@ -43,18 +42,16 @@ public class SerialDebugHud implements HudRenderCallback {
         int y = 5;
 
         // --- 1. CABECERA Y LOGS ---
-
-        // Verificamos conexión Serial o Wi-Fi
-        boolean serialConnected = (SerialCraftClient.arduinoPort != null && SerialCraftClient.arduinoPort.isOpen());
-        boolean wifiConnected = SerialCraftClient.isWifiConnected;
+        boolean serialConnected = ConnectionManager.getSerial().isConnected();
+        boolean wifiConnected = ConnectionManager.getWifi().isConnected();
         boolean connected = serialConnected || wifiConnected;
 
         String portInfo = "No Conectado";
         String baudInfo = "--";
 
         if (serialConnected) {
-            portInfo = "USB: " + SerialCraftClient.arduinoPort.getSystemPortName();
-            baudInfo = String.valueOf(SerialCraftClient.arduinoPort.getBaudRate());
+            portInfo = "USB: " + ConnectionManager.getSerial().getPortName();
+            baudInfo = String.valueOf(ConnectionManager.getSerial().getBaudRate());
         } else if (wifiConnected) {
             portInfo = "Wi-Fi: " + (SerialCraftClient.wifiIp != null ? SerialCraftClient.wifiIp : "Conectado");
             baudInfo = "TCP";
@@ -69,7 +66,6 @@ public class SerialDebugHud implements HudRenderCallback {
         String header = String.format("§6[SerialCraft]§r %s | Baud/Net:%s | Spd:%s", portInfo, baudInfo, speedLabel);
         int headerColor = connected ? 0xFF55FF55 : 0xFFFF5555;
 
-        // Fondo para logs
         int logHeight = (eventLog.size() * 10) + 20;
         guiGraphics.fill(x - 2, y - 2, x + 240, y + logHeight, 0x90000000);
 
@@ -97,41 +93,34 @@ public class SerialDebugHud implements HudRenderCallback {
                 int cx = (screenWidth / 2) + 15;
                 int cy = (screenHeight / 2) - 15;
 
-                // Fondo tooltip
                 guiGraphics.fill(cx - 5, cy - 5, cx + 130, cy + 90, 0x90000000);
 
                 int textY = cy;
                 int labelCol = 0xFFAAAAAA;
                 int valCol = 0xFFFFFFFF;
 
-                // ID
                 guiGraphics.drawString(font, "ID: ", cx, textY, labelCol, true);
                 guiGraphics.drawString(font, io.boardID, cx + 20, textY, valCol, true);
                 textY += 10;
 
-                // MODO
                 String modeStr = (io.ioMode == ArduinoIOBlockEntity.MODE_OUTPUT) ? "OUTPUT (MC->Ard)" : "INPUT (Ard->MC)";
                 int modeColor = (io.ioMode == ArduinoIOBlockEntity.MODE_OUTPUT) ? 0xFF55FFFF : 0xFFFFAA00;
                 guiGraphics.drawString(font, modeStr, cx, textY, modeColor, true);
                 textY += 10;
 
-                // SEÑAL
-                boolean isAnalog = (io.signalType == 1); // 1 = Analog
+                boolean isAnalog = (io.signalType == 1);
                 String signalStr = isAnalog ? "ANALOG (PWM)" : "DIGITAL (I/O)";
                 guiGraphics.drawString(font, signalStr, cx, textY, isAnalog ? 0xFFFF55FF : 0xFF55FF55, true);
                 textY += 10;
 
-                // DATA
                 guiGraphics.drawString(font, "CMD: ", cx, textY, labelCol, true);
                 guiGraphics.drawString(font, io.targetData, cx + 25, textY, 0xFFFFFF55, true);
                 textY += 10;
 
-                // ESTADO
                 guiGraphics.drawString(font, "Soft: ", cx, textY, labelCol, true);
                 guiGraphics.drawString(font, io.isSoftOn ? "ON" : "OFF", cx + 60, textY, io.isSoftOn ? 0xFF55FF55 : 0xFFFF5555, true);
                 textY += 10;
 
-                // REDSTONE
                 guiGraphics.drawString(font, "RS: ", cx, textY, labelCol, true);
                 int rsVal = io.getRedstoneSignal();
                 guiGraphics.drawString(font, String.valueOf(rsVal), cx + 55, textY, (rsVal > 0) ? 0xFFFF5555 : 0xFFAAAAAA, true);
