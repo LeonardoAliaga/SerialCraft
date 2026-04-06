@@ -144,6 +144,11 @@ public class PanelUI extends Screen {
         this.init();
     }
 
+    /** Reconstruye la WelcomeScreen (botón Wi-Fi, tarjetas USB) sin cambiar de estado. */
+    public void rebuildWelcome() {
+        if (appState == AppState.WELCOME) this.init();
+    }
+
     public <T extends AbstractWidget> void addWidget(T widget) {
         this.addRenderableWidget(widget);
     }

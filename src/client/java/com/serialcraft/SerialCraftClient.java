@@ -59,10 +59,10 @@ public class SerialCraftClient implements ClientModInitializer {
 
         // ── CICLO DE VIDA DE LA CONEXIÓN (MUNDO) ─────────────────────────
 
-        // Al ENTRAR al mundo: iniciamos automáticamente a escuchar
+        // Al ENTRAR al mundo: solo registramos el evento, el servidor Wi-Fi
+        // se inicia manualmente desde WelcomeScreen al pulsar "Buscar Wi-Fi".
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            iniciarServidorWifi(8080);
-            SerialDebugHud.addLog("Mundo iniciado. Wi-Fi escuchando.");
+            SerialDebugHud.addLog("Mundo iniciado. Servidor Wi-Fi en espera (manual).");
         });
 
         // Al SALIR del mundo: matamos las conexiones y liberamos el puerto
