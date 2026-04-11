@@ -22,7 +22,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Página "Placas" del PanelUI.
- * Sigue el mismo patrón que HomeScreen / WelcomeScreen:
  * NO extiende Screen — clase helper con init / render / tick / onClose.
  *
  * Modos internos:
@@ -52,24 +51,20 @@ public class PlacasScreen {
     private int       editLogicMode  = 0;
     private boolean   editSoftOn     = true;
 
-    // Referencia al logicBtn para controlar visibilidad dinámicamente sin re-init
-    private SolidButton logicBtnRef = null;
+    private SolidButton logicBtnRef  = null;
+    private EditBox     editIdBox    = null;
+    private EditBox     editDataBox  = null;
 
-    // EditBoxes para leer valores al guardar
-    private EditBox editIdBox   = null;
-    private EditBox editDataBox = null;
+    private PanelUI panelRef = null;
 
-    // ── Referencias para re-init ───────────────────────────────────────────
-    private PanelUI panelRef       = null;
-
-    // ── Flags anti-loop (FIX DEL PARPADEO) ────────────────────────────────
-    // updateBoardList() escribe pendingBoards desde el hilo de red.
-    // tick() consume pendingBoards en el hilo principal UNA sola vez.
+    // ── Flags anti-loop ────────────────────────────────────────────────────
     private volatile boolean         pendingRebuild = false;
     private volatile List<BoardInfo> pendingBoards  = null;
-
-    // Evita enviar BoardListRequestPayload en bucle al reconstruir
     private boolean requestSent = false;
+
+    // ── Estado de carga ────────────────────────────────────────────────────
+    /** true mientras esperamos la respuesta del servidor. */
+    private volatile boolean isLoading = false;
 
     // ══════════════════════════════════════════════════════════════════════
     //  CICLO DE VIDA
@@ -82,8 +77,8 @@ public class PlacasScreen {
         this.editDataBox = null;
 
         if (!isEditing) {
-            // Pedir la lista al servidor solo si no se pidió ya en esta sesión
             if (!requestSent) {
+                isLoading = true;
                 ClientPlayNetworking.send(new BoardListRequestPayload(true));
                 requestSent = true;
             }
@@ -96,14 +91,13 @@ public class PlacasScreen {
     /**
      * tick() es el ÚNICO lugar donde se aplica el rebuild tras recibir datos
      * del servidor. Nunca se llama setTab() desde render().
-     * Así se rompe el loop: updateBoardList → tick (una vez) → setTab → init
-     * → requestSent==true → NO envía otra request → se detiene.
      */
     public void tick() {
         if (pendingRebuild && panelRef != null) {
             List<BoardInfo> data = pendingBoards;
             pendingBoards  = null;
             pendingRebuild = false;
+            isLoading      = false;
 
             if (data != null) {
                 boardList.clear();
@@ -111,15 +105,14 @@ public class PlacasScreen {
             }
 
             if (!isEditing) {
-                // requestSent sigue true → init() no enviará otra request
                 panelRef.setTab(PanelUI.Tab.PLACAS);
             }
         }
     }
 
     public void onClose() {
-        // Al cerrar la pestaña o la UI, permitir nueva request la próxima vez
         requestSent = false;
+        isLoading   = false;
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -130,22 +123,22 @@ public class PlacasScreen {
         int navWidth  = NavBar.getNavBarWidth(screenWidth);
         int contentX  = navWidth + 20;
         int cardWidth = screenWidth - navWidth - 40;
-        int cardY     = 70;
+        int cardY     = 75;
 
         for (BoardInfo board : boardList) {
             final BoardInfo b    = board;
             boolean         isOn = b.status();
-            int             btnY = cardY + 12;
+            int             btnY = cardY + 13;
 
             // Botón Toggle ON/OFF
             IconTextButton toggleBtn = new IconTextButton(
-                    contentX + cardWidth - 192, btnY, 88, 24,
+                    contentX + cardWidth - 192, btnY, 88, 22,
                     (isOn ? SpriteIcon.CONNECT : SpriteIcon.DISCONNECT),
                     Component.literal(isOn ? "■  ON" : "□  OFF"),
                     (btn) -> {
                         ClientPlayNetworking.send(new RemoteTogglePayload(b.pos()));
-                        // Forzar refresh de lista al volver
                         requestSent = false;
+                        isLoading   = true;
                         ClientPlayNetworking.send(new BoardListRequestPayload(true));
                         requestSent = true;
                     },
@@ -154,9 +147,9 @@ public class PlacasScreen {
                     0xFFFFFFFF
             );
 
-            // Botón Editar → entra al editor
+            // Botón Editar
             IconTextButton editBtn = new IconTextButton(
-                    contentX + cardWidth - 100, btnY, 88, 24,
+                    contentX + cardWidth - 100, btnY, 88, 22,
                     SpriteIcon.CODE,
                     Component.literal("Editar"),
                     (btn) -> openEditor(panel, b),
@@ -176,7 +169,6 @@ public class PlacasScreen {
         this.editLogicMode  = 0;
         this.editSoftOn     = board.status();
         this.isEditing      = true;
-        // requestSent ya está en true → el init del editor no enviará request
         panel.setTab(PanelUI.Tab.PLACAS);
     }
 
@@ -185,19 +177,18 @@ public class PlacasScreen {
     // ══════════════════════════════════════════════════════════════════════
 
     private void buildEditWidgets(PanelUI panel, int screenWidth, int screenHeight) {
-        if (selectedBoard == null) {
-            isEditing = false;
-            return;
-        }
+        if (selectedBoard == null) { isEditing = false; return; }
 
         int navWidth = NavBar.getNavBarWidth(screenWidth);
         int cx = navWidth + 30;
         int cy = 55;
+        // Panel más ancho (hasta 320px o el espacio disponible)
+        int panelW = Math.min(320, screenWidth - navWidth - 60);
 
         // ── EditBox Board ID ──────────────────────────────────────────────
         editIdBox = new EditBox(
                 Minecraft.getInstance().font,
-                cx + 5, cy + 48, 160, 18,
+                cx + 5, cy + 48, panelW - 90, 18,
                 Component.literal("Board ID")
         );
         editIdBox.setValue(selectedBoard.id());
@@ -208,7 +199,7 @@ public class PlacasScreen {
 
         // ── Botón Power ───────────────────────────────────────────────────
         SolidButton powerBtn = SolidButton.of(
-                cx + 175, cy + 45, 60, 20,
+                cx + panelW - 80, cy + 45, 70, 22,
                 Component.literal(editSoftOn ? "■ ON" : "□ OFF"),
                 b -> {
                     editSoftOn = !editSoftOn;
@@ -221,10 +212,10 @@ public class PlacasScreen {
 
         // ── Botones Mode / Signal / Logic ─────────────────────────────────
         int btnY = cy + 95;
-        int btnW = 70;
+        int btnW = (panelW - 20) / 3;
         int gap  = 5;
 
-        // logicBtn se crea ANTES que modeBtn para tener la referencia en su lambda
+        // logicBtn creado ANTES que modeBtn para tener la referencia en el lambda de modeBtn
         logicBtnRef = SolidButton.primary(
                 cx + (btnW + gap) * 2, btnY, btnW, 20,
                 getLogicText(),
@@ -233,7 +224,6 @@ public class PlacasScreen {
                     b.setMessage(getLogicText());
                 }
         );
-        // Visible solo en modo IN, igual que IOScreen de main
         logicBtnRef.visible = (editIoMode == 1);
         panel.addWidget(logicBtnRef);
 
@@ -243,9 +233,7 @@ public class PlacasScreen {
                 b -> {
                     editIoMode = (editIoMode == 0) ? 1 : 0;
                     b.setMessage(getModeText());
-                    if (logicBtnRef != null) {
-                        logicBtnRef.visible = (editIoMode == 1);
-                    }
+                    if (logicBtnRef != null) logicBtnRef.visible = (editIoMode == 1);
                 }
         );
         panel.addWidget(modeBtn);
@@ -263,7 +251,7 @@ public class PlacasScreen {
         // ── EditBox Comando ───────────────────────────────────────────────
         editDataBox = new EditBox(
                 Minecraft.getInstance().font,
-                cx + 5, cy + 157, 200, 18,
+                cx + 5, cy + 157, panelW - 20, 18,
                 Component.literal("Command")
         );
         editDataBox.setValue(selectedBoard.data());
@@ -273,15 +261,16 @@ public class PlacasScreen {
         panel.addWidget(editDataBox);
 
         // ── Guardar / Cancelar ────────────────────────────────────────────
+        int halfW = (panelW - 20) / 2;
         SolidButton saveBtn = SolidButton.success(
-                cx + 30, cy + 198, 100, 20,
+                cx + 5, cy + 200, halfW, 22,
                 Component.literal("Guardar"),
                 b -> saveAndReturn(panel)
         );
         panel.addWidget(saveBtn);
 
-        SolidButton cancelBtn = SolidButton.neutral(
-                cx + 140, cy + 198, 100, 20,
+        SolidButton cancelBtn = SolidButton.soft(
+                cx + halfW + 10, cy + 200, halfW, 22,
                 Component.literal("Cancelar"),
                 b -> cancelEdit(panel)
         );
@@ -302,8 +291,7 @@ public class PlacasScreen {
         isEditing     = false;
         selectedBoard = null;
         logicBtnRef   = null;
-        // Forzar refresh de lista al volver
-        requestSent = false;
+        requestSent   = false;
         panel.setTab(PanelUI.Tab.PLACAS);
     }
 
@@ -318,15 +306,11 @@ public class PlacasScreen {
     //  RENDER
     // ══════════════════════════════════════════════════════════════════════
 
-    /** Llamado desde PanelUI.render() antes de super.render() (que dibuja widgets). */
     public void render(GuiGraphics gui, int mouseX, int mouseY, Font font, int width, int height) {
-        // NUNCA llamar setTab() aquí — eso causaría el loop de parpadeo.
-        // tick() es el responsable de aplicar los datos del servidor.
-
         int navWidth = NavBar.getNavBarWidth(width);
         int cx       = navWidth + 20;
 
-        // Título de sección
+        // ── Título de sección ─────────────────────────────────────────────
         float scale = 1.8f;
         gui.pose().pushMatrix();
         gui.pose().scale(scale, scale);
@@ -348,7 +332,19 @@ public class PlacasScreen {
     private void renderListView(GuiGraphics gui, Font font,
                                 int width, int height, int navWidth, int cx) {
         int cardWidth = width - navWidth - 40;
-        int cardY     = 70;
+        int cardY     = 75;
+
+        // Subtítulo con contador de placas
+        if (!boardList.isEmpty()) {
+            String countLabel = boardList.size() + (boardList.size() == 1 ? " placa registrada" : " placas registradas");
+            gui.drawString(font, countLabel, cx, 48, TEXT_DIM, false);
+        }
+
+        // Estado de carga
+        if (isLoading) {
+            gui.drawString(font, "● Cargando placas...", cx, cardY + 10, 0xFF90CAF9, false);
+            return;
+        }
 
         if (boardList.isEmpty()) {
             gui.drawString(font,
@@ -361,6 +357,10 @@ public class PlacasScreen {
         }
 
         for (BoardInfo board : boardList) {
+            // Sombra sutil
+            gui.fill(cx + 2, cardY + 50, cx + cardWidth + 2, cardY + 52, 0x22000000);
+
+            // Fondo de tarjeta
             gui.fill(cx, cardY, cx + cardWidth, cardY + 48, CARD_BG);
             gui.fill(cx, cardY + 48, cx + cardWidth, cardY + 50, CARD_LINE);
 
@@ -368,21 +368,21 @@ public class PlacasScreen {
             boolean isInput = (board.mode() == 1);
             int badgeBg  = isInput ? 0xFFE8F5E9 : 0xFFE3F2FD;
             int badgeTxt = isInput ? 0xFF2E7D32 : 0xFF1565C0;
-            gui.fill(cx + 10, cardY + 10, cx + 36, cardY + 22, badgeBg);
+            gui.fill(cx + 10, cardY + 10, cx + 40, cardY + 24, badgeBg);
             gui.drawString(font, isInput ? "IN" : "OUT", cx + 14, cardY + 13, badgeTxt, false);
 
-            // LED de estado
+            // LED de estado (círculo 6×6)
             int ledColor = board.status() ? 0xFF4CAF50 : 0xFFf44336;
-            gui.fill(cx + cardWidth - 215, cardY + 6,
-                    cx + cardWidth - 209, cardY + 12, ledColor);
+            gui.fill(cx + cardWidth - 215, cardY + 7,
+                    cx + cardWidth - 209, cardY + 13, ledColor);
 
-            gui.drawString(font, board.id(),            cx + 44, cardY + 10, TEXT_MAIN, false);
-            gui.drawString(font, "CMD: " + board.data(), cx + 44, cardY + 24, TEXT_DIM, false);
+            gui.drawString(font, board.id(),             cx + 48, cardY + 10, TEXT_MAIN, false);
+            gui.drawString(font, "CMD: " + board.data(), cx + 48, cardY + 24, TEXT_DIM,  false);
             gui.drawString(font,
                     "Pos: " + board.pos().getX() + "  "
                             + board.pos().getY() + "  "
                             + board.pos().getZ(),
-                    cx + 44, cardY + 36, 0xFF9E9E9E, false);
+                    cx + 48, cardY + 36, 0xFF9E9E9E, false);
 
             cardY += 52;
         }
@@ -395,44 +395,51 @@ public class PlacasScreen {
 
         int cx     = navWidth + 30;
         int cy     = 55;
-        int panelW = 265;
-        int panelH = 240;
+        int panelW = Math.min(320, width - navWidth - 60);
+        int panelH = 248;
 
-        gui.fill(cx, cy, cx + panelW, cy + panelH, 0xFFF2F2EC);
+        // Fondo del panel editor
+        gui.fill(cx, cy, cx + panelW, cy + panelH, 0xFFF5F5F0);
         drawBorder(gui, cx, cy, panelW, panelH, BORDER_COL);
 
-        // Cabecera
-        gui.fill(cx, cy, cx + panelW, cy + 30, 0xFFE6E6DF);
+        // Cabecera del editor
+        gui.fill(cx, cy, cx + panelW, cy + 30, 0xFFE8E8E0);
         gui.drawCenteredString(font,
                 Component.literal("Editar: " + selectedBoard.id()),
                 cx + panelW / 2, cy + 10, TEXT_MAIN);
 
-        // Board ID
+        // ── Board ID ──────────────────────────────────────────────────────
         gui.drawString(font, "Board ID", cx + 5, cy + 33, TEXT_DIM, false);
-        gui.fill(cx + 4, cy + 42, cx + 4 + 172, cy + 68, BORDER_COL);
-        gui.fill(cx + 5, cy + 43, cx + 4 + 171, cy + 67, INPUT_BG);
+        gui.fill(cx + 4, cy + 42, cx + 4 + (panelW - 95), cy + 68, BORDER_COL);
+        gui.fill(cx + 5, cy + 43, cx + 4 + (panelW - 96), cy + 67, INPUT_BG);
 
-        // Separador de sección (muestra "Lógica" solo cuando mode == IN)
+        // Etiqueta de Power (alineada con el botón)
+        gui.drawString(font, "Power", cx + panelW - 83, cy + 33, TEXT_DIM, false);
+
+        // ── Sección Modo / Señal / Lógica ─────────────────────────────────
         gui.drawCenteredString(font,
                 Component.literal("Modo  /  Señal" + (editIoMode == 1 ? "  /  Lógica" : "")),
                 cx + panelW / 2, cy + 78, ACCENT);
 
-        // Comando
-        gui.drawString(font, "Comando (targetData)", cx + 5, cy + 140, TEXT_DIM, false);
-        gui.fill(cx + 4, cy + 151, cx + 4 + 212, cy + 177, BORDER_COL);
-        gui.fill(cx + 5, cy + 152, cx + 4 + 211, cy + 176, INPUT_BG);
+        // ── Separador ─────────────────────────────────────────────────────
+        gui.fill(cx + 8, cy + 122, cx + panelW - 8, cy + 123, 0xFFD0D0D0);
 
-        // Texto de ayuda dinámico (como IOScreen de main)
+        // ── Comando ───────────────────────────────────────────────────────
+        gui.drawString(font, "Comando (targetData)", cx + 5, cy + 130, TEXT_DIM, false);
+        gui.fill(cx + 4, cy + 141, cx + 4 + (panelW - 20), cy + 177, BORDER_COL);
+        gui.fill(cx + 5, cy + 142, cx + 4 + (panelW - 21), cy + 176, INPUT_BG);
+
+        // Texto de ayuda dinámico
         String cmdVal = (editDataBox != null) ? editDataBox.getValue() : selectedBoard.data();
         String helpText;
         if (editIoMode == 0) {
             helpText = editSignalType == 0
                     ? "OUT Digital → \"" + cmdVal + "\":0/1"
-                    : "OUT PWM → \"" + cmdVal + "\":0-255";
+                    : "OUT PWM → \""    + cmdVal + "\":0-255";
         } else {
             helpText = editSignalType == 0
-                    ? "IN Digital → HIGH/LOW con ID \"" + cmdVal + "\""
-                    : "IN Analog → 0-15 con ID \"" + cmdVal + "\"";
+                    ? "IN Digital → HIGH/LOW — ID \"" + cmdVal + "\""
+                    : "IN Analog → 0-15 — ID \""      + cmdVal + "\"";
         }
         gui.drawCenteredString(font, Component.literal(helpText),
                 cx + panelW / 2, cy + 182, 0xFF666666);
@@ -456,8 +463,8 @@ public class PlacasScreen {
 
     private Component getLogicText() {
         return switch (editLogicMode) {
-            case 0 -> Component.translatable("gui.serialcraft.logic.or");
-            case 1 -> Component.translatable("gui.serialcraft.logic.and");
+            case 0  -> Component.translatable("gui.serialcraft.logic.or");
+            case 1  -> Component.translatable("gui.serialcraft.logic.and");
             default -> Component.translatable("gui.serialcraft.logic.xor");
         };
     }
@@ -476,6 +483,6 @@ public class PlacasScreen {
     public void updateBoardList(List<BoardInfo> boards) {
         this.pendingBoards  = new ArrayList<>(boards);
         this.pendingRebuild = true;
-        // tick() lo procesará en el hilo principal en el próximo ciclo
+        // isLoading se pondrá a false en tick() cuando se consuman estos datos
     }
 }

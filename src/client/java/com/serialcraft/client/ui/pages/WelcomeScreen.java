@@ -54,7 +54,8 @@ public class WelcomeScreen {
 
         int logoWidth  = 200;
         int logoHeight = (logoWidth * 261) / 779;
-        this.layoutStartY = 20 + logoHeight + 45;
+        // layoutStartY: debajo del logo + subtítulo + línea de estado Wi-Fi
+        this.layoutStartY = 20 + logoHeight + 55;
 
         int cardWidth = 340;
         int startX    = (screenWidth - cardWidth) / 2;
@@ -64,7 +65,7 @@ public class WelcomeScreen {
         boolean     running = wifi.isServerRunning();
 
         IconTextButton wifiBtn = new IconTextButton(
-                startX, layoutStartY - 10, 165, 24, SpriteIcon.WIFI,
+                startX, layoutStartY - 28, 162, 22, SpriteIcon.WIFI,
                 Component.literal(running ? "Servidor Wi-Fi Activo" : "Iniciar Servidor Wi-Fi"),
                 (btn) -> toggleWifiServer(btn),
                 running ? 0xff388e3c : 0xff2196f3,
@@ -72,6 +73,15 @@ public class WelcomeScreen {
                 0xffffffff
         );
         panel.addWidget(wifiBtn);
+
+        // ── Botón de escaneo USB ───────────────────────────────────────────
+        IconTextButton scanBtn = new IconTextButton(
+                startX + 168, layoutStartY - 28, 162, 22, SpriteIcon.USB,
+                Component.literal("Buscar Placas USB"),
+                (btn) -> escanearUSB(),
+                0xff455a64, 0xff263238, 0xffffffff
+        );
+        panel.addWidget(scanBtn);
 
         // ── Escaneo inicial de puertos USB ────────────────────────────────
         escanearUSB();
@@ -106,7 +116,6 @@ public class WelcomeScreen {
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     /**
      * Alterna el servidor Wi-Fi entre STOPPED y LISTENING.
      * Llama a rebuildWelcome() para reconstruir el botón con color/texto actualizados.
      * NO realiza ningún escaneo de red.
@@ -120,7 +129,6 @@ public class WelcomeScreen {
             localIpText = calcularIpLocal();
             SerialCraftClient.iniciarServidorWifi(WIFI_SERVER_PORT);
         }
-        // Reconstruye la pantalla para que el botón refleje el nuevo estado
         panelRef.rebuildWelcome();
     }
 
@@ -129,8 +137,8 @@ public class WelcomeScreen {
         for (SerialPort port : SerialPort.getCommPorts()) {
             String sysName      = port.getSystemPortName();
             String friendlyName = getFriendlyBoardName(port);
-            String plat = friendlyName.contains("ESP32")    ? "ESP32"
-                    : friendlyName.contains("Arduino")  ? "Arduino"
+            String plat = friendlyName.contains("ESP32")   ? "ESP32"
+                    : friendlyName.contains("Arduino") ? "Arduino"
                     : "Genérico";
 
             dispositivos.add(new PanelUI.DeviceInfo(
@@ -151,14 +159,14 @@ public class WelcomeScreen {
 
         for (PanelUI.DeviceInfo dev : dispositivos) {
             IconTextButton connectBtn = new IconTextButton(
-                    x + 230, cardY + 22, 90, 24, SpriteIcon.CONNECT,
+                    x + 232, cardY + 14, 88, 20, SpriteIcon.CONNECT,
                     Component.literal("Conectar"),
                     (btn) -> panelRef.connectDevice(dev),
                     0xff4bad00, 0xff1e9400, 0xffffffff
             );
             panelRef.addWidget(connectBtn);
             cardButtons.add(connectBtn);
-            cardY += 55;
+            cardY += 52;
         }
     }
 
@@ -194,7 +202,8 @@ public class WelcomeScreen {
         if (vid == 0x1A86)                   return "Arduino Genérico (CH340)";
         if (vid == 0x10C4)                   return "Placa Genérica (CP2102)";
         String desc = port.getDescriptivePortName();
-        if (desc == null || desc.isBlank() || desc.contains("Generic")) return "Dispositivo Serial Desconocido";
+        if (desc == null || desc.isBlank() || desc.contains("Generic"))
+            return "Dispositivo Serial Desconocido";
         return desc;
     }
 
@@ -214,16 +223,19 @@ public class WelcomeScreen {
         int logoX      = (width - logoWidth) / 2;
         int logoY      = 20;
 
-        gui.fill(0, 0, width, logoHeight + 30, 0xff4995b6);
+        // Franja de cabecera
+        gui.fill(0, 0, width, logoHeight + 35, 0xff4995b6);
+
         gui.blit(RenderPipelines.GUI_TEXTURED,
                 LOGO_TEXTURE,
                 logoX, logoY, 0, 0,
                 logoWidth, logoHeight,
                 779, 261, 779, 261);
 
-        int textY    = logoY + logoHeight + 24;
-        String subT  = "Conecta tu hardware y entra al panel";
-        gui.drawString(font, subT, (width - font.width(subT)) / 2, textY, 0xFF757575, false);
+        // Subtítulo
+        int textY   = logoY + logoHeight + 12;
+        String subT = "Conecta tu hardware y entra al panel";
+        gui.drawString(font, subT, (width - font.width(subT)) / 2, textY, 0xFFCCE5F5, false);
 
         // ── Estado del servidor Wi-Fi ─────────────────────────────────────
         WifiHandler.State wifiState = ConnectionManager.getWifi().getState();
@@ -235,8 +247,8 @@ public class WelcomeScreen {
                 statusColor = 0xFF4CAF50;
             } else {
                 String ip  = localIpText.isEmpty() ? "tu IP local" : localIpText;
-                statusText = "◌ Servidor activo — configura tu Arduino:  " + ip + ":" + WIFI_SERVER_PORT;
-                statusColor = 0xFF2196F3;
+                statusText = "◌ Escuchando — Arduino: " + ip + ":" + WIFI_SERVER_PORT;
+                statusColor = 0xFF90CAF9;
             }
             gui.drawString(font, statusText,
                     (width - font.width(statusText)) / 2, textY + 14, statusColor, false);
@@ -245,25 +257,36 @@ public class WelcomeScreen {
         // ── Tarjetas USB ──────────────────────────────────────────────────
         int cardWidth = 340;
         int x         = (width - cardWidth) / 2;
-        int cardY     = layoutStartY + 20;
+        int cardY     = layoutStartY + 10;
 
         if (dispositivos.isEmpty()) {
+            // Mensaje en dos líneas para no desbordar el ancho de la tarjeta
             gui.drawString(font,
-                    "No se detectaron placas USB. Conecta una o inicia el servidor Wi-Fi.",
-                    x, cardY + 10, 0xff888888, false);
+                    "No se detectaron placas USB.",
+                    x, cardY + 8, 0xff888888, false);
+            gui.drawString(font,
+                    "Conecta una placa o inicia el servidor Wi-Fi.",
+                    x, cardY + 22, 0xff888888, false);
         } else {
             for (PanelUI.DeviceInfo dev : dispositivos) {
-                gui.fill(x, cardY,      x + 335, cardY + 48, 0xffffffff);
-                gui.fill(x, cardY + 48, x + 335, cardY + 50, 0xffe0e0e0);
+                // Sombra sutil debajo de la tarjeta
+                gui.fill(x + 2, cardY + 50, x + 337, cardY + 52, 0x22000000);
 
+                // Tarjeta blanca
+                gui.fill(x, cardY, x + 335, cardY + 48, 0xffffffff);
+                gui.fill(x, cardY + 48, x + 335, cardY + 49, 0xffe0e0e0);
+
+                // Badge de tipo (USB / WIFI)
                 int tagBg  = "WIFI".equals(dev.tipo) ? 0xffbbdefb : 0xfff5f5f5;
                 int tagTxt = "WIFI".equals(dev.tipo) ? 0xff1565c0 : 0xff424242;
                 gui.fill(x + 10, cardY + 14, x + 42, cardY + 28, tagBg);
                 gui.drawString(font, dev.tipo,      x + 14, cardY + 17, tagTxt,    false);
-                gui.drawString(font, dev.nombre,    x + 50, cardY + 14, 0xff212121, false);
+
+                // Nombre y dirección del dispositivo
+                gui.drawString(font, dev.nombre,    x + 50, cardY + 13, 0xff212121, false);
                 gui.drawString(font, dev.direccion, x + 50, cardY + 27, 0xff757575, false);
 
-                cardY += 55;
+                cardY += 52;
             }
         }
     }

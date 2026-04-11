@@ -8,6 +8,7 @@ import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import com.serialcraft.client.SerialDebugHud;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardListResponsePayload;
+import com.serialcraft.network.ConnectorPayload;
 import com.serialcraft.network.SerialOutputPayload;
 import com.serialcraft.screen.ConnectorScreen;
 import com.serialcraft.screen.IOScreen;
@@ -31,7 +32,7 @@ import org.lwjgl.glfw.GLFW;
 
 public class SerialCraftClient implements ClientModInitializer {
 
-    // --- Variables proxy públicas ---
+    // ── Variables proxy públicas ──────────────────────────────────────────
     public static SerialPort arduinoPort    = null;
     public static int globalSerialSpeed     = 2;
     public static boolean isWifiConnected   = false;
@@ -59,16 +60,17 @@ public class SerialCraftClient implements ClientModInitializer {
 
         // ── CICLO DE VIDA DE LA CONEXIÓN (MUNDO) ─────────────────────────
 
-        // Al ENTRAR al mundo: solo registramos el evento, el servidor Wi-Fi
-        // se inicia manualmente desde WelcomeScreen al pulsar "Buscar Wi-Fi".
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             SerialDebugHud.addLog("Mundo iniciado. Servidor Wi-Fi en espera (manual).");
         });
 
-        // Al SALIR del mundo: matamos las conexiones y liberamos el puerto
+        // Al SALIR del mundo: desconectar hardware Y limpiar el device estático
+        // para que al volver no se abra el Dashboard con una "conexión fantasma".
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             desconectar();
-            SerialDebugHud.addLog("Desconectado por salida del mundo.");
+            // Limpiar estado estático para que la siguiente sesión empiece en WelcomeScreen
+            PanelUI.currentConnectedDevice = null;
+            SerialDebugHud.addLog("Desconectado por salida del mundo. Estado limpiado.");
         });
 
         // ── Handlers de red ───────────────────────────────────────────────
@@ -96,12 +98,14 @@ public class SerialCraftClient implements ClientModInitializer {
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
             if (!level.isClientSide() || hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
 
-            BlockPos pos    = hit.getBlockPos();
-            var      state  = level.getBlockState(pos);
-            Minecraft mc    = Minecraft.getInstance();
+            BlockPos pos   = hit.getBlockPos();
+            var      state = level.getBlockState(pos);
+            Minecraft mc   = Minecraft.getInstance();
 
             if (state.is(ModBlocks.CONNECTOR_BLOCK)) {
-                mc.setScreen(new PanelUI());
+                // Pasamos el BlockPos al PanelUI para que pueda enviar ConnectorPayload
+                // al conectar/desconectar y así actualizar el modelo LIT del bloque.
+                mc.setScreen(new PanelUI(pos));
                 return InteractionResult.SUCCESS;
             }
 
