@@ -233,7 +233,7 @@ public class WelcomeScreen {
                 779, 261, 779, 261);
 
         // Subtítulo
-        int textY   = logoY + logoHeight + 12;
+        int textY   = logoY + logoHeight + 3;
         String subT = "Conecta tu hardware y entra al panel";
         gui.drawString(font, subT, (width - font.width(subT)) / 2, textY, 0xFFCCE5F5, false);
 

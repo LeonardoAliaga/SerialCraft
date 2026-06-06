@@ -47,6 +47,14 @@ public class PanelUI extends Screen {
     @Nullable
     private final BlockPos connectorPos;
 
+    /**
+     * Posición de un ArduinoIOBlock para abrir el editor de PlacasScreen
+     * directamente al inicializar el panel. Se consume tras el primer init()
+     * para no re-activar el editor al cambiar de pestaña.
+     */
+    @Nullable
+    private BlockPos directIoEditPos;
+
     private AppState   appState    = AppState.WELCOME;
     private Tab        currentTab  = Tab.HOME;
     private DeviceInfo activeDevice = null;
@@ -56,28 +64,52 @@ public class PanelUI extends Screen {
     private final HomeScreen    homeScreen    = new HomeScreen();
     private final PlacasScreen  placasScreen  = new PlacasScreen();
 
+    // ── Constructores ─────────────────────────────────────────────────────
+
     /**
-     * Constructor principal: el jugador clickeó un ConnectorBlock en el mundo.
-     * @param connectorPos posición del bloque para sincronizar el modelo LIT.
+     * Constructor completo. Permite abrir el panel desde un ConnectorBlock
+     * y/o ir directamente al editor de un ArduinoIOBlock.
+     *
+     * @param connectorPos posición del ConnectorBlock (puede ser null).
+     * @param ioEditPos    posición del ArduinoIOBlock a editar (puede ser null).
      */
-    public PanelUI(@Nullable BlockPos connectorPos) {
+    public PanelUI(@Nullable BlockPos connectorPos, @Nullable BlockPos ioEditPos) {
         super(Component.literal("PanelUI"));
-        this.connectorPos = connectorPos;
+        this.connectorPos   = connectorPos;
+        this.directIoEditPos = ioEditPos;
         initAppState();
     }
 
     /**
-     * Constructor sin BlockPos — mantiene compatibilidad con llamadas antiguas
-     * y con la restauración de sesión cuando el bloque no es conocido.
+     * Abre el panel desde un ConnectorBlock sin apuntar a ningún IO block.
      */
-    public PanelUI() {
-        this(null);
+    public PanelUI(@Nullable BlockPos connectorPos) {
+        this(connectorPos, null);
     }
 
     /**
-     * Determina el estado inicial del panel según si hay hardware activo.
+     * Constructor sin BlockPos — compatibilidad con llamadas antiguas
+     * y restauración de sesión cuando el bloque no es conocido.
+     */
+    public PanelUI() {
+        this(null, null);
+    }
+
+    // ── Estado inicial ────────────────────────────────────────────────────
+
+    /**
+     * Determina el estado inicial del panel según si hay hardware activo
+     * o si se abrió directamente para editar un IO block.
      */
     private void initAppState() {
+        // Apertura directa desde un ArduinoIOBlock → dashboard + pestaña Placas
+        if (directIoEditPos != null) {
+            this.appState     = AppState.DASHBOARD;
+            this.currentTab   = Tab.PLACAS;
+            this.activeDevice = currentConnectedDevice; // puede ser null, es aceptable
+            return;
+        }
+
         if (currentConnectedDevice != null) {
             this.appState    = AppState.DASHBOARD;
             this.activeDevice = currentConnectedDevice;
@@ -103,7 +135,13 @@ public class PanelUI extends Screen {
             navBar.init(this, this.width, this.height, currentTab);
             switch (currentTab) {
                 case HOME   -> homeScreen.init(this, this.width, this.height, activeDevice);
-                case PLACAS -> placasScreen.init(this, this.width, this.height);
+                case PLACAS -> {
+                    // Pasa el directIoEditPos y lo consume para no re-activar el editor
+                    // en siguientes llamadas a init() (p.ej. al cambiar de pestaña).
+                    BlockPos editPos = this.directIoEditPos;
+                    this.directIoEditPos = null;
+                    placasScreen.init(this, this.width, this.height, editPos);
+                }
                 case EVENTS -> {}
             }
         }
@@ -150,9 +188,6 @@ public class PanelUI extends Screen {
         this.activeDevice      = device;
         this.currentTab        = Tab.HOME;
 
-        // ── Sincronizar modelo 3D del bloque: LIT → true ─────────────────
-        // ConnectorPayload le dice al servidor que aplique LIT=true en el blockstate,
-        // lo que activa el modelo connector_block_on (LED verde encendido).
         if (connectorPos != null) {
             ClientPlayNetworking.send(new ConnectorPayload(connectorPos, true));
         }
@@ -170,8 +205,6 @@ public class PanelUI extends Screen {
         this.appState          = AppState.WELCOME;
         this.activeDevice      = null;
 
-        // ── Sincronizar modelo 3D del bloque: LIT → false ────────────────
-        // El bloque vuelve a su apariencia "apagada" (conector_block sin LED).
         if (connectorPos != null) {
             ClientPlayNetworking.send(new ConnectorPayload(connectorPos, false));
         }

@@ -10,8 +10,6 @@ import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardListResponsePayload;
 import com.serialcraft.network.ConnectorPayload;
 import com.serialcraft.network.SerialOutputPayload;
-import com.serialcraft.screen.ConnectorScreen;
-import com.serialcraft.screen.IOScreen;
 import com.serialcraft.screen.PanelUI;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -68,7 +66,6 @@ public class SerialCraftClient implements ClientModInitializer {
         // para que al volver no se abra el Dashboard con una "conexión fantasma".
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             desconectar();
-            // Limpiar estado estático para que la siguiente sesión empiece en WelcomeScreen
             PanelUI.currentConnectedDevice = null;
             SerialDebugHud.addLog("Desconectado por salida del mundo. Estado limpiado.");
         });
@@ -83,12 +80,12 @@ public class SerialCraftClient implements ClientModInitializer {
             });
         });
 
+        // PanelUI es el único receptor de la lista de placas.
+        // ConnectorScreen fue eliminado — ya no es necesario comprobarlo.
         ClientPlayNetworking.registerGlobalReceiver(BoardListResponsePayload.TYPE, (payload, context) -> {
             context.client().execute(() -> {
                 Minecraft mc = Minecraft.getInstance();
-                if (mc.screen instanceof ConnectorScreen screen) {
-                    screen.updateBoardList(payload.boards());
-                } else if (mc.screen instanceof PanelUI panel) {
+                if (mc.screen instanceof PanelUI panel) {
                     panel.updatePlacasList(payload.boards());
                 }
             });
@@ -102,34 +99,34 @@ public class SerialCraftClient implements ClientModInitializer {
             var      state = level.getBlockState(pos);
             Minecraft mc   = Minecraft.getInstance();
 
+            // ConnectorBlock → abre el panel principal (flujo normal)
             if (state.is(ModBlocks.CONNECTOR_BLOCK)) {
-                // Pasamos el BlockPos al PanelUI para que pueda enviar ConnectorPayload
-                // al conectar/desconectar y así actualizar el modelo LIT del bloque.
                 mc.setScreen(new PanelUI(pos));
                 return InteractionResult.SUCCESS;
             }
 
+            // ArduinoIOBlock → abre PanelUI directamente en el editor de PlacasScreen.
+            // Ya no existe IOScreen; PlacasScreen lee los datos del BlockEntity
+            // a través del constructor PanelUI(connectorPos=null, ioEditPos=pos).
             if (state.is(ModBlocks.IO_BLOCK)) {
                 if (state.getBlock() instanceof ArduinoIOBlock ioBlock) {
                     Vec3 hitPos = hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
                     if (ioBlock.getHitButton(hitPos) != null) return InteractionResult.PASS;
                 }
 
-                int    mode = 0;
-                String data = "";
-                var    be   = level.getBlockEntity(pos);
-
+                // Verificar propietario antes de abrir el editor
+                var be = level.getBlockEntity(pos);
                 if (be instanceof ArduinoIOBlockEntity io) {
                     if (io.ownerUUID != null && !io.ownerUUID.equals(player.getUUID())) {
                         player.displayClientMessage(
                                 Component.translatable("message.serialcraft.not_owner"), true);
                         return InteractionResult.FAIL;
                     }
-                    mode = io.ioMode;
-                    data = io.targetData;
                 }
 
-                mc.setScreen(new IOScreen(pos, mode, data));
+                // null para connectorPos (no hay bloque Connector asociado),
+                // pos como ioEditPos para ir directo al editor del bloque IO.
+                mc.setScreen(new PanelUI(null, pos));
                 return InteractionResult.SUCCESS;
             }
 

@@ -1,5 +1,6 @@
 package com.serialcraft.client.ui.pages;
 
+import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import com.serialcraft.client.ui.NavBar;
 import com.serialcraft.client.ui.SolidButton;
 import com.serialcraft.client.ui.SpriteIcon;
@@ -14,7 +15,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +29,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * Modos internos:
  *  - Lista  : tarjeta por cada ArduinoIOBlock con Toggle + Editar.
- *  - Editor : formulario equivalente a IOScreen (id, comando, modo, señal, lógica, power).
+ *  - Editor : formulario integrado para configurar un bloque IO
+ *             (equivalente al antiguo IOScreen, pero dentro del PanelUI moderno).
+ *
+ * El editor puede abrirse de dos formas:
+ *  1. Desde la lista: el jugador pulsa "Editar" en una tarjeta.
+ *  2. Directamente desde el mundo: el jugador hace clic en un ArduinoIOBlock.
+ *     En ese caso, PanelUI pasa un {@code directEditPos} a {@link #init} y
+ *     PlacasScreen lee los datos del BlockEntity para pre-rellenar el editor.
  */
 public class PlacasScreen {
 
@@ -51,9 +61,9 @@ public class PlacasScreen {
     private int       editLogicMode  = 0;
     private boolean   editSoftOn     = true;
 
-    private SolidButton logicBtnRef  = null;
-    private EditBox     editIdBox    = null;
-    private EditBox     editDataBox  = null;
+    private SolidButton logicBtnRef = null;
+    private EditBox     editIdBox   = null;
+    private EditBox     editDataBox = null;
 
     private PanelUI panelRef = null;
 
@@ -70,11 +80,28 @@ public class PlacasScreen {
     //  CICLO DE VIDA
     // ══════════════════════════════════════════════════════════════════════
 
-    public void init(PanelUI panel, int screenWidth, int screenHeight) {
+    /**
+     * Inicializa la página.
+     *
+     * @param panel         Pantalla principal para registrar widgets.
+     * @param screenWidth   Ancho de pantalla.
+     * @param screenHeight  Alto de pantalla.
+     * @param directEditPos Si no es null, abre el editor directamente para el
+     *                      ArduinoIOBlock en esa posición, leyendo sus datos
+     *                      del BlockEntity. Se usa cuando el jugador hace clic
+     *                      en un IO block en el mundo (flujo sin IOScreen).
+     */
+    public void init(PanelUI panel, int screenWidth, int screenHeight,
+                     @Nullable BlockPos directEditPos) {
         this.panelRef    = panel;
         this.logicBtnRef = null;
         this.editIdBox   = null;
         this.editDataBox = null;
+
+        // Apertura directa desde un ArduinoIOBlock en el mundo
+        if (directEditPos != null && !isEditing) {
+            prepareDirectEdit(directEditPos);
+        }
 
         if (!isEditing) {
             if (!requestSent) {
@@ -86,6 +113,15 @@ public class PlacasScreen {
         } else {
             buildEditWidgets(panel, screenWidth, screenHeight);
         }
+    }
+
+    /**
+     * Sobrecarga de compatibilidad — equivale a llamar con directEditPos = null.
+     * Usada internamente cuando se navega a la pestaña Placas sin un bloque
+     * específico (p.ej. al cancelar el editor o al cambiar de pestaña).
+     */
+    public void init(PanelUI panel, int screenWidth, int screenHeight) {
+        init(panel, screenWidth, screenHeight, null);
     }
 
     /**
@@ -113,6 +149,46 @@ public class PlacasScreen {
     public void onClose() {
         requestSent = false;
         isLoading   = false;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  EDICIÓN DIRECTA DESDE BLOQUE (reemplaza a IOScreen)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Lee los datos del BlockEntity del ArduinoIOBlock en {@code pos} y
+     * configura el estado del editor para mostrarlo en el siguiente init().
+     * Incluye signalType y logicMode, que BoardInfo no transporta.
+     */
+    private void prepareDirectEdit(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        // Valores por defecto si el BlockEntity no está disponible
+        int    ioMode     = 0;
+        int    signalType = 0;
+        int    logicMode  = 0;
+        String boardID    = "Arduino_1";
+        String targetData = "cmd_1";
+        boolean softOn    = true;
+
+        if (mc.level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
+            ioMode     = io.ioMode;
+            signalType = io.signalType;
+            logicMode  = io.logicMode;
+            boardID    = io.boardID;
+            targetData = io.targetData;
+            softOn     = io.isSoftOn;
+        }
+
+        // Construye un BoardInfo sintético para el editor
+        // Firma real del record: BoardInfo(BlockPos pos, String id, String data, int mode, boolean status)
+        this.selectedBoard  = new BoardInfo(pos, boardID, targetData, ioMode, softOn);
+        this.editIoMode     = ioMode;
+        this.editSignalType = signalType;
+        this.editLogicMode  = logicMode;
+        this.editSoftOn     = softOn;
+        this.isEditing      = true;
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -182,7 +258,6 @@ public class PlacasScreen {
         int navWidth = NavBar.getNavBarWidth(screenWidth);
         int cx = navWidth + 30;
         int cy = 55;
-        // Panel más ancho (hasta 320px o el espacio disponible)
         int panelW = Math.min(320, screenWidth - navWidth - 60);
 
         // ── EditBox Board ID ──────────────────────────────────────────────
@@ -215,7 +290,7 @@ public class PlacasScreen {
         int btnW = (panelW - 20) / 3;
         int gap  = 5;
 
-        // logicBtn creado ANTES que modeBtn para tener la referencia en el lambda de modeBtn
+        // logicBtn creado ANTES que modeBtn para tener la referencia en su lambda
         logicBtnRef = SolidButton.primary(
                 cx + (btnW + gap) * 2, btnY, btnW, 20,
                 getLogicText(),
@@ -262,19 +337,16 @@ public class PlacasScreen {
 
         // ── Guardar / Cancelar ────────────────────────────────────────────
         int halfW = (panelW - 20) / 2;
-        SolidButton saveBtn = SolidButton.success(
+        panel.addWidget(SolidButton.success(
                 cx + 5, cy + 200, halfW, 22,
                 Component.literal("Guardar"),
                 b -> saveAndReturn(panel)
-        );
-        panel.addWidget(saveBtn);
-
-        SolidButton cancelBtn = SolidButton.soft(
+        ));
+        panel.addWidget(SolidButton.soft(
                 cx + halfW + 10, cy + 200, halfW, 22,
                 Component.literal("Cancelar"),
                 b -> cancelEdit(panel)
-        );
-        panel.addWidget(cancelBtn);
+        ));
     }
 
     private void saveAndReturn(PanelUI panel) {
@@ -334,13 +406,11 @@ public class PlacasScreen {
         int cardWidth = width - navWidth - 40;
         int cardY     = 75;
 
-        // Subtítulo con contador de placas
         if (!boardList.isEmpty()) {
             String countLabel = boardList.size() + (boardList.size() == 1 ? " placa registrada" : " placas registradas");
             gui.drawString(font, countLabel, cx, 48, TEXT_DIM, false);
         }
 
-        // Estado de carga
         if (isLoading) {
             gui.drawString(font, "● Cargando placas...", cx, cardY + 10, 0xFF90CAF9, false);
             return;
@@ -371,7 +441,7 @@ public class PlacasScreen {
             gui.fill(cx + 10, cardY + 10, cx + 40, cardY + 24, badgeBg);
             gui.drawString(font, isInput ? "IN" : "OUT", cx + 14, cardY + 13, badgeTxt, false);
 
-            // LED de estado (círculo 6×6)
+            // LED de estado
             int ledColor = board.status() ? 0xFF4CAF50 : 0xFFf44336;
             gui.fill(cx + cardWidth - 215, cardY + 7,
                     cx + cardWidth - 209, cardY + 13, ledColor);
@@ -413,7 +483,6 @@ public class PlacasScreen {
         gui.fill(cx + 4, cy + 42, cx + 4 + (panelW - 95), cy + 68, BORDER_COL);
         gui.fill(cx + 5, cy + 43, cx + 4 + (panelW - 96), cy + 67, INPUT_BG);
 
-        // Etiqueta de Power (alineada con el botón)
         gui.drawString(font, "Power", cx + panelW - 83, cy + 33, TEXT_DIM, false);
 
         // ── Sección Modo / Señal / Lógica ─────────────────────────────────
@@ -483,6 +552,5 @@ public class PlacasScreen {
     public void updateBoardList(List<BoardInfo> boards) {
         this.pendingBoards  = new ArrayList<>(boards);
         this.pendingRebuild = true;
-        // isLoading se pondrá a false en tick() cuando se consuman estos datos
     }
 }

@@ -14,7 +14,7 @@
   "gui.serialcraft.mode.in": "📥 ENTRADA",
 
   "gui.serialcraft.signal.digital": "🔹 DIGITAL",
-  "gui.serialcraft.signal.analog": "〰 ANALOGO",
+  "gui.serialcraft.signal.analog": "〰 ANALÓGICO",
 
   "gui.serialcraft.logic.or": "🔀 OR",
   "gui.serialcraft.logic.and": "🔗 AND",
@@ -22,11 +22,11 @@
 
   "gui.serialcraft.profile.arduino": "Arduino UNO",
   "gui.serialcraft.profile.esp32": "ESP32 / Node",
-  "gui.serialcraft.profile.custom": "Personal",
+  "gui.serialcraft.profile.custom": "Personalizado",
 
   "gui.serialcraft.speed.low": "Baja",
-  "gui.serialcraft.speed.norm": "Norm",
-  "gui.serialcraft.speed.fast": "Ráp.",
+  "gui.serialcraft.speed.norm": "Normal",
+  "gui.serialcraft.speed.fast": "Rápida",
 
   "gui.serialcraft.help.out_dig": "Envía: %s:1 (ON) / :0 (OFF)",
   "gui.serialcraft.help.out_pwm": "Envía: %s:[0-255] (PWM)",
@@ -38,6 +38,27 @@
   "gui.serialcraft.connector.btn_connect": "🔗 CONECTAR",
   "gui.serialcraft.connector.boards_header": "PLACAS VINCULADAS:",
   "gui.serialcraft.connector.no_boards": "(No se detectan placas activas)",
+
+  "gui.serialcraft.placas.title": "PLACAS",
+  "gui.serialcraft.placas.subtitle": "GESTOR DE IO",
+  "gui.serialcraft.placas.loading": "● Cargando placas...",
+  "gui.serialcraft.placas.empty": "No hay placas IO registradas en el mundo.",
+  "gui.serialcraft.placas.empty_hint": "Colocá un bloque IO cerca de la Laptop y volvé a abrir este panel.",
+  "gui.serialcraft.placas.count": "%s placas registradas",
+  "gui.serialcraft.placas.btn_edit": "Editar",
+  "gui.serialcraft.placas.btn_on": "■  ON",
+  "gui.serialcraft.placas.btn_off": "□  OFF",
+  "gui.serialcraft.placas.cmd_prefix": "CMD:",
+  "gui.serialcraft.placas.pos_prefix": "Pos:",
+
+  "gui.serialcraft.editor.title": "Editar: %s",
+  "gui.serialcraft.editor.board_id": "ID de Placa",
+  "gui.serialcraft.editor.power": "Encendido",
+  "gui.serialcraft.editor.section_mode": "Modo  /  Señal",
+  "gui.serialcraft.editor.section_mode_logic": "Modo  /  Señal  /  Lógica",
+  "gui.serialcraft.editor.command": "Comando (targetData)",
+  "gui.serialcraft.editor.save": "Guardar",
+  "gui.serialcraft.editor.cancel": "Cancelar",
 
   "message.serialcraft.on_icon": "⚡ ON",
   "message.serialcraft.off_icon": "⭕ OFF",
