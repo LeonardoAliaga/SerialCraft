@@ -5,6 +5,30 @@ export default defineConfig({
   title: "SerialCraft",
   description: "Arduino to Minecraft Bridge",
   base: "/",
+  head: [
+    ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],
+    [
+      'script',
+      { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-DNHRBCWGDX' }
+    ],
+    [
+      'script',
+      {},
+      `window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-DNHRBCWGDX');`
+    ],
+    // Google AdSense
+    [
+      'script',
+      {
+        async: '',
+        src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9305749497490512',
+        crossorigin: 'anonymous'
+      }
+    ]
+  ],
 
   // Configuración de Idiomas
   locales: {
@@ -16,8 +40,10 @@ export default defineConfig({
       themeConfig: {
         nav: [
           { text: 'Inicio', link: '/' },
-          { text: 'Guía', link: '/guide' },       // <--- CAMBIO AQUÍ
-          { text: 'Referencia', link: '/protocol' }, // <--- CAMBIO AQUÍ
+          { text: 'Guía', link: '/guide' },
+          { text: 'Referencia', link: '/protocol' },
+          { text: 'Com. Bidireccional (Wi-Fi/USB)', link: '/bidirectional' }
+
 
           // Menú Versiones (Español)
           {
@@ -33,15 +59,16 @@ export default defineConfig({
           {
             text: 'Introducción',
             items: [
-              { text: 'Instalación', link: '/guide' }, // <--- CAMBIO AQUÍ
-              { text: 'Tu Primer Circuito', link: '/guide#tu-primer-circuito' } // <--- CAMBIO AQUÍ
+              { text: 'Instalación', link: '/guide' },
+              { text: 'Tu Primer Circuito', link: '/guide#tu-primer-circuito' }
             ]
           },
           {
             text: 'Arduino y Código',
             items: [
-              { text: 'Protocolo', link: '/protocol' }, // <--- CAMBIO AQUÍ
-              { text: 'Comandos', link: '/protocol#comandos' } // <--- CAMBIO AQUÍ
+              { text: 'Protocolo', link: '/protocol' },
+              { text: 'Comandos', link: '/protocol#comandos' }
+              { text: 'Bidirectional Comm (Wi-Fi/USB)', link: '/en/bidirectional' }
             ]
           }
         ]

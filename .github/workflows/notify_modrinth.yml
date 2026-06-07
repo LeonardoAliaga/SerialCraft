@@ -1,0 +1,36 @@
+name: Notify Discord on Modrinth Release
+
+on:
+  # Opción A: Se dispara cuando publicas un Release en GitHub
+  release:
+    types: [published]
+
+  # Opción B: Lo puedes lanzar manualmente desde la pestaña Actions
+  workflow_dispatch:
+
+  # Opción C: Revisa automáticamente cada cierto tiempo (cron)
+  # schedule:
+  #   - cron: '0 */6 * * *'  # Cada 6 horas
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests
+
+      - name: Enviar notificación a Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: "serialcraft"
+        run: python scripts/notify_discord.py
