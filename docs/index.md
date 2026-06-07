@@ -27,19 +27,25 @@ features:
 
 # ¿Qué es SerialCraft?
 
-**SerialCraft** es un mod para **Minecraft 1.21.10 (Fabric)** que rompe la cuarta pared, permitiendo una comunicación bidireccional en tiempo real entre el juego y dispositivos electrónicos externos.
+**SerialCraft** es un mod para **Minecraft (Fabric)** que rompe la cuarta pared, permitiendo una comunicación bidireccional en tiempo real entre el juego y dispositivos electrónicos externos.
 
-### Filosofía del Proyecto
-Este es un **proyecto de aprendizaje** y experimentación. Nació de la idea de demostrar que la lógica de programación y la lógica de circuitos físicos son dos caras de la misma moneda.
+### Sobre la Autoría y Filosofía del Proyecto
+SerialCraft es un proyecto creado por **Leonardo Aliaga** (Instagram: [@aliaga1924](https://instagram.com/aliaga1924)). Nace con el propósito principal de ser un **proyecto de aprendizaje**, enfocado en explorar la intersección y sinergia entre el desarrollo de software (modding en Java mediante Fabric), el diseño de hardware físico y las telecomunicaciones (como estudiante de la Universidad Nacional Mayor de San Marcos).
 
-A diferencia de otros mods técnicos, SerialCraft busca integrarse orgánicamente en la experiencia de supervivencia:
-* **Accesible:** No necesitas ser ingeniero para encender un LED desde Minecraft.
-* **Escalable:** Útil tanto para enseñar conceptos básicos de electrónica como para crear sistemas domóticos complejos controlados desde tu base.
+### El Rol de la Inteligencia Artificial
+En el desarrollo de SerialCraft se están empleando herramientas de IA de forma estratégica para optimizar tiempos. **El proyecto no depende totalmente de las IAs para existir.** El proceso de creación es meticuloso:
+1. Primero, se establece la **estructura arquitectónica y la lógica de programación** mediante el razonamiento personal y el estudio profundo de la API de Fabric y las librerías de hardware.
+2. Posteriormente, se utilizan las herramientas de IA para **ejecutar con mayor rapidez y traducir** esas ideas estructuradas en código funcional, acelerando la producción y permitiendo centrar la energía en la creatividad y la innovación técnica.
+
+## ¿Qué puedes hacer con SerialCraft?
+* **De Minecraft al Mundo Real:** Haz que una palanca en el juego encienda una lámpara de escritorio real o active un motor.
+* **Del Mundo Real a Minecraft:** Usa botones, sensores de luz o de temperatura físicos para abrir puertas, activar trampas o generar señales de Redstone dentro de tu partida.
+* **Aprendizaje y Prototipado:** Es una herramienta excelente para estudiantes de ingeniería, robótica y entusiastas del hardware para probar lógicas de circuitos en un entorno sandbox inmersivo.
 
 ### ¿Cómo funciona?
-El mod utiliza la librería `jSerialComm` para abrir un canal directo entre Java y tu puerto USB.
-1.  **Entrada:** Arduino envía datos (ej. sensor de luz) -> Minecraft los convierte en señal de Redstone.
-2.  **Salida:** Minecraft envía estados de bloque -> Arduino enciende actuadores físicos.
+El mod utiliza protocolos seriales (USB) y sockets TCP (Wi-Fi) para abrir un canal directo entre el juego y tu hardware.
+1.  **Entrada:** Tu placa envía datos (ej. sensor de luz) -> Minecraft los recibe y activa bloques de Redstone.
+2.  **Salida:** Minecraft detecta energía en bloques IO -> Envía estados al hardware para activar actuadores físicos.
 
 [¡Empieza tu primer circuito ahora!](/guide)
 

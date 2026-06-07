@@ -1,4 +1,5 @@
 ---
+# VitePress Home Page Configuration
 layout: home
 
 hero:
@@ -17,34 +18,40 @@ features:
   - title: Real Hardware in Survival
     details: No magic commands. Craft the Laptop, build your circuits, and connect them using in-game resources.
   - title: Plug & Play
-    details: Compatible with Arduino, ESP32, and any Serial board. Simple GUI to connect and configure.
+    details: Compatible with Arduino, ESP32, and any Serial board. Simple graphical interface for connecting and configuring.
   - title: Code as Redstone
-    details: Control Redstone with real sensors or trigger physical LEDs with in-game events.
+    details: Control Redstone with real sensors or activate physical LEDs with in-game events.
   - title: Native Multi-Language
-    details: The mod automatically detects your region. Available in English and Spanish (Spain, Argentina, Mexico).
+    details: The mod automatically detects your region. Available in English and Spanish (with localizations for Spain, Argentina, and Mexico).
 ---
 
 # What is SerialCraft?
 
-**SerialCraft** is a mod for **Minecraft 1.21.10 (Fabric)** that breaks the fourth wall, allowing real-time bidirectional communication between the game and external electronic devices.
+**SerialCraft** is a mod for **Minecraft (Fabric)** that breaks the fourth wall, allowing real-time bidirectional communication between the game and external electronic devices.
 
-### Project Philosophy
-This is a **learning project**. It was born from the idea of demonstrating that programming logic and physical circuit logic are two sides of the same coin.
+### About the Authorship and Project Philosophy
+SerialCraft is a project created by **Leonardo Aliaga** (Instagram: [@aliaga1924](https://instagram.com/aliaga1924)). It was born with the main purpose of being a **learning project**, focused on exploring the intersection and synergy between software development (Java modding via Fabric), physical hardware design, and telecommunications (as a student at Universidad Nacional Mayor de San Marcos).
 
-Unlike other technical mods, SerialCraft aims to integrate organically into the survival experience:
-* **Accessible:** You don't need to be an engineer to turn on an LED from Minecraft.
-* **Scalable:** Useful for teaching basic electronics or creating complex smart home systems controlled from your base.
+### The Role of Artificial Intelligence
+In the development of SerialCraft, AI tools are employed strategically to optimize time. **The project does not rely entirely on AIs to exist.** The creation process is meticulous:
+1. First, the **architectural structure and programming logic** are established through personal reasoning and deep study of the Fabric API and hardware libraries.
+2. Subsequently, AI tools are used to **execute more quickly and translate** those structured ideas into functional code, accelerating production and allowing focus on creativity and technical innovation.
+
+## What can you do with SerialCraft?
+* **From Minecraft to the Real World:** Make an in-game lever turn on a real desk lamp or activate a motor.
+* **From the Real World to Minecraft:** Use physical buttons, light sensors, or temperature sensors to open doors, trigger traps, or generate Redstone signals within your game.
+* **Learning and Prototyping:** It is an excellent tool for engineering students, robotics enthusiasts, and hardware hobbyists to test circuit logic in an immersive sandbox environment.
 
 ### How does it work?
-The mod uses the `jSerialComm` library to open a direct channel between Java and your USB port.
-1.  **Input:** Arduino sends data (e.g., light sensor) -> Minecraft converts it to Redstone signal.
-2.  **Output:** Minecraft sends block states -> Arduino turns on physical actuators.
+The mod uses serial protocols (USB) and TCP sockets (Wi-Fi) to open a direct channel between the game and your hardware.
+1.  **Input:** Your board sends data (e.g., light sensor) -> Minecraft receives it and activates Redstone blocks.
+2.  **Output:** Minecraft detects energy in IO Blocks -> Sends states to the hardware to activate physical actuators.
 
 [Start your first circuit now!](/en/guide)
 
 ---
 
-## 🌍 Community & License
+## 🌍 Community and License
 
 SerialCraft is an **Open Source** project.
 You are free to study the code, modify it, or use it in your modpacks.

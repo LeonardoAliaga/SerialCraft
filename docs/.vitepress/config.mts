@@ -42,15 +42,13 @@ export default defineConfig({
           { text: 'Inicio', link: '/' },
           { text: 'Guía', link: '/guide' },
           { text: 'Referencia', link: '/protocol' },
-          { text: 'Com. Bidireccional (Wi-Fi/USB)', link: '/bidirectional' }
-
-
           // Menú Versiones (Español)
           {
-            text: 'v0.3.6 (Beta)',
+            text: 'v0.4.3 (Beta)',
             items: [
-              { text: 'v0.3.6 (Actual)', link: '/guide' }, // <--- CAMBIO AQUÍ
-              { text: 'Notas de Versión', link: 'https://github.com/leonardoaliaga/serialcraft/releases/tag/v0.3.6' },
+              { text: 'v0.4.3 (Actual)', link: '/guide' },
+              { text: 'v0.3.6 (Antigua)', link: '/v0.3.6/guide' },
+              { text: 'Notas de Versión', link: 'https://github.com/leonardoaliaga/serialcraft/releases/tag/v0.4.3' },
               { text: 'Reportar Bug', link: 'https://github.com/leonardoaliaga/serialcraft/issues' }
             ]
           }
@@ -60,15 +58,15 @@ export default defineConfig({
             text: 'Introducción',
             items: [
               { text: 'Instalación', link: '/guide' },
+              { text: 'Configuración de Conexión', link: '/guide#configuracion-de-conexion' },
               { text: 'Tu Primer Circuito', link: '/guide#tu-primer-circuito' }
             ]
           },
           {
-            text: 'Arduino y Código',
+            text: 'Hardware y Código',
             items: [
-              { text: 'Protocolo', link: '/protocol' },
-              { text: 'Comandos', link: '/protocol#comandos' }
-              { text: 'Bidirectional Comm (Wi-Fi/USB)', link: '/en/bidirectional' }
+              { text: 'Protocolo Bidireccional', link: '/protocol' },
+              { text: 'Implementación en Hardware', link: '/protocol#implementacion-en-hardware' }
             ]
           }
         ]
@@ -85,13 +83,13 @@ export default defineConfig({
           { text: 'Home', link: '/en/' },
           { text: 'Guide', link: '/en/guide' },
           { text: 'Reference', link: '/en/protocol' },
-
           // Version Menu (English)
           {
-            text: 'v0.3.6 (Beta)',
+            text: 'v0.4.3 (Beta)',
             items: [
-              { text: 'v0.3.6 (Current)', link: '/en/guide' },
-              { text: 'Release Notes', link: 'https://github.com/leonardoaliaga/serialcraft/releases/tag/v0.3.6' },
+              { text: 'v0.4.3 (Current)', link: '/en/guide' },
+              { text: 'v0.3.6 (Legacy)', link: '/en/v0.3.6/guide' },
+              { text: 'Release Notes', link: 'https://github.com/leonardoaliaga/serialcraft/releases/tag/v0.4.3' },
               { text: 'Report Bug', link: 'https://github.com/leonardoaliaga/serialcraft/issues' }
             ]
           }
@@ -101,14 +99,15 @@ export default defineConfig({
             text: 'Getting Started',
             items: [
               { text: 'Installation', link: '/en/guide' },
+              { text: 'Connection Setup', link: '/en/guide#connection-setup' },
               { text: 'Your First Circuit', link: '/en/guide#your-first-circuit' }
             ]
           },
           {
-            text: 'Arduino & Code',
+            text: 'Hardware & Code',
             items: [
-              { text: 'Protocol', link: '/en/protocol' },
-              { text: 'Commands', link: '/en/protocol#commands' }
+              { text: 'Bidirectional Protocol', link: '/en/protocol' },
+              { text: 'Hardware Implementation', link: '/en/protocol#hardware-implementation' }
             ]
           }
         ]
@@ -118,7 +117,8 @@ export default defineConfig({
 
   themeConfig: {
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/leonardoaliaga/serialcraft' }
+      { icon: 'github', link: 'https://github.com/leonardoaliaga/serialcraft' },
+      { icon: 'instagram', link: 'https://instagram.com/aliaga1924' }
     ]
   }
 })
