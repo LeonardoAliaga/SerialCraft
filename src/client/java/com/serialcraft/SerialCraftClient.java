@@ -1,5 +1,6 @@
 package com.serialcraft;
 
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import com.fazecast.jSerialComm.SerialPort;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.serialcraft.block.ArduinoIOBlock;
@@ -78,6 +79,21 @@ public class SerialCraftClient implements ClientModInitializer {
                 SerialDebugHud.addLog("TX: " + msg);
                 ConnectionManager.sendMessageToBoard(msg);
             });
+        });
+
+        
+        // ── Lectura del chat hacia Arduino ───────────────────────────────────────
+        ClientSendMessageEvents.CHAT.register(message -> {
+         Minecraft mc = Minecraft.getInstance();
+
+            // Verifica que el jugador esté dentro de un mundo
+            if (mc.level == null || mc.player == null) {
+                return;
+            }
+
+            // Envía solamente el texto escrito en el chat
+            SerialDebugHud.addLog("CHAT -> Arduino: " + message);
+            ConnectionManager.sendMessageToBoard(message);
         });
 
         // PanelUI es el único receptor de la lista de placas.
