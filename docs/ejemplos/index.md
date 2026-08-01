@@ -766,7 +766,3 @@ Si el LED enciende apenas perceptible, estás usando un sketch de la 0.3.x que c
 Quita temporalmente la histéresis del sketch y deja que envíe en cada vuelta de `loop()`. Verás que el juego deja de responder a algunos cambios: el limitador está descartando el exceso. Es el comportamiento correcto. Vuelve a poner la histéresis.
 
 ---
-
-## 6. Esquemas de conexión
-
-Los tres montajes tienen su descripción para generar el diagrama en [Prompts para esquemas](/ejemplos/esquemas-ia).

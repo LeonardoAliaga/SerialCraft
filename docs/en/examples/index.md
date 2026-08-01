@@ -770,7 +770,3 @@ If the LED is barely visible, you are running a 0.3.x sketch that compares `valu
 Temporarily remove the hysteresis so the sketch transmits on every `loop()` pass. The game will start ignoring some changes: the limiter is dropping the excess. That is correct behaviour. Put the hysteresis back.
 
 ---
-
-## 6. Wiring diagrams
-
-Descriptions for generating each diagram live in [Wiring diagram prompts](/en/examples/wiring-prompts).
