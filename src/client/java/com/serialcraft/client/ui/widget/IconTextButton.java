@@ -1,17 +1,21 @@
 package com.serialcraft.client.ui.widget;
 
 import com.serialcraft.client.ui.SpriteIcon;
+import com.serialcraft.client.ui.UiDraw;
+import com.serialcraft.client.ui.UiTheme;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable; // Importante para marcar que puede ser null
+import org.jetbrains.annotations.Nullable;
 
+/** Boton con icono opcional a la izquierda y texto. */
 public class IconTextButton extends AbstractWidget {
 
     @FunctionalInterface
@@ -19,121 +23,75 @@ public class IconTextButton extends AbstractWidget {
         void onPress(IconTextButton button);
     }
 
-    // El icono ahora puede ser nulo
-    @Nullable
-    private final SpriteIcon icon;
-    private final int backgroundColor;
-    private final int borderColor;
-    private final int textColor; // Nuevo campo para el color
+    private static final int PADDING = 6;
+
+    private final @Nullable SpriteIcon icon;
     private final OnPress onPress;
 
-    private static final int ICON_DRAW_SIZE = 16;
-    private static final int PADDING = 6; // Constante para el margen
+    private int backgroundColor;
+    private int borderColor;
+    private int textColor;
 
-    public IconTextButton(
-            int x,
-            int y,
-            int width,
-            int height,
-            @Nullable SpriteIcon icon, // Acepta null
-            Component text,
-            OnPress onPress,
-            int backgroundColor,
-            int borderColor,
-            int textColor // Nuevo parámetro
-    ) {
+    public IconTextButton(int x, int y, int width, int height,
+                          @Nullable SpriteIcon icon, Component text, OnPress onPress,
+                          int backgroundColor, int borderColor, int textColor) {
         super(x, y, width, height, text);
-        this.icon = icon;
-        this.onPress = onPress;
+        this.icon            = icon;
+        this.onPress         = onPress;
         this.backgroundColor = backgroundColor;
-        this.borderColor = borderColor;
-        this.textColor = textColor;
+        this.borderColor     = borderColor;
+        this.textColor       = textColor;
     }
 
-    // Constructor de sobrecarga opcional por si quieres mantener compatibilidad con el blanco por defecto
-    public IconTextButton(int x, int y, int width, int height, @Nullable SpriteIcon icon, Component text, OnPress onPress, int backgroundColor, int borderColor) {
-        this(x, y, width, height, icon, text, onPress, backgroundColor, borderColor, 0xFFFFFFFF);
+    public IconTextButton(int x, int y, int width, int height,
+                          @Nullable SpriteIcon icon, Component text, OnPress onPress,
+                          int backgroundColor, int borderColor) {
+        this(x, y, width, height, icon, text, onPress,
+             backgroundColor, borderColor, UiTheme.TEXT_INVERSE);
+    }
+
+    /** Permite reutilizar el widget al cambiar de estado sin recrearlo. */
+    public void setColors(int background, int border, int text) {
+        this.backgroundColor = background;
+        this.borderColor     = border;
+        this.textColor       = text;
     }
 
     @Override
     public void onClick(@NotNull MouseButtonEvent event, boolean focused) {
-        if (this.onPress != null) {
-            this.onPress.onPress(this);
-        }
+        if (this.onPress != null) this.onPress.onPress(this);
     }
 
     @Override
     protected void renderWidget(GuiGraphics gui, int mouseX, int mouseY, float delta) {
-        renderBackground(gui);
-
-        // Solo renderizamos el icono si existe
-        if (this.icon != null) {
-            renderIcon(gui);
-        }
-
-        renderText(gui);
-    }
-
-    private void renderBackground(GuiGraphics gui) {
         int x = getX();
         int y = getY();
 
         gui.fill(x, y, x + width, y + height, backgroundColor);
+        UiDraw.border(gui, x, y, width, height, borderColor);
 
-        // Bordes
-        gui.fill(x, y, x + width, y + 1, borderColor);
-        gui.fill(x, y + height - 1, x + width, y + height, borderColor);
-        gui.fill(x, y, x + 1, y + height, borderColor);
-        gui.fill(x + width - 1, y, x + width, y + height, borderColor);
-    }
-
-    private void renderIcon(GuiGraphics gui) {
-        // Validación extra de seguridad (aunque ya se valida en renderWidget)
-        if (icon == null) return;
-
-        int iconX = getX() + PADDING;
-        int iconY = getY() + (height - ICON_DRAW_SIZE) / 2;
-
-        gui.blit(
-                RenderPipelines.GUI_TEXTURED,
-                SpriteIcon.ICONS_TEXTURE,
-                iconX,
-                iconY,
-                icon.u(),
-                icon.v(),
-                ICON_DRAW_SIZE,
-                ICON_DRAW_SIZE,
-                64,
-                64,
-                296,
-                222
-        );
-    }
-
-    private void renderText(GuiGraphics gui) {
-        // Lógica de posición:
-        // Si hay icono: X + Padding + Icono + Padding
-        // Si NO hay icono: X + Padding (donde empezaría el icono)
-        int textX = getX() + PADDING;
-
-        if (this.icon != null) {
-            textX += ICON_DRAW_SIZE + PADDING;
+        int textX = x + PADDING;
+        if (icon != null) {
+            int iconY = y + (height - SpriteIcon.DRAW_SIZE) / 2;
+            gui.blit(RenderPipelines.GUI_TEXTURED, SpriteIcon.TEXTURE,
+                    textX, iconY,
+                    icon.u(), icon.v(),
+                    SpriteIcon.DRAW_SIZE, SpriteIcon.DRAW_SIZE,
+                    SpriteIcon.SPRITE_SIZE, SpriteIcon.SPRITE_SIZE,
+                    SpriteIcon.SHEET_WIDTH, SpriteIcon.SHEET_HEIGHT);
+            textX += SpriteIcon.DRAW_SIZE + PADDING;
         }
 
-        var font = Minecraft.getInstance().font;
+        Font font = Minecraft.getInstance().font;
+        int textY = y + (height - font.lineHeight) / 2 + 1;
 
-        int textY = getY()
-                + (height - font.lineHeight) / 2
-                + 1; // ajuste visual vanilla
-
-        gui.drawString(
-                Minecraft.getInstance().font,
-                getMessage(),
-                textX,
-                textY,
-                this.textColor, // Usamos el color personalizado
-                false
-        );
+        // Recorte defensivo: si la traduccion es mas larga que el boton, se
+        // acorta con puntos suspensivos en vez de desbordarse sobre el widget
+        // vecino. El original dibujaba el texto completo pasara lo que pasara,
+        // que es como se rompen las interfaces al traducirlas.
+        int available = x + width - PADDING - textX;
+        String label = font.plainSubstrByWidth(getMessage().getString(), available);
+        gui.drawString(font, label, textX, textY, textColor, false);
     }
 
     @Override

@@ -1,10 +1,13 @@
 package com.serialcraft.screen;
 
-import com.serialcraft.SerialCraftClient;
 import com.serialcraft.client.ui.NavBar;
-import com.serialcraft.client.ui.pages.HomeScreen;
-import com.serialcraft.client.ui.pages.PlacasScreen;
-import com.serialcraft.client.ui.pages.WelcomeScreen;
+import com.serialcraft.client.ui.UiTheme;
+import com.serialcraft.client.ui.pages.BoardsPage;
+import com.serialcraft.client.ui.pages.EventsPage;
+import com.serialcraft.client.ui.pages.HomePage;
+import com.serialcraft.client.ui.pages.Page;
+import com.serialcraft.client.ui.pages.WelcomePage;
+import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.ConnectorPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -16,221 +19,196 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Pantalla contenedora del panel.
+ *
+ * Reestructuracion respecto al original:
+ *
+ *  - Las paginas viven en un EnumMap<Tab, Page>, no en tres campos con tipo
+ *    concreto. Los cuatro switch sobre la pestana activa (init, render, tick,
+ *    removed) desaparecen. El de EVENTS, que estaba vacio en init y tick, era
+ *    justo el sitio donde se olvidaria algo al implementar esa pagina.
+ *
+ *  - onClose() se llama SIEMPRE sobre todas las paginas al cerrar, no solo
+ *    sobre dos de ellas y solo si el estado era DASHBOARD. Esa condicion era
+ *    la causa de la fuga del Timer de latencia.
+ *
+ *  - El estado de conexion se consulta a ConnectionManager en vez de guardarse
+ *    en un campo estatico propio. El campo estatico currentConnectedDevice
+ *    podia contradecir al hardware real: de ahi las "conexiones fantasma".
+ */
 public class PanelUI extends Screen {
 
     public enum AppState { WELCOME, DASHBOARD }
-    public enum Tab { HOME, PLACAS, EVENTS }
 
-    public static class DeviceInfo {
-        public String nombre;
-        public String direccion;
-        public String tipo;
-        public String plataforma;
-        public Runnable accionConectar;
+    /** El orden del enum define el orden de los botones en la barra lateral. */
+    public enum Tab { HOME, BOARDS, EVENTS }
 
-        public DeviceInfo(String n, String d, String t, String plat, Runnable accion) {
-            this.nombre = n; this.direccion = d; this.tipo = t;
-            this.plataforma = plat; this.accionConectar = accion;
-        }
+    /** Descripcion del dispositivo que el jugador eligio conectar. */
+    public record DeviceInfo(String name, String address, String type,
+                             String platform, Runnable connectAction) {
+        public boolean isWifi() { return "WIFI".equals(type); }
     }
 
-    // Memoria estática global — sobrevive al cerrar la interfaz
-    public static DeviceInfo currentConnectedDevice = null;
+    /** Dispositivo elegido en esta sesion. Se limpia al salir del mundo. */
+    private static @Nullable DeviceInfo selectedDevice = null;
+
+    public static @Nullable DeviceInfo getSelectedDevice() { return selectedDevice; }
+
+    public static void clearSelectedDevice() { selectedDevice = null; }
+
+    // ── Estado de instancia ───────────────────────────────────────────────
+
+    private final @Nullable BlockPos connectorPos;
+    private @Nullable BlockPos pendingBoardEditPos;
+
+    private AppState appState  = AppState.WELCOME;
+    private Tab      currentTab = Tab.HOME;
+
+    private final NavBar navBar = new NavBar();
+    private final WelcomePage welcomePage = new WelcomePage();
+    private final Map<Tab, Page> pages = new EnumMap<>(Tab.class);
+    private final BoardsPage boardsPage = new BoardsPage();
+
+    // ══════════════════════════════════════════════════════════════════════
+
+    public PanelUI(@Nullable BlockPos connectorPos, @Nullable BlockPos boardEditPos) {
+        super(Component.translatable("gui.serialcraft.panel.title"));
+        this.connectorPos        = connectorPos;
+        this.pendingBoardEditPos = boardEditPos;
+
+        pages.put(Tab.HOME,   new HomePage());
+        pages.put(Tab.BOARDS, boardsPage);
+        pages.put(Tab.EVENTS, new EventsPage());
+
+        resolveInitialState();
+    }
+
+    public PanelUI(@Nullable BlockPos connectorPos) { this(connectorPos, null); }
+
+    public PanelUI() { this(null, null); }
 
     /**
-     * Posición del ConnectorBlock que el jugador clickeó para abrir este panel.
-     * Usada para enviar ConnectorPayload y actualizar el modelo LIT del bloque.
-     * Null si el panel fue abierto sin un bloque asociado (restauración de sesión).
-     */
-    @Nullable
-    private final BlockPos connectorPos;
-
-    /**
-     * Posición de un ArduinoIOBlock para abrir el editor de PlacasScreen
-     * directamente al inicializar el panel. Se consume tras el primer init()
-     * para no re-activar el editor al cambiar de pestaña.
-     */
-    @Nullable
-    private BlockPos directIoEditPos;
-
-    private AppState   appState    = AppState.WELCOME;
-    private Tab        currentTab  = Tab.HOME;
-    private DeviceInfo activeDevice = null;
-
-    private final NavBar        navBar        = new NavBar();
-    private final WelcomeScreen welcomeScreen = new WelcomeScreen();
-    private final HomeScreen    homeScreen    = new HomeScreen();
-    private final PlacasScreen  placasScreen  = new PlacasScreen();
-
-    // ── Constructores ─────────────────────────────────────────────────────
-
-    /**
-     * Constructor completo. Permite abrir el panel desde un ConnectorBlock
-     * y/o ir directamente al editor de un ArduinoIOBlock.
+     * Decide si abrir en bienvenida o en panel.
      *
-     * @param connectorPos posición del ConnectorBlock (puede ser null).
-     * @param ioEditPos    posición del ArduinoIOBlock a editar (puede ser null).
+     * La verdad la tiene ConnectionManager, no un campo estatico: si el puerto
+     * se cerro por desconexion del cable mientras el panel estaba cerrado, el
+     * panel debe abrir en bienvenida aunque selectedDevice siga puesto.
      */
-    public PanelUI(@Nullable BlockPos connectorPos, @Nullable BlockPos ioEditPos) {
-        super(Component.literal("PanelUI"));
-        this.connectorPos   = connectorPos;
-        this.directIoEditPos = ioEditPos;
-        initAppState();
-    }
+    private void resolveInitialState() {
+        boolean hardwareUp = ConnectionManager.isAnyConnected();
 
-    /**
-     * Abre el panel desde un ConnectorBlock sin apuntar a ningún IO block.
-     */
-    public PanelUI(@Nullable BlockPos connectorPos) {
-        this(connectorPos, null);
-    }
-
-    /**
-     * Constructor sin BlockPos — compatibilidad con llamadas antiguas
-     * y restauración de sesión cuando el bloque no es conocido.
-     */
-    public PanelUI() {
-        this(null, null);
-    }
-
-    // ── Estado inicial ────────────────────────────────────────────────────
-
-    /**
-     * Determina el estado inicial del panel según si hay hardware activo
-     * o si se abrió directamente para editar un IO block.
-     */
-    private void initAppState() {
-        // Apertura directa desde un ArduinoIOBlock → dashboard + pestaña Placas
-        if (directIoEditPos != null) {
-            this.appState     = AppState.DASHBOARD;
-            this.currentTab   = Tab.PLACAS;
-            this.activeDevice = currentConnectedDevice; // puede ser null, es aceptable
+        if (pendingBoardEditPos != null) {
+            this.appState   = AppState.DASHBOARD;
+            this.currentTab = Tab.BOARDS;
             return;
         }
-
-        if (currentConnectedDevice != null) {
-            this.appState    = AppState.DASHBOARD;
-            this.activeDevice = currentConnectedDevice;
-        } else if (SerialCraftClient.arduinoPort != null && SerialCraftClient.arduinoPort.isOpen()) {
-            this.appState    = AppState.DASHBOARD;
-            this.activeDevice = new DeviceInfo(
-                    "Arduino (Conexión Activa)",
-                    SerialCraftClient.arduinoPort.getSystemPortName(),
-                    "USB", "Arduino", () -> {}
-            );
-            currentConnectedDevice = this.activeDevice;
+        if (hardwareUp) {
+            this.appState = AppState.DASHBOARD;
+        } else {
+            this.appState = AppState.WELCOME;
+            selectedDevice = null; // limpiar estado obsoleto
         }
     }
+
+    // ══════════════════════════════════════════════════════════════════════
 
     @Override
     protected void init() {
         super.init();
-        this.clearWidgets();
+        clearWidgets();
 
         if (appState == AppState.WELCOME) {
-            welcomeScreen.init(this, this.width, this.height);
-        } else {
-            navBar.init(this, this.width, this.height, currentTab);
-            switch (currentTab) {
-                case HOME   -> homeScreen.init(this, this.width, this.height, activeDevice);
-                case PLACAS -> {
-                    // Pasa el directIoEditPos y lo consume para no re-activar el editor
-                    // en siguientes llamadas a init() (p.ej. al cambiar de pestaña).
-                    BlockPos editPos = this.directIoEditPos;
-                    this.directIoEditPos = null;
-                    placasScreen.init(this, this.width, this.height, editPos);
-                }
-                case EVENTS -> {}
-            }
+            welcomePage.init(this, this.width, this.height);
+            return;
         }
+
+        navBar.init(this, this.width, this.height, currentTab);
+
+        // Consumir la posicion pendiente antes de inicializar, para que al
+        // cambiar de pestana no se reabra el editor una y otra vez.
+        if (currentTab == Tab.BOARDS && pendingBoardEditPos != null) {
+            BlockPos editPos = pendingBoardEditPos;
+            pendingBoardEditPos = null;
+            boardsPage.requestDirectEdit(editPos);
+        }
+        pages.get(currentTab).init(this, this.width, this.height);
     }
 
     @Override
     public void tick() {
         super.tick();
         if (appState == AppState.WELCOME) {
-            welcomeScreen.tick();
+            welcomePage.tick();
         } else {
-            placasScreen.tick();
+            pages.get(currentTab).tick();
         }
     }
 
     @Override
     public void render(@NotNull GuiGraphics gui, int mouseX, int mouseY, float delta) {
-        gui.fill(0, 0, this.width, this.height, 0xFFF3F3F3);
+        gui.fill(0, 0, this.width, this.height, UiTheme.BG_APP);
 
         if (appState == AppState.WELCOME) {
-            welcomeScreen.render(gui, mouseX, mouseY, this.font, this.width, this.height);
+            welcomePage.render(gui, mouseX, mouseY, this.font, this.width, this.height);
         } else {
             navBar.render(gui, this.width, this.height);
-            switch (currentTab) {
-                case HOME   -> homeScreen.render(gui, mouseX, mouseY, this.font, this.width, this.height);
-                case PLACAS -> placasScreen.render(gui, mouseX, mouseY, this.font, this.width, this.height);
-                case EVENTS -> renderEventsContent(gui);
-            }
+            pages.get(currentTab).render(gui, mouseX, mouseY, this.font, this.width, this.height);
         }
-
         super.render(gui, mouseX, mouseY, delta);
-    }
-
-    // ── Gestión de dispositivos ────────────────────────────────────────────
-
-    /**
-     * Conecta un dispositivo y actualiza el modelo del bloque en el mundo (LIT=true).
-     * Envía ConnectorPayload al servidor si se conoce la posición del bloque.
-     */
-    public void connectDevice(DeviceInfo device) {
-        device.accionConectar.run();
-        currentConnectedDevice = device;
-        this.appState          = AppState.DASHBOARD;
-        this.activeDevice      = device;
-        this.currentTab        = Tab.HOME;
-
-        if (connectorPos != null) {
-            ClientPlayNetworking.send(new ConnectorPayload(connectorPos, true));
-        }
-
-        this.init();
-    }
-
-    /**
-     * Desconecta el hardware activo y regresa a WelcomeScreen.
-     * Actualiza el modelo del bloque en el mundo (LIT=false).
-     */
-    public void disconnectDevice() {
-        SerialCraftClient.desconectar();
-        currentConnectedDevice = null;
-        this.appState          = AppState.WELCOME;
-        this.activeDevice      = null;
-
-        if (connectorPos != null) {
-            ClientPlayNetworking.send(new ConnectorPayload(connectorPos, false));
-        }
-
-        this.init();
     }
 
     @Override
     public void removed() {
         super.removed();
-        welcomeScreen.onClose();
-        if (appState == AppState.DASHBOARD) {
-            homeScreen.onClose();
-            placasScreen.onClose();
-        }
+        // Incondicional y sobre TODAS las paginas. La version anterior solo
+        // cerraba dos de ellas y solo en un estado, dejando hilos vivos.
+        welcomePage.onClose();
+        pages.values().forEach(Page::onClose);
     }
 
-    // ── API para páginas ──────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    //  API para las paginas
+    // ══════════════════════════════════════════════════════════════════════
 
     public void setTab(Tab tab) {
+        if (this.currentTab == tab && appState == AppState.DASHBOARD) {
+            this.init();   // refresco explicito
+            return;
+        }
         this.currentTab = tab;
         this.init();
     }
 
-    /** Reconstruye la WelcomeScreen sin cambiar de estado. */
-    public void rebuildWelcome() {
+    public void connectDevice(DeviceInfo device) {
+        device.connectAction().run();
+        selectedDevice  = device;
+        this.appState   = AppState.DASHBOARD;
+        this.currentTab = Tab.HOME;
+
+        if (connectorPos != null) {
+            ClientPlayNetworking.send(new ConnectorPayload(connectorPos, true));
+        }
+        this.init();
+    }
+
+    public void disconnectDevice() {
+        ConnectionManager.disconnectAll();
+        selectedDevice = null;
+        this.appState  = AppState.WELCOME;
+
+        if (connectorPos != null) {
+            ClientPlayNetworking.send(new ConnectorPayload(connectorPos, false));
+        }
+        this.init();
+    }
+
+    /** Reconstruye la bienvenida sin cambiar de estado. */
+    public void refreshWelcome() {
         if (appState == AppState.WELCOME) this.init();
     }
 
@@ -238,31 +216,8 @@ public class PanelUI extends Screen {
         this.addRenderableWidget(widget);
     }
 
-    /**
-     * Recibe la lista de placas IO desde SerialCraftClient y la delega a PlacasScreen.
-     * PlacasScreen la procesará en su próximo tick(), en el hilo principal.
-     */
-    public void updatePlacasList(List<BoardInfo> boards) {
-        placasScreen.updateBoardList(boards);
-    }
-
-    // ── Contenido placeholder ─────────────────────────────────────────────
-
-    private void renderEventsContent(GuiGraphics gui) {
-        int navWidth = NavBar.getNavBarWidth(this.width);
-        int cx       = navWidth + 30;
-
-        float scale = 1.8f;
-        gui.pose().pushMatrix();
-        gui.pose().scale(scale, scale);
-        gui.drawString(this.font, "EVENTOS",
-                (int)(cx / scale), (int)(22 / scale), 0xFF4CAF50, false);
-        gui.drawString(this.font, "MONITOR",
-                (int)(cx / scale) + this.font.width("EVENTOS") + 4,
-                (int)(22 / scale), 0xFF212121, false);
-        gui.pose().popMatrix();
-
-        gui.drawString(this.font, "Monitor de Eventos — Próximamente",
-                cx, 60, 0xff757575, false);
+    /** Entrega la lista de placas recibida del servidor. */
+    public void updateBoardList(List<BoardInfo> boards) {
+        boardsPage.acceptBoardList(boards);
     }
 }

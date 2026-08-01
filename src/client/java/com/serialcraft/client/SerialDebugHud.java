@@ -1,130 +1,128 @@
 package com.serialcraft.client;
 
-import com.serialcraft.SerialCraftClient;
 import com.serialcraft.block.entity.ArduinoIOBlockEntity;
+import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.connection.ConnectionManager;
+import com.serialcraft.connection.WifiHandler;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
+/**
+ * HUD de diagnostico (F7).
+ *
+ * El texto sigue sin traducirse a proposito: es una herramienta de depuracion
+ * dirigida a quien desarrolla el sketch, no parte de la interfaz de usuario.
+ * Lo que si cambia es que ahora esta declarado como tal en vez de ser una
+ * mezcla de cadenas en espanol y en ingles sin criterio.
+ */
 public class SerialDebugHud implements HudRenderCallback {
 
-    public static boolean isDebugEnabled = false;
-    private static final List<String> eventLog = new ArrayList<>();
-    private static final int MAX_LOGS = 8;
+    private static final int MAX_LOGS   = 8;
+    private static final int PANEL_W    = 240;
+    private static final int LINE_H     = 10;
+
+    private static volatile boolean enabled = false;
+    private static final Deque<String> LOG = new ArrayDeque<>(MAX_LOGS);
+
+    public static void toggle() { enabled = !enabled; }
+    public static boolean isEnabled() { return enabled; }
 
     public static void addLog(String message) {
-        synchronized (eventLog) {
-            eventLog.add(0, message);
-            if (eventLog.size() > MAX_LOGS) {
-                eventLog.remove(eventLog.size() - 1);
-            }
+        synchronized (LOG) {
+            if (LOG.size() >= MAX_LOGS) LOG.removeLast();
+            LOG.addFirst(message);
         }
     }
 
+    private static List<String> snapshot() {
+        synchronized (LOG) { return new ArrayList<>(LOG); }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+
     @Override
-    public void onHudRender(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
-        if (!isDebugEnabled) return;
+    public void onHudRender(GuiGraphics gui, DeltaTracker deltaTracker) {
+        if (!enabled) return;
 
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.options.hideGui || mc.level == null) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.options.hideGui || client.level == null) return;
 
-        Font font = mc.font;
-        int x = 5;
-        int y = 5;
+        Font font = client.font;
+        renderConnectionPanel(gui, font);
+        renderTargetedBoard(gui, font, client);
+    }
 
-        // --- 1. CABECERA Y LOGS ---
-        boolean serialConnected = ConnectionManager.getSerial().isConnected();
-        boolean wifiConnected = ConnectionManager.getWifi().isConnected();
-        boolean connected = serialConnected || wifiConnected;
+    private void renderConnectionPanel(GuiGraphics gui, Font font) {
+        var serial = ConnectionManager.getSerial();
+        var wifi   = ConnectionManager.getWifi();
 
-        String portInfo = "No Conectado";
-        String baudInfo = "--";
-
-        if (serialConnected) {
-            portInfo = "USB: " + ConnectionManager.getSerial().getPortName();
-            baudInfo = String.valueOf(ConnectionManager.getSerial().getBaudRate());
-        } else if (wifiConnected) {
-            portInfo = "Wi-Fi: " + (SerialCraftClient.wifiIp != null ? SerialCraftClient.wifiIp : "Conectado");
-            baudInfo = "TCP";
+        String transport;
+        String detail;
+        if (serial.isConnected()) {
+            transport = "USB " + serial.getPortName();
+            detail    = serial.getBaudRate() + " bps";
+        } else if (wifi.isConnected()) {
+            transport = "WiFi " + wifi.getRemoteIp();
+            detail    = "TCP";
+        } else {
+            transport = "offline";
+            detail    = "--";
         }
 
-        String speedLabel = switch (SerialCraftClient.globalSerialSpeed) {
-            case 0 -> "LOW";
-            case 1 -> "NORM";
-            default -> "FAST";
-        };
+        List<String> logs = snapshot();
+        int x = 5, y = 5;
+        int panelH = logs.size() * LINE_H + 20;
 
-        String header = String.format("§6[SerialCraft]§r %s | Baud/Net:%s | Spd:%s", portInfo, baudInfo, speedLabel);
-        int headerColor = connected ? 0xFF55FF55 : 0xFFFF5555;
+        gui.fill(x - 2, y - 2, x + PANEL_W, y + panelH, UiTheme.OVERLAY);
+        gui.drawString(font, "[SerialCraft] " + transport + " | " + detail,
+                x, y, ConnectionManager.isAnyConnected() ? UiTheme.OK : UiTheme.ERROR, true);
 
-        int logHeight = (eventLog.size() * 10) + 20;
-        guiGraphics.fill(x - 2, y - 2, x + 240, y + logHeight, 0x90000000);
-
-        guiGraphics.drawString(font, header, x, y, headerColor, true);
         y += 12;
-
-        synchronized (eventLog) {
-            for (String log : eventLog) {
-                int logColor = log.startsWith("RX") ? 0xFFFFAA00 : 0xFFAAAAFF;
-                guiGraphics.drawString(font, "> " + log, x, y, logColor, true);
-                y += 10;
-            }
+        for (String entry : logs) {
+            gui.drawString(font, "> " + font.plainSubstrByWidth(entry, PANEL_W - 16),
+                    x, y, entry.startsWith("RX") ? 0xFFFFAA00 : 0xFFAAAAFF, true);
+            y += LINE_H;
         }
+    }
 
-        // --- 2. INFO DEL BLOQUE (RAYCAST) ---
-        HitResult hit = mc.hitResult;
-        if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
-            BlockHitResult blockHit = (BlockHitResult) hit;
-            BlockPos pos = blockHit.getBlockPos();
+    private void renderTargetedBoard(GuiGraphics gui, Font font, Minecraft client) {
+        HitResult hit = client.hitResult;
+        if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
 
-            if (mc.level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
+        BlockPos pos = ((BlockHitResult) hit).getBlockPos();
+        if (!(client.level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)) return;
 
-                int screenWidth = mc.getWindow().getGuiScaledWidth();
-                int screenHeight = mc.getWindow().getGuiScaledHeight();
-                int cx = (screenWidth / 2) + 15;
-                int cy = (screenHeight / 2) - 15;
+        int x = (client.getWindow().getGuiScaledWidth()  / 2) + 15;
+        int y = (client.getWindow().getGuiScaledHeight() / 2) - 15;
 
-                guiGraphics.fill(cx - 5, cy - 5, cx + 130, cy + 90, 0x90000000);
+        gui.fill(x - 5, y - 5, x + 145, y + 65, UiTheme.OVERLAY);
 
-                int textY = cy;
-                int labelCol = 0xFFAAAAAA;
-                int valCol = 0xFFFFFFFF;
+        drawPair(gui, font, x, y,           "ID",   io.getBoardId(),                       UiTheme.TEXT_INVERSE);
+        drawPair(gui, font, x, y + LINE_H,  "Mode", io.getIoMode().getSerializedName(),    0xFF55FFFF);
+        drawPair(gui, font, x, y + LINE_H*2,"Sig",  io.getSignalType().getSerializedName(),0xFFFF55FF);
+        drawPair(gui, font, x, y + LINE_H*3,"Cmd",  io.getTargetData(),                    0xFFFFFF55);
+        drawPair(gui, font, x, y + LINE_H*4,"On",   String.valueOf(io.isEnabled()),
+                 io.isEnabled() ? UiTheme.OK : UiTheme.ERROR);
+        drawPair(gui, font, x, y + LINE_H*5,"RS",   String.valueOf(io.getRedstoneSignal()),
+                 io.getRedstoneSignal() > 0 ? UiTheme.ERROR : UiTheme.TEXT_MUTED);
+    }
 
-                guiGraphics.drawString(font, "ID: ", cx, textY, labelCol, true);
-                guiGraphics.drawString(font, io.boardID, cx + 20, textY, valCol, true);
-                textY += 10;
-
-                String modeStr = (io.ioMode == ArduinoIOBlockEntity.MODE_OUTPUT) ? "OUTPUT (MC->Ard)" : "INPUT (Ard->MC)";
-                int modeColor = (io.ioMode == ArduinoIOBlockEntity.MODE_OUTPUT) ? 0xFF55FFFF : 0xFFFFAA00;
-                guiGraphics.drawString(font, modeStr, cx, textY, modeColor, true);
-                textY += 10;
-
-                boolean isAnalog = (io.signalType == 1);
-                String signalStr = isAnalog ? "ANALOG (PWM)" : "DIGITAL (I/O)";
-                guiGraphics.drawString(font, signalStr, cx, textY, isAnalog ? 0xFFFF55FF : 0xFF55FF55, true);
-                textY += 10;
-
-                guiGraphics.drawString(font, "CMD: ", cx, textY, labelCol, true);
-                guiGraphics.drawString(font, io.targetData, cx + 25, textY, 0xFFFFFF55, true);
-                textY += 10;
-
-                guiGraphics.drawString(font, "Soft: ", cx, textY, labelCol, true);
-                guiGraphics.drawString(font, io.isSoftOn ? "ON" : "OFF", cx + 60, textY, io.isSoftOn ? 0xFF55FF55 : 0xFFFF5555, true);
-                textY += 10;
-
-                guiGraphics.drawString(font, "RS: ", cx, textY, labelCol, true);
-                int rsVal = io.getRedstoneSignal();
-                guiGraphics.drawString(font, String.valueOf(rsVal), cx + 55, textY, (rsVal > 0) ? 0xFFFF5555 : 0xFFAAAAAA, true);
-            }
-        }
+    /** Columna de valores alineada, en vez de los desplazamientos a ojo del original. */
+    private static void drawPair(GuiGraphics gui, Font font, int x, int y,
+                                 String label, String value, int valueColor) {
+        gui.drawString(font, label, x, y, 0xFFAAAAAA, true);
+        gui.drawString(font, value, x + 34, y, valueColor, true);
     }
 }

@@ -3,13 +3,14 @@
   "id": "serialcraft",
   "version": "${version}",
   "name": "SerialCraft",
-  "description": "Conecta Arduino con Minecraft usando comunicación Serial.",
+  "description": "Conecta placas Arduino y ESP con Minecraft mediante comunicación serial o Wi-Fi.",
   "authors": [
     "Leonardo Aliaga"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://github.com/LeonardoAliaga/serialcraft",
+    "sources": "https://github.com/LeonardoAliaga/serialcraft",
+    "issues": "https://github.com/LeonardoAliaga/serialcraft/issues"
   },
   "license": "CC0-1.0",
   "icon": "assets/serialcraft/textures/block/arduino_redstone_block.png",
@@ -25,13 +26,6 @@
       "com.serialcraft.SerialCraftDataGenerator"
     ]
   },
-  "mixins": [
-    "serialcraft.mixins.json",
-    {
-      "config": "serialcraft.client.mixins.json",
-      "environment": "client"
-    }
-  ],
   "depends": {
     "fabricloader": ">=0.17.3",
     "minecraft": "~1.21.11",

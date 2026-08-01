@@ -1,194 +1,169 @@
 # Protocolo Bidireccional y Hardware (v0.4.3)
 
 ::: warning Versión Beta 0.4.3
-Esta documentación técnica aplica a la versión actual. El protocolo soporta comunicación por USB Serial e Inalámbrica (TCP). Podría evolucionar en futuras actualizaciones para incluir soporte JSON o binario.
+Esta versión **rompe compatibilidad** con los sketches escritos para la 0.3.x en dos puntos: la escala de los valores y la dirección de la conexión Wi-Fi. Lee la sección [Cambios respecto a 0.3.x](#_8-cambios-respecto-a-0-3-x) antes de reutilizar código antiguo.
 :::
 
-## 1. Especificaciones de Comunicación
+## 1. Especificaciones de comunicación
 
-SerialCraft utiliza un protocolo de texto plano (ASCII) síncrono. La comunicación se basa en el envío de paquetes de datos terminados estrictamente por un carácter de nueva línea, aplicable tanto para USB como para Sockets Wi-Fi.
+SerialCraft usa un protocolo de texto plano (UTF-8) orientado a líneas. Cada mensaje termina obligatoriamente en `\n`, tanto por USB como por TCP.
 
 | Parámetro | Valor |
 | :--- | :--- |
-| **Baud Rates Soportados (Serial)** | 9600, 14400, 19200, 38400, 57600, **115200 (Recomendado)** |
-| **Puerto Soportado (Wi-Fi TCP)** | 8080 (Por defecto, configurable en el código) |
-| **Formato de Datos** | `CLAVE:VALOR` |
-| **Terminador** | `\n` (Salto de línea / Newline) |
-| **Codificación** | UTF-8 (ASCII compatible) |
+| **Baudios admitidos (Serial)** | 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 74880, **115200 (por defecto)**, 230400, 250000 |
+| **Puerto TCP (Wi-Fi)** | **25585** (por defecto) |
+| **Formato** | `CLAVE:VALOR` |
+| **Terminador** | `\n` |
+| **Codificación** | UTF-8 |
+| **Longitud máxima de línea** | 256 caracteres |
+| **Longitud máxima del `Target Data`** | 32 caracteres |
+| **Ritmo máximo entrante** | 40 mensajes/s sostenidos, ráfaga de 80 |
 
-::: danger Importante
-El mod ignora cualquier mensaje que no termine en `\n`. En el IDE de Arduino, **SIEMPRE** usa `Serial.println()` o `client.println()`, y no solo la función `print()`.
+::: danger El terminador no es opcional
+El mod ignora todo lo que no termine en `\n`. Usa siempre `Serial.println()` o `client.print("...\n")`, nunca `print()` a secas.
+:::
+
+::: tip Por qué existe el límite de 40 mensajes/s
+Cada línea recibida se convierte en un paquete al servidor. Un `Serial.println()` dentro de `loop()` sin control genera miles por segundo y provoca lag real en partidas multijugador. El mod descarta en silencio lo que exceda el límite: no es un error, es contención. Envía solo cuando el valor **cambie**.
 :::
 
 ---
 
-## 2. Entrada (Hardware ➔ Minecraft)
+## 2. Escala unificada 0-255
 
-Para que Minecraft reaccione a un evento físico, tu placa debe enviar una cadena de texto con el ID del bloque destino y el valor deseado.
+Desde la v0.4.3 **el cable habla siempre en 0-255**, en los dos sentidos y con los dos tipos de señal. Dentro de Minecraft la redstone sigue siendo 0-15; la conversión la hace el mod.
 
-### Sintaxis
-```text
-<ID_DEL_BLOQUE>:<VALOR_ENTERO>\n
-```
+| Tipo de señal | Minecraft → placa | Placa → Minecraft |
+| :--- | :--- | :--- |
+| **Analógica (PWM)** | `redstone × 255 / 15` | `valor × 15 / 255` |
+| **Digital** | 0 si redstone = 0, **255** si redstone ≥ 1 | 0 si valor = 0, **15** si valor ≥ 1 |
 
-* **`<ID_DEL_BLOQUE>`**: Es la cadena de texto definida en el campo "Target Data" dentro de la interfaz del Bloque IO. (Ej: `btn_1`, `sensor_luz`).
-* **`<VALOR_ENTERO>`**:
-    * **0**: Apaga la señal de Redstone.
-    * **1 - 15**: Enciende la señal de Redstone con esa potencia.
-    * **> 15**: Se interpretará como señal máxima (15).
+### Tabla de conversión analógica
 
-```cpp
-// Ejemplo Arduino: Enviar señal máxima al bloque "alarma"
-Serial.println("alarma:15");
-```
-
----
-
-## 3. Salida (Minecraft ➔ Hardware)
-
-Cuando un Bloque IO en **Modo Output** detecta un cambio en la señal de Redstone que recibe, envía automáticamente un mensaje.
-
-### Sintaxis
-```text
-<ID_DEL_BLOQUE>:<VALOR>\n
-```
-
-### Comportamiento según Tipo de Señal
-El valor enviado depende de cómo configuraste el bloque (Digital o Analógico/PWM).
-
-#### A. Señal Digital (Simple)
-Si el bloque está configurado en modo **Digital**:
-* **Recibe Redstone > 0**: Envía `1`.
-* **Recibe Redstone = 0**: Envía `0`.
-
-#### B. Señal Analógica (PWM)
-Si el bloque está configurado en modo **Analógico**, el mod realiza una conversión matemática interna para traducir la Redstone (0-15) a PWM (0-255).
-
-**Fórmula interna:**
-$$PWM = \frac{Redstone \times 255}{15}$$
-
-| Nivel Redstone | Valor Enviado (PWM) | Descripción |
+| Redstone | Valor en el cable | Descripción |
 | :---: | :---: | :--- |
-| 0 | **0** | Apagado |
-| 1 | **17** | Mínimo |
-| 7 | **119** | Medio (~50%) |
-| 15 | **255** | Máximo (100%) |
+| 0 | 0 | Apagado |
+| 1 | 17 | Mínimo |
+| 7 | 119 | Medio (~50 %) |
+| 15 | 255 | Máximo |
+
+::: tip Consecuencia práctica
+Tu firmware **no necesita saber** si el bloque está en modo Digital o Analógico. Un único `analogWrite(pin, valor)` funciona en ambos casos. En 0.3.x el modo digital enviaba `1`, y un `analogWrite(pin, 1)` dejaba el LED apagado al 0,4 % de ciclo de trabajo: ese era el error clásico al montar el primer circuito.
+:::
+
+En modo digital, **cualquier** valor entrante mayor o igual que 1 se interpreta como encendido a potencia máxima (redstone 15). Puedes enviar `1`, `15` o `255` indistintamente.
 
 ---
 
-## 4. Ejemplos de Implementación Bidireccional
+## 3. Entrada (Hardware ➔ Minecraft)
 
-Aquí tienes los esquemas listos para integrar lectura y escritura simultáneas, adaptados a la plataforma elegida en la interfaz gráfica.
+La placa envía el ID del bloque destino y el valor:
 
-### A. Conexión USB (Para Arduino Uno Q)
-Este código espera instrucciones del juego para encender una luz analógica (`luz_techo:255`), y en paralelo lee un botón físico enviando su estado (`btn_1:15` o `btn_1:0`).
-
-```cpp
-const int pinLed = 13;
-const int pinBtn = 2;
-int lastBtnState = LOW;
-
-void setup() {
-  Serial.begin(115200); // Velocidad clave para SerialCraft
-  pinMode(pinLed, OUTPUT);
-  pinMode(pinBtn, INPUT_PULLUP);
-}
-
-void loop() {
-  // 1. LEER DESDE MINECRAFT (Output del juego)
-  if (Serial.available() > 0) {
-    String mensaje = Serial.readStringUntil('\n');
-    mensaje.trim();
-    
-    if (mensaje.startsWith("luz_techo:")) {
-      int valor = mensaje.substring(mensaje.indexOf(':') + 1).toInt();
-      analogWrite(pinLed, valor); // Funciona para Digital (0/1) y PWM (0-255)
-    }
-  }
-
-  // 2. ENVIAR A MINECRAFT (Input del juego)
-  int currentBtn = digitalRead(pinBtn);
-  if (currentBtn != lastBtnState) {
-    if (currentBtn == LOW) { // Botón presionado (lógica inversa por Pullup)
-      Serial.println("btn_1:15");
-    } else {
-      Serial.println("btn_1:0");
-    }
-    lastBtnState = currentBtn;
-    delay(50); // Debounce de seguridad
-  }
-}
+```text
+<TARGET_DATA>:<VALOR_ENTERO>\n
 ```
 
-### B. Conexión Inalámbrica (Wi-Fi para ESP32)
-Configuración como Servidor TCP local. Minecraft (mediante la interfaz de red) actuará como el cliente conectándose a la IP de la placa.
+* **`<TARGET_DATA>`**: la cadena que escribiste en el campo *Target Data* del Bloque IO (ej. `btn_1`, `sensor_luz`). Máximo 32 caracteres. **Si está vacío, el bloque ignora todo**: no existe el comodín.
+* **`<VALOR_ENTERO>`**: 0-255. Los valores fuera de rango se recortan; el texto no numérico se descarta sin lanzar error.
 
 ```cpp
-#include <WiFi.h>
-
-const char* ssid = "TU_WIFI_AQUI";
-const char* password = "TU_PASSWORD_AQUI";
-WiFiServer server(8080); // Puerto por defecto
-WiFiClient client;
-
-const int pinLed = 2;
-const int pinBtn = 4;
-int lastBtnState = LOW;
-
-void setup() {
-  Serial.begin(115200);
-  pinMode(pinLed, OUTPUT);
-  pinMode(pinBtn, INPUT_PULLUP);
-
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-  
-  Serial.print("IP Wi-Fi asignada: ");
-  Serial.println(WiFi.localIP()); // Coloca esta IP en la interfaz de Minecraft
-  server.begin();
-}
-
-void loop() {
-  if (!client.connected()) {
-    client = server.available(); 
-  }
-
-  if (client.connected()) {
-    // 1. LEER DESDE MINECRAFT (Wi-Fi RX)
-    if (client.available()) {
-      String mensaje = client.readStringUntil('\n');
-      mensaje.trim();
-      
-      if (mensaje.startsWith("luz_techo:")) {
-        int valor = mensaje.substring(mensaje.indexOf(':') + 1).toInt();
-        analogWrite(pinLed, valor);
-      }
-    }
-
-    // 2. ENVIAR A MINECRAFT (Wi-Fi TX)
-    int currentBtn = digitalRead(pinBtn);
-    if (currentBtn != lastBtnState) {
-      String msg = (currentBtn == LOW) ? "btn_1:15\n" : "btn_1:0\n";
-      client.print(msg); // Ojo: Aquí usamos '\n' al final del string
-      
-      lastBtnState = currentBtn;
-      delay(50); 
-    }
-  }
-}
+Serial.println("sensor_luz:200");   // ~redstone 12 en modo analógico
+Serial.println("alarma:255");       // encendido total
+Serial.println("alarma:0");         // apagado
 ```
+
+El Bloque IO debe estar en modo **INPUT** y tener el mismo `Target Data`. Solo reciben mensajes las placas del jugador que mantiene la conexión abierta.
 
 ---
 
-## 5. Lógica de Compuertas (Avanzado)
-Los Bloques IO tienen una característica oculta: **Compuertas Lógicas**. Esto define cuándo se activa el bloque si recibe energía por varios lados a la vez (Norte, Sur, Este, Oeste).
+## 4. Salida (Minecraft ➔ Hardware)
 
-Esto se procesa internamente en el método `updateLogicConditions()`:
+Un Bloque IO en modo **OUTPUT** emite automáticamente cuando cambia el nivel de redstone que recibe:
 
-* **OR (Por defecto):** Se activa si *cualquier* lado conectado recibe energía.
-* **AND:** Se activa solo si *todos* los lados conectados reciben energía simultáneamente.
-* **XOR:** Se activa si una cantidad *impar* de lados recibe energía.
+```text
+<TARGET_DATA>:<VALOR>\n
+```
 
-*Nota: Actualmente esta configuración solo es accesible mediante edición NBT o versiones de desarrollo, pero la lógica ya existe en el código del motor.*
+Dos detalles de implementación que conviene conocer:
+
+* **Deduplicación**: el bloque no reenvía un valor idéntico al anterior. Si mantienes una palanca encendida, el mensaje se manda una vez, no veinte veces por segundo.
+* **Intervalo**: la comprobación de salida corre cada 2 ticks (10 Hz), salvo que un cambio la marque como urgente. Es el compromiso entre respuesta y coste en el servidor.
+
+---
+
+## 5. Wi-Fi: el mod es el servidor
+
+::: warning Cambio de dirección respecto a 0.3.x
+Antes la placa levantaba un servidor en el 8080 y Minecraft se conectaba a ella. **Ahora es al revés**: el cliente de Minecraft abre el servidor TCP y la placa se conecta como cliente.
+:::
+
+### Secuencia de conexión
+
+1. En el juego: **Laptop → Inicio → Iniciar servidor Wi-Fi**. La interfaz muestra la IP local, el puerto (25585) y un **token de enlace**.
+2. La placa abre una conexión TCP a esa IP y puerto.
+3. La placa envía **el token como primera línea**, terminado en `\n`.
+4. El mod responde `OK\n` si es correcto, o `ERR TOKEN\n` y cierra.
+5. A partir de ahí el canal transporta mensajes `CLAVE:VALOR` normales.
+
+```text
+placa → mod:   YXTUEA\n
+mod   → placa: OK\n
+placa → mod:   pot_val:128\n
+mod   → placa: led_verde:255\n
+```
+
+### Restricciones del servidor
+
+| Regla | Motivo |
+| :--- | :--- |
+| Solo se acepta **una** placa a la vez | Evita que un tercero expulse a la tuya repetidamente |
+| Solo direcciones **privadas** (LAN, loopback, link-local) | Evita la exposición accidental a Internet |
+| Las líneas de más de 256 caracteres cortan la sesión | Un peer que no envíe `\n` agotaría la memoria del cliente |
+| Token obligatorio | Sin él, cualquiera en la red podía accionar tu redstone con un telnet |
+
+::: danger El canal va en claro
+El token evita el acceso accidental o casual, pero **no es cifrado**. Es adecuado para una red doméstica o de aula. **No abras el puerto 25585 en tu router ni uses esto sobre Internet.**
+:::
+
+---
+
+## 6. Lógica de compuertas
+
+Cada Bloque IO tiene un modo lógico que decide cuándo se considera activo si recibe energía por varios lados configurados como entrada:
+
+* **OR** (por defecto): se activa si *cualquier* lado recibe energía.
+* **AND**: se activa solo si *todos* los lados de entrada reciben energía.
+* **XOR**: se activa si un número *impar* de lados recibe energía.
+
+Si la condición no se cumple, el bloque no emite ni acepta datos y deja su salida de redstone a 0. Lo mismo ocurre si está desactivado desde la Laptop.
+
+---
+
+## 7. Errores frecuentes
+
+| Síntoma | Causa habitual |
+| :--- | :--- |
+| El LED no enciende, pero el juego dice que envía | Sketch antiguo esperando `1` en modo digital. Ahora llega `255`; usa `analogWrite` sin comparaciones |
+| No llega nada por USB | Los baudios del sketch no coinciden con los del Bloque Conector |
+| La placa se conecta y se cae al instante | Token incorrecto, o ya hay otra placa conectada |
+| Llegan solo algunos mensajes | Superas los 40 mensajes/s. Añade histéresis y envía solo los cambios |
+| El bloque ignora todo | `Target Data` vacío o distinto al del mensaje |
+| El potenciómetro llega al máximo a mitad de recorrido | Resolución del ADC mal mapeada (10 bits frente a 12) |
+
+---
+
+## 8. Cambios respecto a 0.3.x
+
+1. **Escala unificada**: la entrada era 0-15 y la salida 0-255. Un `200` enviado por la placa volvía como `15`. Ahora ambos extremos usan 0-255.
+2. **El modo digital envía 255**, no `1`.
+3. **Wi-Fi invertido**: el mod es el servidor, la placa el cliente.
+4. **Puerto 25585** en lugar de 8080.
+5. **Token de emparejamiento obligatorio.**
+6. **Límite de ritmo** de 40 mensajes/s por jugador.
+7. **Un `Target Data` vacío ya no acepta cualquier mensaje** que contenga `:`.
+
+---
+
+## 9. Ejemplos completos
+
+Sketches listos para cargar en [Ejemplos y pruebas](/ejemplos/): Arduino Uno R3 (USB), ESP32 (Wi-Fi) y Arduino Uno Q (Bridge + Python), con sus esquemas de conexión.

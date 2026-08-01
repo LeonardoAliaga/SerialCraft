@@ -6,32 +6,40 @@ import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityT
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
-public class ModBlockEntities {
+import java.util.function.BiFunction;
 
-    public static BlockEntityType<ArduinoIOBlockEntity> IO_BLOCK_ENTITY;
-    public static BlockEntityType<ConnectorBlockEntity> CONNECTOR_BLOCK_ENTITY; // Nuevo
+public final class ModBlockEntities {
+
+    private ModBlockEntities() {}
+
+    public static BlockEntityType<ArduinoIOBlockEntity>  IO_BLOCK_ENTITY;
+    public static BlockEntityType<ConnectorBlockEntity>  CONNECTOR_BLOCK_ENTITY;
+
+    /** Helper para no repetir el bloque de cinco lineas por cada tipo. */
+    private static <T extends BlockEntity> BlockEntityType<T> register(
+            String name,
+            BiFunction<net.minecraft.core.BlockPos,
+                       net.minecraft.world.level.block.state.BlockState, T> factory,
+            Block... blocks) {
+
+        Identifier id = Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, name);
+        ResourceKey<BlockEntityType<?>> key = ResourceKey.create(Registries.BLOCK_ENTITY_TYPE, id);
+
+        return Registry.register(
+                BuiltInRegistries.BLOCK_ENTITY_TYPE,
+                key,
+                FabricBlockEntityTypeBuilder.create(factory::apply, blocks).build()
+        );
+    }
 
     public static void initialize() {
-        // IO Block Entity
-        Identifier idIO = Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "io_block");
-        ResourceKey<BlockEntityType<?>> keyIO = ResourceKey.create(Registries.BLOCK_ENTITY_TYPE, idIO);
-        IO_BLOCK_ENTITY = Registry.register(
-                BuiltInRegistries.BLOCK_ENTITY_TYPE,
-                keyIO,
-                FabricBlockEntityTypeBuilder.create(ArduinoIOBlockEntity::new, ModBlocks.IO_BLOCK).build()
-        );
-
-        // Connector Block Entity (Nuevo)
-        Identifier idConn = Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "connector_block");
-        ResourceKey<BlockEntityType<?>> keyConn = ResourceKey.create(Registries.BLOCK_ENTITY_TYPE, idConn);
-        CONNECTOR_BLOCK_ENTITY = Registry.register(
-                BuiltInRegistries.BLOCK_ENTITY_TYPE,
-                keyConn,
-                FabricBlockEntityTypeBuilder.create(ConnectorBlockEntity::new, ModBlocks.CONNECTOR_BLOCK).build()
-        );
+        IO_BLOCK_ENTITY        = register("io_block",        ArduinoIOBlockEntity::new, ModBlocks.IO_BLOCK);
+        CONNECTOR_BLOCK_ENTITY = register("connector_block", ConnectorBlockEntity::new, ModBlocks.CONNECTOR_BLOCK);
     }
 }

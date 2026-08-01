@@ -2,6 +2,11 @@ package com.serialcraft.block.entity;
 
 import com.serialcraft.block.ArduinoIOBlock;
 import com.serialcraft.block.IOSide;
+import com.serialcraft.board.BoardRegistry;
+import com.serialcraft.board.IoMode;
+import com.serialcraft.board.LogicMode;
+import com.serialcraft.board.SignalType;
+import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.SerialOutputPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
@@ -12,6 +17,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -23,255 +29,384 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
+/**
+ * Estado y logica de una placa IO.
+ *
+ * Cambios estructurales respecto a la version original:
+ *
+ *  - Los campos publicos mutables pasan a privados con accesores. Antes
+ *    ArduinoIOBlock, ModNetworking, PlacasScreen y SerialDebugHud escribian y
+ *    leian ioMode/targetData/ownerUUID directamente, desde hilos distintos y
+ *    sin marcar el bloque como modificado. Eso es la causa raiz de que un
+ *    cambio a veces no se guardara.
+ *  - Los int magicos pasan a enums (IoMode/SignalType/LogicMode).
+ *  - El envio serial se hace por intervalo configurable y solo cuando el valor
+ *    cambia realmente, no una vez por tick por placa.
+ *  - El parseo de la entrada serial ya no puede lanzar por indice fuera de
+ *    rango, y ya no se traga toda excepcion con un catch vacio.
+ */
 public class ArduinoIOBlockEntity extends BlockEntity {
 
-    // Constantes
-    public static final int MODE_OUTPUT = 0;
-    public static final int MODE_INPUT = 1;
-    public static final int SIGNAL_DIGITAL = 0;
-    public static final int SIGNAL_ANALOG = 1;
-    public static final int LOGIC_OR = 0;
-    public static final int LOGIC_AND = 1;
-    public static final int LOGIC_XOR = 2;
+    public static final String DEFAULT_BOARD_ID    = "placa_gen";
+    public static final String DEFAULT_TARGET_DATA = "cmd_1";
 
-    // Variables de configuración
-    public int ioMode = MODE_OUTPUT;
-    public int signalType = SIGNAL_DIGITAL;
-    public String targetData = "cmd_1";
-    public boolean isSoftOn = true;
-    public String boardID = "placa_gen";
-    public int logicMode = LOGIC_OR;
+    /**
+     * Ticks minimos entre dos envios seriales de una misma placa.
+     *
+     * El original comprobaba {@code gameTime - lastUpdateTick >= 1}, que es
+     * verdadero SIEMPRE: efectivamente ejecutaba la logica de salida 20 veces
+     * por segundo por placa, con seis llamadas a getSignal() cada una. Con 100
+     * placas eso son 12.000 consultas de redstone por segundo solo para
+     * descubrir que nada cambio.
+     */
+    private static final int OUTPUT_INTERVAL_TICKS = 2;
 
-    public UUID ownerUUID = null;
+    /** Separador del protocolo: "canal:valor". */
+    private static final char PROTOCOL_SEPARATOR = ':';
 
-    // Variables internas
-    private int currentRedstoneOutput = 0;
-    private int cachedRedstoneInput = -1;
-    private boolean isLogicMet = true;
-    private long lastUpdateTick = 0;
+    // ── Configuracion persistida ──────────────────────────────────────────
+    private IoMode     ioMode     = IoMode.OUTPUT;
+    private SignalType signalType = SignalType.DIGITAL;
+    private LogicMode  logicMode  = LogicMode.OR;
+    private String     targetData = DEFAULT_TARGET_DATA;
+    private String     boardId    = DEFAULT_BOARD_ID;
+    private boolean    enabled    = true;
+    private UUID       ownerUUID  = null;
+
+    // ── Estado interno ────────────────────────────────────────────────────
+    private int     redstoneOutput   = 0;
+    private int     lastSentValue    = Integer.MIN_VALUE;
+    private boolean logicSatisfied   = true;
+    private long    lastOutputTick   = 0L;
+    /** Se pone a true cuando un vecino cambia; evita recalcular sin motivo. */
+    private boolean outputDirty      = true;
 
     public ArduinoIOBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.IO_BLOCK_ENTITY, pos, state);
     }
 
-    public void setOwner(UUID uuid) { this.ownerUUID = uuid; setChanged(); }
+    // ══════════════════════════════════════════════════════════════════════
+    //  ACCESORES
+    // ══════════════════════════════════════════════════════════════════════
+
+    public IoMode     getIoMode()     { return ioMode; }
+    public SignalType getSignalType() { return signalType; }
+    public LogicMode  getLogicMode()  { return logicMode; }
+    public String     getTargetData() { return targetData; }
+    public String     getBoardId()    { return boardId; }
+    public boolean    isEnabled()     { return enabled; }
+    public @Nullable UUID getOwnerUUID() { return ownerUUID; }
+
+    public BoardInfo toBoardInfo() {
+        return new BoardInfo(worldPosition, boardId, targetData, ioMode, enabled);
+    }
+
+    /** Senal que este bloque emite. Cero si esta apagado o su logica no se cumple. */
+    public int getRedstoneSignal() {
+        return (enabled && logicSatisfied) ? redstoneOutput : 0;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  PROPIEDAD
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Asigna dueno y reindexa. Reindexar es obligatorio: BoardRegistry
+     * particiona por dueno, asi que cambiar ownerUUID sin avisar dejaria la
+     * placa archivada bajo la clave equivocada y sus mensajes seriales nunca
+     * llegarian.
+     */
+    public void claim(Player player) {
+        this.ownerUUID = player.getUUID();
+        setChanged();
+        if (level instanceof ServerLevel serverLevel) {
+            BoardRegistry.reindex(serverLevel, this);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  TICK
+    // ══════════════════════════════════════════════════════════════════════
 
     public void tickServer() {
-        if (this.level == null || this.level.isClientSide()) return;
+        if (!(level instanceof ServerLevel serverLevel)) return;
 
-        // Seguridad: Si está apagado lógicamente, cortar energía
-        if (!isSoftOn || !isLogicMet) {
-            if (currentRedstoneOutput != 0) {
-                currentRedstoneOutput = 0;
-                level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+        // Corte de seguridad: apagada o con la logica sin cumplir, la placa no
+        // debe dejar redstone residual encendida.
+        if (!enabled || !logicSatisfied) {
+            if (redstoneOutput != 0) {
+                redstoneOutput = 0;
+                notifyNeighbors();
             }
             return;
         }
 
-        // MODO SALIDA (MC -> Arduino): Limitamos a 1 vez por tick
-        if (this.ioMode == MODE_OUTPUT) {
-            long gameTime = level.getGameTime();
-            if (gameTime - lastUpdateTick >= 1) {
-                lastUpdateTick = gameTime;
-                handleOutputLogic();
-            }
-        }
+        if (!ioMode.isOutput()) return;
+
+        long now = serverLevel.getGameTime();
+        if (!outputDirty && now - lastOutputTick < OUTPUT_INTERVAL_TICKS) return;
+
+        lastOutputTick = now;
+        outputDirty    = false;
+        pushOutput();
     }
 
-    private void updateVisualState() {
-        if (level == null) return;
-        BlockState currentState = getBlockState();
-        int visualMode = this.ioMode;
-        boolean visualEnabled = this.isSoftOn;
-
-        if (currentState.getValue(ArduinoIOBlock.ENABLED) != visualEnabled ||
-                currentState.getValue(ArduinoIOBlock.MODE) != visualMode) {
-            level.setBlock(worldPosition, currentState
-                    .setValue(ArduinoIOBlock.ENABLED, visualEnabled)
-                    .setValue(ArduinoIOBlock.MODE, visualMode), 3);
-        }
-    }
-
-    public void updateLogicConditions() {
-        if(level == null) return;
+    /**
+     * Lee los pines de entrada y, si el nivel cambio, lo emite por serial.
+     * No envia nada si el valor es identico al ultimo: eso ahorra la inmensa
+     * mayoria de los paquetes en una construccion tipica.
+     */
+    private void pushOutput() {
         BlockState state = getBlockState();
-
-        if (this.ioMode == MODE_OUTPUT) {
-            this.isLogicMet = true;
-            return;
-        }
-
-        int inputPinsCount = 0;
-        int activeInputPins = 0;
-
-        for (Direction dir : Direction.values()) {
-            if (state.getValue(ArduinoIOBlock.getPropertyForDirection(dir)) == IOSide.INPUT) {
-                inputPinsCount++;
-                int power = level.getSignal(worldPosition.relative(dir), dir);
-                if (power > 0) activeInputPins++;
-            }
-        }
-
-        if (inputPinsCount == 0) {
-            this.isLogicMet = true;
-            return;
-        }
-
-        switch (logicMode) {
-            case LOGIC_OR:  this.isLogicMet = (activeInputPins > 0); break;
-            case LOGIC_AND: this.isLogicMet = (activeInputPins == inputPinsCount); break;
-            case LOGIC_XOR: this.isLogicMet = (activeInputPins % 2 != 0); break;
-            default:        this.isLogicMet = true;
-        }
-    }
-
-    private void handleOutputLogic() {
-        assert level != null;
         int maxPower = 0;
-        boolean hasInputPins = false;
-        BlockState state = getBlockState();
 
-        for (Direction dir : Direction.values()) {
-            if (state.getValue(ArduinoIOBlock.getPropertyForDirection(dir)) == IOSide.INPUT) {
-                hasInputPins = true;
-                int p = level.getSignal(worldPosition.relative(dir), dir);
-                if (p > maxPower) maxPower = p;
+        for (Direction dir : ArduinoIOBlock.CONFIGURABLE_SIDES) {
+            if (state.getValue(ArduinoIOBlock.propertyFor(dir)) == IOSide.INPUT) {
+                maxPower = Math.max(maxPower, level.getSignal(worldPosition.relative(dir), dir));
             }
         }
 
-        if (!hasInputPins) maxPower = 0;
-
-        if (this.currentRedstoneOutput != maxPower) {
-            this.currentRedstoneOutput = maxPower;
-            level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+        if (redstoneOutput != maxPower) {
+            redstoneOutput = maxPower;
+            notifyNeighbors();
         }
 
-        if (maxPower == this.cachedRedstoneInput) return;
-        this.cachedRedstoneInput = maxPower;
+        int wireValue = signalType.redstoneToWire(maxPower);
+        if (wireValue == lastSentValue) return;
+        lastSentValue = wireValue;
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(this.targetData).append(':');
-
-        if (this.signalType == SIGNAL_DIGITAL) {
-            sb.append(maxPower > 0 ? '1' : '0');
-        } else {
-            int pwm = Math.round((maxPower * 255.0f) / 15.0f);
-            sb.append(pwm);
-        }
-
-        sendSerialToClient(sb.toString());
+        sendToOwner(targetData + PROTOCOL_SEPARATOR + wireValue);
     }
 
-    // MODO ENTRADA (Arduino -> MC)
-    public void processSerialInput(String message) {
-        if (!isSoftOn || !isLogicMet || this.ioMode != MODE_INPUT) return;
+    // ══════════════════════════════════════════════════════════════════════
+    //  ENTRADA SERIAL
+    // ══════════════════════════════════════════════════════════════════════
 
+    /**
+     * Procesa una linea recibida de la placa fisica.
+     *
+     * Correcciones frente al original:
+     *  - {@code message.split(":")[1]} lanzaba ArrayIndexOutOfBounds con una
+     *    entrada como "cmd:", y la excepcion se tragaba en un catch vacio que
+     *    ocultaba tambien cualquier otro fallo.
+     *  - un targetData vacio hacia que la placa aceptara CUALQUIER mensaje que
+     *    empezara por ":", porque el prefijo comparado era solo ":".
+     *  - la conversion usaba una escala distinta a la de salida.
+     *  - no se avisaba al cliente del cambio, asi que el modelo del bloque no
+     *    reflejaba nunca una entrada.
+     */
+    public void acceptSerialInput(String message) {
+        if (!enabled || !logicSatisfied || !ioMode.isInput()) return;
+        if (targetData.isEmpty()) return;
+
+        String prefix = targetData + PROTOCOL_SEPARATOR;
+        if (!message.startsWith(prefix)) return;
+
+        String valuePart = message.substring(prefix.length()).trim();
+        if (valuePart.isEmpty()) return;
+
+        int wireValue;
         try {
-            if (message.startsWith(this.targetData + ":")) {
-                String valueStr = message.split(":")[1];
-                int value = Integer.parseInt(valueStr);
+            wireValue = Integer.parseInt(valuePart);
+        } catch (NumberFormatException e) {
+            return; // linea con ruido; ignorar sin ensuciar el log
+        }
 
-                int newRedstone = Math.max(0, Math.min(15, value));
-                if (this.signalType == SIGNAL_DIGITAL) {
-                    newRedstone = (value > 0) ? 15 : 0;
-                }
-
-                if (this.currentRedstoneOutput != newRedstone) {
-                    this.currentRedstoneOutput = newRedstone;
-                    setChanged();
-                    if (level != null) {
-                        level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
+        applyRedstone(signalType.wireToRedstone(wireValue));
     }
 
-    // --- EL MÉTODO QUE FALTABA ---
-    public int getRedstoneSignal() {
-        return (isSoftOn) ? this.currentRedstoneOutput : 0;
-    }
-
-    // --- CONFIG UPDATE ---
-    public void updateConfig(int mode, String data, int signal, boolean softOn, String bId, int logic) {
-        this.ioMode = mode;
-        this.targetData = (data == null) ? "" : data;
-        this.signalType = signal;
-        this.isSoftOn = softOn;
-        this.boardID = (bId == null || bId.isEmpty()) ? "placa_gen" : bId;
-        this.logicMode = logic;
-
-        this.cachedRedstoneInput = -1;
-        this.lastUpdateTick = 0;
-
-        updateLogicConditions();
-        updateVisualState();
-
+    private void applyRedstone(int newLevel) {
+        if (redstoneOutput == newLevel) return;
+        redstoneOutput = newLevel;
         setChanged();
-        assert level != null;
-        level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
-        level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+        notifyNeighbors();
+        syncToClients();
     }
 
-    private void sendSerialToClient(String msg) {
-        if (ownerUUID != null) {
-            assert level != null;
-            Player p = level.getPlayerByUUID(ownerUUID);
-            if (p instanceof ServerPlayer sp) {
-                ServerPlayNetworking.send(sp, new SerialOutputPayload(msg));
+    // ══════════════════════════════════════════════════════════════════════
+    //  CONFIGURACION
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Aplica una configuracion ya validada y saneada.
+     *
+     * El saneado (longitud, codigos de formato, valores por defecto) ocurre en
+     * NetGuard antes de llegar aqui. Este metodo asume entradas confiables a
+     * proposito: mezclar validacion y aplicacion fue lo que permitio que el
+     * original escribiera en NBT cadenas de 32 KB llegadas por red.
+     */
+    public void applyConfig(IoMode mode, String data, SignalType signal,
+                            boolean isEnabled, String id, LogicMode logic) {
+        this.ioMode     = mode;
+        this.signalType = signal;
+        this.logicMode  = logic;
+        this.targetData = data;
+        this.boardId    = id;
+        this.enabled    = isEnabled;
+
+        // Forzar reenvio: tras cambiar de canal o de escala, el ultimo valor
+        // enviado ya no describe el estado actual.
+        this.lastSentValue = Integer.MIN_VALUE;
+        this.outputDirty   = true;
+
+        recomputeLogic();
+        refreshBlockState();
+        setChanged();
+        syncToClients();
+        notifyNeighbors();
+    }
+
+    public void setEnabled(boolean value) {
+        if (this.enabled == value) return;
+        this.enabled       = value;
+        this.lastSentValue = Integer.MIN_VALUE;
+        this.outputDirty   = true;
+        refreshBlockState();
+        setChanged();
+        syncToClients();
+        notifyNeighbors();
+    }
+
+    /** Recalcula si la condicion logica de los pines de entrada se cumple. */
+    public void recomputeLogic() {
+        if (level == null) return;
+
+        if (ioMode.isOutput()) {
+            logicSatisfied = true;
+            return;
+        }
+
+        BlockState state = getBlockState();
+        int total = 0, active = 0;
+
+        for (Direction dir : ArduinoIOBlock.CONFIGURABLE_SIDES) {
+            if (state.getValue(ArduinoIOBlock.propertyFor(dir)) == IOSide.INPUT) {
+                total++;
+                if (level.getSignal(worldPosition.relative(dir), dir) > 0) active++;
             }
         }
+        logicSatisfied = logicMode.evaluate(active, total);
     }
+
+    /** Marca la salida como pendiente de recalculo. La llama neighborChanged. */
+    public void markOutputDirty() { this.outputDirty = true; }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  SINCRONIZACION
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void notifyNeighbors() {
+        if (level != null) level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+    }
+
+    private void syncToClients() {
+        if (level != null && !level.isClientSide()) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block_UPDATE_FLAGS);
+        }
+    }
+
+    private static final int Block_UPDATE_FLAGS = 3;
+
+    /** Ajusta las propiedades visuales del blockstate solo si difieren. */
+    private void refreshBlockState() {
+        if (level == null) return;
+        BlockState current = getBlockState();
+        int modeValue = ioMode.ordinal();
+
+        if (current.getValue(ArduinoIOBlock.ENABLED) == enabled
+                && current.getValue(ArduinoIOBlock.MODE) == modeValue) {
+            return;
+        }
+        level.setBlock(worldPosition,
+                current.setValue(ArduinoIOBlock.ENABLED, enabled)
+                       .setValue(ArduinoIOBlock.MODE, modeValue),
+                Block_UPDATE_FLAGS);
+    }
+
+    private void sendToOwner(String message) {
+        if (ownerUUID == null || level == null) return;
+        if (level.getPlayerByUUID(ownerUUID) instanceof ServerPlayer owner) {
+            ServerPlayNetworking.send(owner, new SerialOutputPayload(message));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  PERSISTENCIA
+    // ══════════════════════════════════════════════════════════════════════
+    //
+    // Los enums se guardan por nombre, no por ordinal. Guardar el ordinal
+    // significa que reordenar una constante del enum en el futuro corrompe
+    // silenciosamente todos los mundos existentes.
 
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
-        output.putInt("ioMode", ioMode);
+        output.putString("ioMode",     ioMode.getSerializedName());
+        output.putString("signalType", signalType.getSerializedName());
+        output.putString("logicMode",  logicMode.getSerializedName());
         output.putString("targetData", targetData);
-        output.putInt("signalType", signalType);
-        output.putBoolean("isSoftOn", isSoftOn);
-        output.putString("boardID", boardID);
-        output.putInt("logicMode", logicMode);
-        output.putInt("rsOut", currentRedstoneOutput);
-        if (this.ownerUUID != null) output.putString("OwnerUUID", this.ownerUUID.toString());
+        output.putString("boardId",    boardId);
+        output.putBoolean("enabled",   enabled);
+        output.putInt("redstoneOut",   redstoneOutput);
+        if (ownerUUID != null) output.putString("ownerUUID", ownerUUID.toString());
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        this.ioMode = input.getIntOr("ioMode", 0);
-        this.targetData = input.getString("targetData").orElse("");
-        this.signalType = input.getIntOr("signalType", 0);
-        this.isSoftOn = input.getBooleanOr("isSoftOn", true);
-        this.boardID = input.getString("boardID").orElse("placa_gen");
-        this.logicMode = input.getIntOr("logicMode", LOGIC_OR);
-        this.currentRedstoneOutput = input.getIntOr("rsOut", 0);
+        this.ioMode     = parseEnum(input.getString("ioMode").orElse(null), IoMode.VALUES, IoMode.OUTPUT);
+        this.signalType = parseEnum(input.getString("signalType").orElse(null), SignalType.VALUES, SignalType.DIGITAL);
+        this.logicMode  = parseEnum(input.getString("logicMode").orElse(null), LogicMode.VALUES, LogicMode.OR);
+        this.targetData = input.getString("targetData").orElse(DEFAULT_TARGET_DATA);
+        this.boardId    = input.getString("boardId").orElse(DEFAULT_BOARD_ID);
+        this.enabled    = input.getBooleanOr("enabled", true);
+        this.redstoneOutput = Math.clamp(input.getIntOr("redstoneOut", 0), 0, SignalType.REDSTONE_MAX);
 
-        input.getString("OwnerUUID").ifPresent(uuidStr -> {
-            try { this.ownerUUID = UUID.fromString(uuidStr); } catch (Exception ignored) { }
+        input.getString("ownerUUID").ifPresent(raw -> {
+            try {
+                this.ownerUUID = UUID.fromString(raw);
+            } catch (IllegalArgumentException e) {
+                this.ownerUUID = null; // NBT manipulado: placa sin dueno, reclamable
+            }
         });
+    }
+
+    private static <E extends Enum<E> & net.minecraft.util.StringRepresentable>
+    E parseEnum(@Nullable String name, E[] values, E fallback) {
+        if (name == null) return fallback;
+        for (E value : values) {
+            if (value.getSerializedName().equals(name)) return value;
+        }
+        return fallback;
     }
 
     @Override
     public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider provider) {
         CompoundTag tag = new CompoundTag();
-        tag.putInt("ioMode", ioMode);
+        tag.putString("ioMode",     ioMode.getSerializedName());
+        tag.putString("signalType", signalType.getSerializedName());
+        tag.putString("logicMode",  logicMode.getSerializedName());
         tag.putString("targetData", targetData);
-        tag.putInt("signalType", signalType);
-        tag.putBoolean("isSoftOn", isSoftOn);
-        tag.putString("boardID", boardID);
-        tag.putInt("logicMode", logicMode);
+        tag.putString("boardId",    boardId);
+        tag.putBoolean("enabled",   enabled);
+        // ownerUUID NO se envia al cliente: es un dato que solo el servidor
+        // necesita para autorizar, y publicarlo no aporta nada a la UI.
         return tag;
     }
 
-    @Nullable @Override
-    public Packet<ClientGamePacketListener> getUpdatePacket() {
+    @Override
+    public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
-    public void onPlayerInteract(Player player) {
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Mensaje de estado en la barra de accion al hacer clic en la base. */
+    public void showStatus(Player player) {
         if (level == null || level.isClientSide()) return;
-        Component status = isSoftOn ? Component.translatable("message.serialcraft.on") : Component.translatable("message.serialcraft.off");
-        player.displayClientMessage(Component.translatable("message.serialcraft.io_status", this.boardID, status), true);
+        Component state = Component.translatable(
+                enabled ? "message.serialcraft.on" : "message.serialcraft.off");
+        player.displayClientMessage(
+                Component.translatable("message.serialcraft.io_status", boardId, state), true);
     }
 }

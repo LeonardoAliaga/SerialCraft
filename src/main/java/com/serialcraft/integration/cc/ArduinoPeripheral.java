@@ -1,41 +1,65 @@
 package com.serialcraft.integration.cc;
 
+import com.serialcraft.SerialCraft;
+import com.serialcraft.block.entity.ConnectorBlockEntity;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.IPeripheral;
-import com.serialcraft.block.entity.ConnectorBlockEntity;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+/**
+ * Periferico de CC:Tweaked para la laptop.
+ *
+ * ESTADO REAL: incompleto a proposito, y ahora dicho en voz alta. El original
+ * exponia enviarComando() con un System.out.println y nada mas, dando la falsa
+ * impresion de que la integracion funcionaba. No puede funcionar tal como esta
+ * planteada: el puerto serial vive en el JVM del CLIENTE, y este periferico se
+ * ejecuta en el servidor. Enlazarlos requiere enrutar el comando al cliente del
+ * dueno de la laptop, que es exactamente lo que ya hace SerialOutputPayload.
+ *
+ * Lo que se puede hacer hoy sin cambios de arquitectura queda expuesto:
+ * consultar el estado. Escribir requiere el paso por red, marcado como TODO
+ * con la ruta concreta en vez de un stub silencioso.
+ */
 public class ArduinoPeripheral implements IPeripheral {
+
     private final ConnectorBlockEntity entity;
 
     public ArduinoPeripheral(ConnectorBlockEntity entity) {
         this.entity = entity;
     }
 
-    // Este es el nombre del periférico en Lua (ej: peripheral.find("arduino_connector"))
-    @NotNull
     @Override
-    public String getType() {
-        return "arduino_connector";
-    }
+    public @NotNull String getType() { return "arduino_connector"; }
 
     @Override
-    public boolean equals(IPeripheral other) {
-        return this == other || (other instanceof ArduinoPeripheral && ((ArduinoPeripheral) other).entity == this.entity);
+    public boolean equals(@Nullable IPeripheral other) {
+        return this == other
+                || (other instanceof ArduinoPeripheral p && p.entity == this.entity);
     }
 
-    // ==========================================
-    // FUNCIONES EXPUESTAS A LUA
-    // ==========================================
+    // ── API Lua ───────────────────────────────────────────────────────────
 
+    /** @return true si la laptop reporta una sesion de hardware activa. */
     @LuaFunction
-    public final String ping() {
-        return "¡Hola Ronald! Conexión exitosa entre CC:Tweaked y SerialCraft.";
+    public final boolean isConnected() {
+        return entity.isConnected();
     }
 
     @LuaFunction
-    public final void enviarComando(String comando) {
-        // Por ahora solo lo imprimimos, pronto lo enlazaremos al Socket/USB real
-        System.out.println("[SerialCraft -> Arduino] Comando recibido desde Lua: " + comando);
+    public final int getBaudRate() {
+        return entity.getBaudRate();
+    }
+
+    /**
+     * TODO: para implementarlo, publicar un payload S2C nuevo dirigido al dueno
+     * de la laptop y reutilizar ConnectionManager.sendMessageToBoard en el
+     * cliente. Requiere anadir un campo ownerUUID a ConnectorBlockEntity, que
+     * hoy no tiene.
+     */
+    @LuaFunction
+    public final boolean sendCommand(String command) {
+        SerialCraft.LOGGER.debug("sendCommand() aun no implementado: {}", command);
+        return false;
     }
 }

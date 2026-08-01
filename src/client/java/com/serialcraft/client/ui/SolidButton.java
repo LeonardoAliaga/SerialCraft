@@ -10,18 +10,20 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 
+/** Boton plano con variantes semanticas. */
 public class SolidButton extends AbstractWidget {
 
+    @FunctionalInterface
     public interface OnPress {
         void onPress(SolidButton button);
     }
 
     public enum Variant {
-        PRIMARY(0xFF00838F, 0xFFFFFFFF),
-        SUCCESS(0xFF2E7D32, 0xFFFFFFFF),
-        DANGER(0xFFC62828, 0xFFFFFFFF),
-        NEUTRAL(0xFFB0B0B0, 0xFF1F1F1F),
-        SOFT(0xFFE6E6DF, 0xFF333333);
+        PRIMARY(UiTheme.ACCENT_PRIMARY, UiTheme.TEXT_INVERSE),
+        SUCCESS(UiTheme.OK_DARK,        UiTheme.TEXT_INVERSE),
+        DANGER (UiTheme.ERROR_DARK,     UiTheme.TEXT_INVERSE),
+        NEUTRAL(0xFFB0B0B0,             0xFF1F1F1F),
+        SOFT   (0xFFE6E6DF,             0xFF333333);
 
         public final int baseColor;
         public final int textColor;
@@ -32,21 +34,24 @@ public class SolidButton extends AbstractWidget {
         }
     }
 
-    private Variant variant;
-    protected final OnPress onPress;
+    private static final int BORDER_DARKEN   = 24;
+    private static final int HOVER_LIGHTEN   = 18;
+    private static final float DISABLED_ALPHA = 0.70f;
+    private static final float DISABLED_DESAT = 0.55f;
 
-    public SolidButton(int x, int y, int width, int height, Component message, OnPress onPress, Variant variant) {
+    private Variant variant;
+    private final OnPress onPress;
+
+    public SolidButton(int x, int y, int width, int height,
+                       Component message, OnPress onPress, Variant variant) {
         super(x, y, width, height, message);
         this.onPress = onPress;
         this.variant = (variant == null) ? Variant.NEUTRAL : variant;
     }
 
-    // ── FIX: API de click actualizado para MC 1.21.11 ─────────────────────
-    // En 1.21.11 AbstractWidget usa onClick(MouseButtonEvent, boolean)
-    // El método viejo onClick(double, double) ya no se invoca.
     @Override
     public void onClick(@NotNull MouseButtonEvent event, boolean focused) {
-        this.onPress.onPress(this);
+        if (this.onPress != null) this.onPress.onPress(this);
     }
 
     @Override
@@ -56,106 +61,84 @@ public class SolidButton extends AbstractWidget {
 
     @Override
     public void renderWidget(GuiGraphics gui, int mouseX, int mouseY, float partialTick) {
-        int x = this.getX();
-        int y = this.getY();
-        int w = this.getWidth();
-        int h = this.getHeight();
-
-        boolean hovered = this.isHoveredOrFocused();
-
-        int base   = this.variant.baseColor;
-        int bg     = base;
-        int border = darken(base, 24);
+        int x = getX(), y = getY(), w = getWidth(), h = getHeight();
+        int base = variant.baseColor;
+        int background, border;
 
         if (!this.active) {
-            bg     = applyAlpha(desaturate(base, 0.55f), 0.70f);
-            border = applyAlpha(darken(desaturate(base, 0.55f), 30), 0.70f);
-        } else if (hovered) {
-            bg     = lighten(base, 18);
-            border = darken(bg, 24);
+            int muted   = desaturate(base, DISABLED_DESAT);
+            background  = applyAlpha(muted, DISABLED_ALPHA);
+            border      = applyAlpha(darken(muted, 30), DISABLED_ALPHA);
+        } else if (isHoveredOrFocused()) {
+            background  = lighten(base, HOVER_LIGHTEN);
+            border      = darken(background, BORDER_DARKEN);
+        } else {
+            background  = base;
+            border      = darken(base, BORDER_DARKEN);
         }
 
-        gui.fill(x, y, x + w, y + h, bg);
-        drawBorder(gui, x, y, w, h, border);
+        gui.fill(x, y, x + w, y + h, background);
+        UiDraw.border(gui, x, y, w, h, border);
 
-        Font font     = Minecraft.getInstance().font;
-        Component msg = this.getMessage();
-        int textColor = this.active ? this.variant.textColor : applyAlpha(this.variant.textColor, 0.70f);
-        int textX     = x + (w - font.width(msg)) / 2;
-        int textY     = y + (h - 8) / 2;
+        Font font = Minecraft.getInstance().font;
+        int textColor = this.active ? variant.textColor
+                                    : applyAlpha(variant.textColor, DISABLED_ALPHA);
 
-        gui.drawString(font, msg, textX, textY, textColor, false);
+        // Recorte al ancho disponible: protege contra traducciones largas.
+        String label = font.plainSubstrByWidth(getMessage().getString(), w - 6);
+        int textX = x + (w - font.width(label)) / 2;
+        int textY = y + (h - font.lineHeight) / 2 + 1;
+
+        gui.drawString(font, label, textX, textY, textColor, false);
     }
 
-    // ── Getters & Setters ─────────────────────────────────────────────────
-
-    public Variant getVariant() { return this.variant; }
+    public Variant getVariant() { return variant; }
 
     public void setVariant(Variant variant) {
         this.variant = (variant == null) ? Variant.NEUTRAL : variant;
     }
 
-    // ── Builders estáticos ────────────────────────────────────────────────
+    // ── Constructores de conveniencia ─────────────────────────────────────
 
-    public static SolidButton of(int x, int y, int width, int height, Component message, OnPress onPress, Variant variant) {
-        return new SolidButton(x, y, width, height, message, onPress, variant);
+    public static SolidButton of(int x, int y, int w, int h, Component msg, OnPress cb, Variant v) {
+        return new SolidButton(x, y, w, h, msg, cb, v);
+    }
+    public static SolidButton primary(int x, int y, int w, int h, Component msg, OnPress cb) {
+        return of(x, y, w, h, msg, cb, Variant.PRIMARY);
+    }
+    public static SolidButton success(int x, int y, int w, int h, Component msg, OnPress cb) {
+        return of(x, y, w, h, msg, cb, Variant.SUCCESS);
+    }
+    public static SolidButton danger(int x, int y, int w, int h, Component msg, OnPress cb) {
+        return of(x, y, w, h, msg, cb, Variant.DANGER);
+    }
+    public static SolidButton soft(int x, int y, int w, int h, Component msg, OnPress cb) {
+        return of(x, y, w, h, msg, cb, Variant.SOFT);
     }
 
-    public static SolidButton primary(int x, int y, int width, int height, Component message, OnPress onPress) {
-        return of(x, y, width, height, message, onPress, Variant.PRIMARY);
-    }
+    // ── Manipulacion de color ─────────────────────────────────────────────
 
-    public static SolidButton success(int x, int y, int width, int height, Component message, OnPress onPress) {
-        return of(x, y, width, height, message, onPress, Variant.SUCCESS);
-    }
-
-    public static SolidButton danger(int x, int y, int width, int height, Component message, OnPress onPress) {
-        return of(x, y, width, height, message, onPress, Variant.DANGER);
-    }
-
-    public static SolidButton neutral(int x, int y, int width, int height, Component message, OnPress onPress) {
-        return of(x, y, width, height, message, onPress, Variant.NEUTRAL);
-    }
-
-    public static SolidButton soft(int x, int y, int width, int height, Component message, OnPress onPress) {
-        return of(x, y, width, height, message, onPress, Variant.SOFT);
-    }
-
-    // ── Utilidades de color ───────────────────────────────────────────────
-
-    private static void drawBorder(GuiGraphics gui, int x, int y, int width, int height, int color) {
-        gui.fill(x,             y,              x + width, y + 1,          color);
-        gui.fill(x,             y + height - 1, x + width, y + height,     color);
-        gui.fill(x,             y,              x + 1,     y + height,     color);
-        gui.fill(x + width - 1, y,              x + width, y + height,     color);
-    }
-
-    private static int applyAlpha(int argb, float alpha) {
-        int a = Mth.clamp(Math.round(((argb >>> 24) & 0xFF) * alpha), 0, 255);
+    private static int applyAlpha(int argb, float factor) {
+        int a = Mth.clamp(Math.round(((argb >>> 24) & 0xFF) * factor), 0, 255);
         return (a << 24) | (argb & 0x00FFFFFF);
     }
 
-    private static int lighten(int argb, int amount) {
-        int a = (argb >>> 24) & 0xFF;
-        int r = Mth.clamp(((argb >>> 16) & 0xFF) + amount, 0, 255);
-        int g = Mth.clamp(((argb >>>  8) & 0xFF) + amount, 0, 255);
-        int b = Mth.clamp(( argb         & 0xFF) + amount, 0, 255);
-        return (a << 24) | (r << 16) | (g << 8) | b;
-    }
+    private static int lighten(int argb, int amount) { return shift(argb,  amount); }
+    private static int darken (int argb, int amount) { return shift(argb, -amount); }
 
-    private static int darken(int argb, int amount) {
+    private static int shift(int argb, int delta) {
         int a = (argb >>> 24) & 0xFF;
-        int r = Mth.clamp(((argb >>> 16) & 0xFF) - amount, 0, 255);
-        int g = Mth.clamp(((argb >>>  8) & 0xFF) - amount, 0, 255);
-        int b = Mth.clamp(( argb         & 0xFF) - amount, 0, 255);
+        int r = Mth.clamp(((argb >>> 16) & 0xFF) + delta, 0, 255);
+        int g = Mth.clamp(((argb >>>  8) & 0xFF) + delta, 0, 255);
+        int b = Mth.clamp(( argb         & 0xFF) + delta, 0, 255);
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     private static int desaturate(int argb, float amount) {
-        int   a    = (argb >>> 24) & 0xFF;
-        int   r    = (argb >>> 16) & 0xFF;
-        int   g    = (argb >>>  8) & 0xFF;
-        int   b    =  argb         & 0xFF;
+        int a = (argb >>> 24) & 0xFF;
+        int r = (argb >>> 16) & 0xFF;
+        int g = (argb >>>  8) & 0xFF;
+        int b =  argb         & 0xFF;
         float gray = r * 0.299f + g * 0.587f + b * 0.114f;
         r = Mth.clamp(Math.round(r + (gray - r) * amount), 0, 255);
         g = Mth.clamp(Math.round(g + (gray - g) * amount), 0, 255);

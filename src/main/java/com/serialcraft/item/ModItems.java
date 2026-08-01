@@ -8,32 +8,31 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 
 import java.util.function.Function;
 
-public class ModItems {
+public final class ModItems {
 
-    // Helper para registrar items (se mantiene igual)
+    private ModItems() {}
+
+    // NOTA sobre orden de inicializacion: estos campos estaticos referencian
+    // ModBlocks, asi que cargar esta clase carga ModBlocks primero. Funciona,
+    // pero es una dependencia implicita: SerialCraft.onInitialize llama a
+    // ModBlocks.initialize() antes que a ModItems.initialize() para dejarla
+    // explicita y que no dependa del orden de carga de la JVM.
+
     private static Item register(String name,
-                                 Function<Item.Properties, Item> itemFactory,
+                                 Function<Item.Properties, Item> factory,
                                  Item.Properties settings) {
-
-        ResourceKey<Item> itemKey = ResourceKey.create(
+        ResourceKey<Item> key = ResourceKey.create(
                 Registries.ITEM,
                 Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, name)
         );
-
-        Item item = itemFactory.apply(settings.setId(itemKey));
-
-        return Registry.register(BuiltInRegistries.ITEM, itemKey, item);
+        return Registry.register(BuiltInRegistries.ITEM, key, factory.apply(settings.setId(key)));
     }
-
-    // --- AQUÍ ESTÁ EL CAMBIO ---
-    // Inicialización directa (sin bloque static {})
 
     public static final Item CONNECTOR_BLOCK_ITEM = register(
             "connector_block",
@@ -47,7 +46,6 @@ public class ModItems {
             new Item.Properties()
     );
 
-    // Inicialización de grupos creativos
     public static void initialize() {
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.REDSTONE_BLOCKS)
                 .register(entries -> {

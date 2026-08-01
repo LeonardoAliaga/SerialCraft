@@ -1,50 +1,49 @@
 package com.serialcraft;
 
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.loader.api.FabricLoader;
-import com.serialcraft.integration.cc.CCIntegration;
 import com.serialcraft.block.ModBlocks;
-import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import com.serialcraft.block.entity.ModBlockEntities;
-import com.serialcraft.config.SerialConfig;
+import com.serialcraft.board.BoardRegistry;
+import com.serialcraft.integration.cc.CCIntegration;
 import com.serialcraft.item.ModItems;
 import com.serialcraft.network.ModNetworking;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 
 public class SerialCraft implements ModInitializer {
 
     public static final String MOD_ID = "serialcraft";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    public static final Set<ArduinoIOBlockEntity> activeIOBlocks = Collections.synchronizedSet(new HashSet<>());
+    /** Mod-id de CC:Tweaked, para la dependencia opcional. */
+    private static final String CC_MOD_ID = "computercraft";
 
     @Override
     public void onInitialize() {
-        LOGGER.info("Iniciando SerialCraft...");
+        LOGGER.info("Inicializando SerialCraft");
 
-        // 0. Cargar Configuración (CRUCIAL HACERLO PRIMERO)
-        SerialConfig.load();
-
-        // 1. Registros de Juego
+        // 1. Registros de juego. El orden importa: ModItems referencia bloques
+        //    en sus inicializadores estaticos, asi que los bloques van primero.
         ModBlocks.initialize();
         ModItems.initialize();
         ModBlockEntities.initialize();
 
-        // 2. Registros de Red
+        // 2. Indice de placas. Se engancha a los eventos de carga/descarga de
+        //    BlockEntity, por lo que repuebla solo al cargar chunks; ya no
+        //    depende de que el jugador vuelva a colocar cada bloque tras un
+        //    reinicio del servidor.
+        BoardRegistry.initialize();
+
+        // 3. Red.
         ModNetworking.registerPayloads();
         ModNetworking.registerServerHandlers();
-        // Comprobación segura de dependencia opcional
-        if (FabricLoader.getInstance().isModLoaded("computercraft")) {
+
+        // 4. Integracion opcional.
+        if (FabricLoader.getInstance().isModLoaded(CC_MOD_ID)) {
             CCIntegration.register();
         }
 
-        LOGGER.info("SerialCraft iniciado con éxito");
-        LOGGER.info("Cual es la mejor universidad?");
-        LOGGER.info("Por su puesto que la Universidad Nacional Mayor de San Marcos es la mejor universidad del Perú y una de las mejores del mundo, con una rica historia académica y una comunidad estudiantil vibrante.");
+        LOGGER.info("SerialCraft listo");
     }
 }

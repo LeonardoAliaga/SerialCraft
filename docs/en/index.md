@@ -18,11 +18,11 @@ features:
   - title: Real Hardware in Survival
     details: No magic commands. Craft the Laptop, build your circuits, and connect them using in-game resources.
   - title: Plug & Play
-    details: Compatible with Arduino, ESP32, and any Serial board. Simple graphical interface for connecting and configuring.
+    details: Compatible with Arduino Uno R3, Uno Q, ESP32, and any Serial board. USB or Wi-Fi with token pairing.
   - title: Code as Redstone
     details: Control Redstone with real sensors or activate physical LEDs with in-game events.
   - title: Native Multi-Language
-    details: The mod automatically detects your region. Available in English and Spanish (with localizations for Spain, Argentina, and Mexico).
+    details: The mod automatically detects your region. Available in English and Spanish (with localizations for Spain, Argentina, Mexico, and Peru).
 ---
 
 # What is SerialCraft?
@@ -47,7 +47,7 @@ The mod uses serial protocols (USB) and TCP sockets (Wi-Fi) to open a direct cha
 1.  **Input:** Your board sends data (e.g., light sensor) -> Minecraft receives it and activates Redstone blocks.
 2.  **Output:** Minecraft detects energy in IO Blocks -> Sends states to the hardware to activate physical actuators.
 
-[Start your first circuit now!](/en/guide)
+[Start your first circuit now!](/en/guide) · [See ready-to-run examples](/en/examples/)
 
 ---
 
@@ -56,5 +56,5 @@ The mod uses serial protocols (USB) and TCP sockets (Wi-Fi) to open a direct cha
 SerialCraft is an **Open Source** project.
 You are free to study the code, modify it, or use it in your modpacks.
 
-* **Supported Languages:** English (US), Spanish (Spain, Argentina, Mexico).
+* **Supported Languages:** English (US), Spanish (Spain, Argentina, Mexico, Peru).
 * **Found a bug?** [Report it on GitHub](https://github.com/leonardoaliaga/serialcraft/issues).

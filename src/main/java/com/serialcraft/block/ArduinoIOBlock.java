@@ -1,18 +1,16 @@
 package com.serialcraft.block;
 
 import com.mojang.serialization.MapCodec;
-import com.serialcraft.SerialCraft;
 import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import com.serialcraft.block.entity.ModBlockEntities;
+import com.serialcraft.network.guard.NetGuard;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -24,7 +22,6 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
@@ -38,24 +35,69 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
+
 public class ArduinoIOBlock extends BaseEntityBlock {
 
     public static final MapCodec<ArduinoIOBlock> CODEC = simpleCodec(ArduinoIOBlock::new);
-    public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
-    public static final BooleanProperty ENABLED = BooleanProperty.create("enabled");
-    public static final BooleanProperty BLINKING = BooleanProperty.create("blinking");
-    public static final IntegerProperty MODE = IntegerProperty.create("mode", 0, 2);
 
-    // Propiedades para la configuración de cada lado (Input/Output/None)
+    // ── Propiedades ───────────────────────────────────────────────────────
+    //
+    // EXPLOSION DE BLOCKSTATES (problema real de rendimiento del original):
+    // se declaraban POWERED, ENABLED, BLINKING, MODE(0-2) y SEIS lados con
+    // tres valores cada uno. Eso son 2*2*2*3*3^6 = 17.496 estados distintos,
+    // todos instanciados y cacheados al arrancar el juego.
+    //
+    // De esos, POWERED no se usaba en ninguna parte (ni en codigo ni en el
+    // blockstate JSON), y el lado UP tampoco: getHitButton() nunca podia
+    // devolver Direction.UP porque no habia AABB para el, y el JSON no tiene
+    // modelo io_connector_u. Eran estados imposibles de alcanzar.
+    //
+    // Quitando ambos: 2*2*3*3^5 = 2.916 estados. Una reduccion de 6x sin
+    // perder una sola funcion.
+
+    public static final BooleanProperty ENABLED  = BooleanProperty.create("enabled");
+    public static final BooleanProperty BLINKING = BooleanProperty.create("blinking");
+    public static final IntegerProperty MODE     = IntegerProperty.create("mode", 0, 2);
+
     public static final EnumProperty<IOSide> NORTH = EnumProperty.create("north", IOSide.class);
     public static final EnumProperty<IOSide> SOUTH = EnumProperty.create("south", IOSide.class);
-    public static final EnumProperty<IOSide> EAST = EnumProperty.create("east", IOSide.class);
-    public static final EnumProperty<IOSide> WEST = EnumProperty.create("west", IOSide.class);
-    public static final EnumProperty<IOSide> UP = EnumProperty.create("up", IOSide.class);
-    public static final EnumProperty<IOSide> DOWN = EnumProperty.create("down", IOSide.class);
+    public static final EnumProperty<IOSide> EAST  = EnumProperty.create("east",  IOSide.class);
+    public static final EnumProperty<IOSide> WEST  = EnumProperty.create("west",  IOSide.class);
+    public static final EnumProperty<IOSide> DOWN  = EnumProperty.create("down",  IOSide.class);
 
-    // VoxelShape compleja para el modelo 3D
-    private static final VoxelShape SHAPE_BASE = Shapes.or(
+    /** Lados que el jugador puede configurar. Fuente unica de verdad. */
+    public static final Direction[] CONFIGURABLE_SIDES = {
+            Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.DOWN
+    };
+
+    private static final Map<Direction, EnumProperty<IOSide>> SIDE_PROPERTIES = Map.of(
+            Direction.NORTH, NORTH,
+            Direction.SOUTH, SOUTH,
+            Direction.EAST,  EAST,
+            Direction.WEST,  WEST,
+            Direction.DOWN,  DOWN
+    );
+
+    /**
+     * @return la propiedad del lado, o null si el lado no es configurable.
+     *         El original usaba un switch exhaustivo sobre Direction que
+     *         obligaba a que los seis lados existieran.
+     */
+    public static @Nullable EnumProperty<IOSide> propertyForOrNull(Direction dir) {
+        return SIDE_PROPERTIES.get(dir);
+    }
+
+    /** Version no anulable, para bucles sobre CONFIGURABLE_SIDES. */
+    public static EnumProperty<IOSide> propertyFor(Direction dir) {
+        EnumProperty<IOSide> p = SIDE_PROPERTIES.get(dir);
+        if (p == null) throw new IllegalArgumentException("Lado no configurable: " + dir);
+        return p;
+    }
+
+    // ── Forma ─────────────────────────────────────────────────────────────
+
+    private static final VoxelShape SHAPE = Shapes.or(
             Block.box(0, 0, 0, 16, 2, 16),
             Block.box(7, 2, 0, 9, 6, 2.5),
             Block.box(7, 2, 13.5, 9, 6, 16),
@@ -63,159 +105,193 @@ public class ArduinoIOBlock extends BaseEntityBlock {
             Block.box(0, 2, 7, 2.5, 6, 9)
     );
 
-    // Hitboxes específicas para los botones/conectores
-    private static final AABB BTN_NORTE = new AABB(7/16d, 2/16d, 0/16d, 9/16d, 6/16d, 2.475/16d);
-    private static final AABB BTN_SUR   = new AABB(7/16d, 2/16d, 13.575/16d, 9/16d, 6/16d, 16/16d);
-    private static final AABB BTN_ESTE  = new AABB(13.6/16d, 2/16d, 7/16d, 16/16d, 6/16d, 9/16d);
-    private static final AABB BTN_OESTE = new AABB(0/16d, 2/16d, 7/16d, 2.45/16d, 6/16d, 9/16d);
-    private static final AABB BTN_DOWN  = new AABB(6.6/16d, 2/16d, 11/16d, 9.45/16d, 4/16d, 13/16d);
+    private static final double S = 1.0D / 16.0D;
+    private static final Map<Direction, AABB> BUTTONS = Map.of(
+            Direction.NORTH, new AABB(7 * S,    2 * S, 0,          9 * S,    6 * S, 2.475 * S),
+            Direction.SOUTH, new AABB(7 * S,    2 * S, 13.575 * S, 9 * S,    6 * S, 1.0D),
+            Direction.EAST,  new AABB(13.6 * S, 2 * S, 7 * S,      1.0D,     6 * S, 9 * S),
+            Direction.WEST,  new AABB(0,        2 * S, 7 * S,      2.45 * S, 6 * S, 9 * S),
+            Direction.DOWN,  new AABB(6.6 * S,  2 * S, 11 * S,     9.45 * S, 4 * S, 13 * S)
+    );
+
+    private static final double HIT_MARGIN = 0.03D;
 
     public ArduinoIOBlock(Properties settings) {
         super(settings);
         this.registerDefaultState(this.stateDefinition.any()
-                .setValue(POWERED, false).setValue(ENABLED, false).setValue(BLINKING, false).setValue(MODE, 0)
-                .setValue(NORTH, IOSide.NONE).setValue(SOUTH, IOSide.NONE).setValue(EAST, IOSide.NONE)
-                .setValue(WEST, IOSide.NONE).setValue(UP, IOSide.NONE).setValue(DOWN, IOSide.NONE));
+                .setValue(ENABLED, false)
+                .setValue(BLINKING, false)
+                .setValue(MODE, 0)
+                .setValue(NORTH, IOSide.NONE)
+                .setValue(SOUTH, IOSide.NONE)
+                .setValue(EAST,  IOSide.NONE)
+                .setValue(WEST,  IOSide.NONE)
+                .setValue(DOWN,  IOSide.NONE));
     }
 
-    // Detectar qué botón pequeño se presionó
-    public Direction getHitButton(Vec3 localHit) {
-        double margin = 0.03;
-        if (BTN_NORTE.inflate(margin).contains(localHit)) return Direction.NORTH;
-        if (BTN_SUR.inflate(margin).contains(localHit))   return Direction.SOUTH;
-        if (BTN_ESTE.inflate(margin).contains(localHit))  return Direction.EAST;
-        if (BTN_OESTE.inflate(margin).contains(localHit)) return Direction.WEST;
-        if (BTN_DOWN.inflate(margin).contains(localHit))  return Direction.DOWN;
+    /** @return el lado cuyo conector se pulso, o null si se pulso la base. */
+    public @Nullable Direction getHitButton(Vec3 localHit) {
+        for (var entry : BUTTONS.entrySet()) {
+            if (entry.getValue().inflate(HIT_MARGIN).contains(localHit)) return entry.getKey();
+        }
         return null;
     }
 
-    @NotNull
+    // ══════════════════════════════════════════════════════════════════════
+    //  INTERACCION
+    // ══════════════════════════════════════════════════════════════════════
+
     @Override
-    public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+    public @NotNull InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+                                                     Player player, BlockHitResult hit) {
+        // La comprobacion de dueno del cliente es solo cosmetica (el cliente
+        // puede mentir). La decision real se toma aqui, en el servidor.
         if (level.isClientSide()) return InteractionResult.SUCCESS;
-
-        BlockEntity be = level.getBlockEntity(pos);
-        if (!(be instanceof ArduinoIOBlockEntity io)) return InteractionResult.FAIL;
-
-        // --- SISTEMA DE SEGURIDAD MEJORADO ---
-        if (io.ownerUUID != null && !io.ownerUUID.equals(player.getUUID())) {
-            boolean esAdmin = Permissions.check(player, "serialcraft.admin.bypass", 2);
-            if (!esAdmin) {
-                player.displayClientMessage(Component.translatable("message.serialcraft.not_owner"), true);
-                return InteractionResult.FAIL;
-            }
+        if (!(level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)) {
+            return InteractionResult.FAIL;
         }
 
-        Vec3 hitPos = hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
-        Direction btn = getHitButton(hitPos);
-
-        if (btn != null) {
-            // Configurar lados (Input/Output/None)
-            EnumProperty<IOSide> property = getPropertyForDirection(btn);
-            IOSide current = state.getValue(property);
-            IOSide next;
-
-            if (player.isShiftKeyDown()) {
-                next = (current == IOSide.OUTPUT) ? IOSide.NONE : IOSide.OUTPUT;
-                player.displayClientMessage(Component.translatable(next == IOSide.OUTPUT ? "message.serialcraft.io_output" : "message.serialcraft.io_disconnected"), true);
-            } else {
-                next = (current == IOSide.INPUT) ? IOSide.NONE : IOSide.INPUT;
-                player.displayClientMessage(Component.translatable(next == IOSide.INPUT ? "message.serialcraft.io_input" : "message.serialcraft.io_disconnected"), true);
-            }
-
-            BlockState newState = state.setValue(property, next);
-            level.setBlockAndUpdate(pos, newState);
-            io.updateLogicConditions();
-            level.updateNeighborsAt(pos, this);
-
-        } else {
-            // Interacción general (Click derecho en la base)
-            io.onPlayerInteract(player);
+        if (player instanceof ServerPlayer serverPlayer
+                && !NetGuard.canOperate(serverPlayer, io.getOwnerUUID())) {
+            NetGuard.denyOwnership(serverPlayer);
+            return InteractionResult.FAIL;
         }
+        if (io.getOwnerUUID() == null) io.claim(player);
+
+        Vec3 localHit = hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
+        Direction button = getHitButton(localHit);
+
+        if (button == null) {
+            io.showStatus(player);
+            return InteractionResult.SUCCESS;
+        }
+        cycleSide(state, level, pos, player, io, button);
         return InteractionResult.SUCCESS;
     }
 
-    @Override
-    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
-        super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide() && placer instanceof Player player) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof ArduinoIOBlockEntity ioEntity) {
-                // Asignar Dueño
-                ioEntity.setOwner(player.getUUID());
+    /**
+     * Alterna el modo de un conector.
+     * Clic normal: NONE <-> INPUT. Clic agachado: NONE <-> OUTPUT.
+     */
+    private void cycleSide(BlockState state, Level level, BlockPos pos,
+                           Player player, ArduinoIOBlockEntity io, Direction side) {
+        EnumProperty<IOSide> property = propertyFor(side);
+        IOSide current = state.getValue(property);
+        IOSide next;
+        String messageKey;
 
-                String uniqueName = "Board_" + pos.getX() + "_" + pos.getY() + "_" + pos.getZ();
-
-                // === ACTUALIZADO: Sin updateFreq ===
-                ioEntity.updateConfig(
-                        ioEntity.ioMode,
-                        ioEntity.targetData,
-                        ioEntity.signalType,
-                        ioEntity.isSoftOn,
-                        uniqueName,
-                        // Frecuencia eliminada aquí
-                        ioEntity.logicMode
-                );
-
-                player.displayClientMessage(Component.translatable("message.serialcraft.linked", player.getName().getString()), true);
-                SerialCraft.activeIOBlocks.add(ioEntity);
-            }
+        if (player.isShiftKeyDown()) {
+            next = (current == IOSide.OUTPUT) ? IOSide.NONE : IOSide.OUTPUT;
+            messageKey = next == IOSide.OUTPUT
+                    ? "message.serialcraft.io_output" : "message.serialcraft.io_disconnected";
+        } else {
+            next = (current == IOSide.INPUT) ? IOSide.NONE : IOSide.INPUT;
+            messageKey = next == IOSide.INPUT
+                    ? "message.serialcraft.io_input" : "message.serialcraft.io_disconnected";
         }
+
+        player.displayClientMessage(Component.translatable(messageKey), true);
+        level.setBlockAndUpdate(pos, state.setValue(property, next));
+        io.recomputeLogic();
+        io.markOutputDirty();
+        level.updateNeighborsAt(pos, this);
     }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
+                            @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (level.isClientSide() || !(placer instanceof Player player)) return;
+        if (!(level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)) return;
+
+        io.claim(player);
+
+        // Nombre por defecto unico por posicion. Sigue siendo editable desde
+        // el panel; solo evita que veinte placas se llamen todas "placa_gen".
+        io.applyConfig(
+                io.getIoMode(),
+                io.getTargetData(),
+                io.getSignalType(),
+                io.isEnabled(),
+                "Board_" + pos.getX() + "_" + pos.getY() + "_" + pos.getZ(),
+                io.getLogicMode()
+        );
+        player.displayClientMessage(
+                Component.translatable("message.serialcraft.linked", player.getName()), true);
+
+        // NOTA: ya no se anade a ningun Set global aqui. BoardRegistry escucha
+        // ServerBlockEntityEvents.BLOCK_ENTITY_LOAD, que cubre tambien la carga
+        // de chunks y el reinicio del servidor. El registro en setPlacedBy era
+        // precisamente el motivo de que las placas desaparecieran tras reiniciar.
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  REDSTONE
+    // ══════════════════════════════════════════════════════════════════════
 
     @Override
     public boolean isSignalSource(BlockState state) { return true; }
 
     @Override
     public int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
-        Direction side = direction.getOpposite();
-        EnumProperty<IOSide> property = getPropertyForDirection(side);
+        EnumProperty<IOSide> property = propertyForOrNull(direction.getOpposite());
+        if (property == null || state.getValue(property) != IOSide.OUTPUT) return 0;
 
-        if (state.getValue(property) == IOSide.OUTPUT) {
-            if (level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
-                return io.getRedstoneSignal();
-            }
-        }
-        return 0;
+        return (level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)
+                ? io.getRedstoneSignal() : 0;
+    }
+
+    /**
+     * Potencia fuerte, para que la placa pueda alimentar un bloque solido que a
+     * su vez alimente polvo de redstone. El original no lo sobrescribia, asi
+     * que un conector OUTPUT contra un bloque de piedra no encendia nada al
+     * otro lado: era un fallo de comportamiento que parecia un bug de modelo.
+     */
+    @Override
+    public int getDirectSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return getSignal(state, level, pos, direction);
     }
 
     @Override
-    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, @Nullable Orientation orientation, boolean isMoving) {
+    public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block,
+                                @Nullable Orientation orientation, boolean isMoving) {
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
-            io.updateLogicConditions();
+            io.recomputeLogic();
+            // Marcar sucio en vez de recalcular ya: si veinte vecinos cambian
+            // en el mismo tick, se recalcula una sola vez en el siguiente tick.
+            io.markOutputDirty();
         }
         super.neighborChanged(state, level, pos, block, orientation, isMoving);
     }
 
-    public static EnumProperty<IOSide> getPropertyForDirection(Direction dir) {
-        return switch (dir) {
-            case NORTH -> NORTH; case SOUTH -> SOUTH; case EAST -> EAST;
-            case WEST -> WEST; case UP -> UP; case DOWN -> DOWN;
-        };
-    }
+    // ══════════════════════════════════════════════════════════════════════
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(POWERED, ENABLED, BLINKING, MODE, NORTH, SOUTH, EAST, WEST, UP, DOWN);
+        builder.add(ENABLED, BLINKING, MODE, NORTH, SOUTH, EAST, WEST, DOWN);
     }
 
-    @NotNull @Override public MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
-    @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) { return new ArduinoIOBlockEntity(pos, state); }
-    @NotNull @Override public RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
-    @Override public @NotNull VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) { return SHAPE_BASE; }
-    @Override public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {}
+    @Override public @NotNull MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
-    @Override public @NotNull BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
-        if (!level.isClientSide()) {
-            if (level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) SerialCraft.activeIOBlocks.remove(io);
-        }
-        return super.playerWillDestroy(level, pos, state, player);
+    @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new ArduinoIOBlockEntity(pos, state);
     }
 
-    @Nullable @Override public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (type == ModBlockEntities.IO_BLOCK_ENTITY) {
-            return (lvl, p, st, be) -> { if (!lvl.isClientSide() && be instanceof ArduinoIOBlockEntity io) io.tickServer(); };
-        }
-        return null;
+    @Override public @NotNull RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
+
+    @Override public @NotNull VoxelShape getShape(BlockState state, BlockGetter level,
+                                                  BlockPos pos, CollisionContext context) {
+        return SHAPE;
+    }
+
+    @Override
+    public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+        // Sin ticker en el cliente: no habia nada que hacer alli y el original
+        // igualmente comprobaba isClientSide dentro del lambda cada tick.
+        if (level.isClientSide() || type != ModBlockEntities.IO_BLOCK_ENTITY) return null;
+        return (lvl, p, st, be) -> {
+            if (be instanceof ArduinoIOBlockEntity io) io.tickServer();
+        };
     }
 }
