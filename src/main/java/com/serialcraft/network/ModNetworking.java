@@ -57,7 +57,7 @@ public final class ModNetworking {
     // ══════════════════════════════════════════════════════════════════════
 
     public static void registerPayloads() {
-        var c2s = PayloadTypeRegistry.playC2S();
+        var c2s = PayloadTypeRegistry.serverboundPlay();
         c2s.register(ConfigPayload.TYPE,           ConfigPayload.CODEC);
         c2s.register(ConnectorPayload.TYPE,        ConnectorPayload.CODEC);
         c2s.register(ConnectorConfigPayload.TYPE,  ConnectorConfigPayload.CODEC);
@@ -65,7 +65,7 @@ public final class ModNetworking {
         c2s.register(BoardListRequestPayload.TYPE, BoardListRequestPayload.CODEC);
         c2s.register(RemoteTogglePayload.TYPE,     RemoteTogglePayload.CODEC);
 
-        var s2c = PayloadTypeRegistry.playS2C();
+        var s2c = PayloadTypeRegistry.clientboundPlay();
         s2c.register(SerialOutputPayload.TYPE,      SerialOutputPayload.CODEC);
         s2c.register(BoardListResponsePayload.TYPE, BoardListResponsePayload.CODEC);
     }

@@ -11,7 +11,7 @@ import com.serialcraft.connection.WifiHandler;
 import com.serialcraft.screen.PanelUI;
 import com.serialcraft.util.NetUtils;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -183,7 +183,7 @@ public class WelcomePage implements Page {
     // ══════════════════════════════════════════════════════════════════════
 
     @Override
-    public void render(GuiGraphics gui, int mouseX, int mouseY, Font font, int width, int height) {
+    public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
         int logoHeight = (LOGO_WIDTH * LOGO_SRC_H) / LOGO_SRC_W;
         int logoX      = (width - LOGO_WIDTH) / 2;
 
@@ -194,14 +194,14 @@ public class WelcomePage implements Page {
 
         Component subtitle = Component.translatable("gui.serialcraft.welcome.subtitle");
         int subtitleY = LOGO_Y + logoHeight + 3;
-        gui.drawString(font, subtitle,
+        gui.text(font, subtitle,
                 (width - font.width(subtitle)) / 2, subtitleY, 0xFFCCE5F5, false);
 
         renderWifiStatus(gui, font, width, subtitleY + 14);
         renderDeviceCards(gui, font, width);
     }
 
-    private void renderWifiStatus(GuiGraphics gui, Font font, int width, int y) {
+    private void renderWifiStatus(GuiGraphicsExtractor gui, Font font, int width, int y) {
         WifiHandler wifi = ConnectionManager.getWifi();
         if (wifi.getState() == WifiHandler.State.STOPPED) return;
 
@@ -217,17 +217,17 @@ public class WelcomePage implements Page {
                     ip, WifiHandler.DEFAULT_PORT, wifi.getPairingToken());
             color  = 0xFF90CAF9;
         }
-        gui.drawString(font, status, (width - font.width(status)) / 2, y, color, false);
+        gui.text(font, status, (width - font.width(status)) / 2, y, color, false);
     }
 
-    private void renderDeviceCards(GuiGraphics gui, Font font, int width) {
+    private void renderDeviceCards(GuiGraphicsExtractor gui, Font font, int width) {
         int x = (width - CARD_WIDTH) / 2;
         int y = listStartY + 10;
 
         if (devices.isEmpty()) {
-            gui.drawString(font, Component.translatable("gui.serialcraft.welcome.no_usb"),
+            gui.text(font, Component.translatable("gui.serialcraft.welcome.no_usb"),
                     x, y + 8, 0xFF888888, false);
-            gui.drawString(font, Component.translatable("gui.serialcraft.welcome.no_usb_hint"),
+            gui.text(font, Component.translatable("gui.serialcraft.welcome.no_usb_hint"),
                     x, y + 22, 0xFF888888, false);
             return;
         }
@@ -240,9 +240,9 @@ public class WelcomePage implements Page {
                     wifi ? UiTheme.INFO_BG   : UiTheme.NEUTRAL_BG,
                     wifi ? UiTheme.INFO_DARK : UiTheme.NEUTRAL_TX);
 
-            gui.drawString(font, font.plainSubstrByWidth(device.name(), 175),
+            gui.text(font, font.plainSubstrByWidth(device.name(), 175),
                     x + 50, y + 13, UiTheme.TEXT_PRIMARY, false);
-            gui.drawString(font, device.address(), x + 50, y + 27, UiTheme.TEXT_SECONDARY, false);
+            gui.text(font, device.address(), x + 50, y + 27, UiTheme.TEXT_SECONDARY, false);
 
             y += UiTheme.CARD_ROW_HEIGHT;
         }

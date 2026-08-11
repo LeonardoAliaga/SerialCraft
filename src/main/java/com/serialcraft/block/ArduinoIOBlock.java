@@ -190,7 +190,7 @@ public class ArduinoIOBlock extends BaseEntityBlock {
                     ? "message.serialcraft.io_input" : "message.serialcraft.io_disconnected";
         }
 
-        player.displayClientMessage(Component.translatable(messageKey), true);
+        player.sendSystemMessage(Component.translatable(messageKey));
         level.setBlockAndUpdate(pos, state.setValue(property, next));
         io.recomputeLogic();
         io.markOutputDirty();
@@ -216,9 +216,8 @@ public class ArduinoIOBlock extends BaseEntityBlock {
                 "Board_" + pos.getX() + "_" + pos.getY() + "_" + pos.getZ(),
                 io.getLogicMode()
         );
-        player.displayClientMessage(
-                Component.translatable("message.serialcraft.linked", player.getName()), true);
-
+        player.sendSystemMessage(
+                Component.translatable("message.serialcraft.linked", player.getName()));
         // NOTA: ya no se anade a ningun Set global aqui. BoardRegistry escucha
         // ServerBlockEntityEvents.BLOCK_ENTITY_LOAD, que cubre tambien la carga
         // de chunks y el reinicio del servidor. El registro en setPlacedBy era

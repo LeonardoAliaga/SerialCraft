@@ -11,7 +11,7 @@ import com.serialcraft.screen.PanelUI;
 import com.serialcraft.util.NetUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -81,7 +81,7 @@ public class HomePage implements Page {
     // ══════════════════════════════════════════════════════════════════════
 
     @Override
-    public void render(GuiGraphics gui, int mouseX, int mouseY, Font font,
+    public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font,
                        int screenWidth, int screenHeight) {
         int x = UiTheme.contentX(screenWidth) + 10;
 
@@ -90,7 +90,7 @@ public class HomePage implements Page {
                 Component.translatable("gui.serialcraft.home.subtitle"));
 
         if (device == null) {
-            gui.drawString(font, Component.translatable("gui.serialcraft.home.no_device"),
+            gui.text(font, Component.translatable("gui.serialcraft.home.no_device"),
                     x, CARD_TOP, UiTheme.TEXT_SECONDARY, false);
             return;
         }
@@ -99,7 +99,7 @@ public class HomePage implements Page {
         renderConsole(gui, font, x);
     }
 
-    private void renderStatusCard(GuiGraphics gui, Font font, int x) {
+    private void renderStatusCard(GuiGraphicsExtractor gui, Font font, int x) {
         int y = CARD_TOP;
         boolean wifi = device.isWifi();
 
@@ -121,7 +121,7 @@ public class HomePage implements Page {
                 wifi ? UiTheme.INFO_BG : UiTheme.NEUTRAL_BG,
                 wifi ? UiTheme.INFO_DARK : UiTheme.NEUTRAL_TX);
 
-        gui.drawString(font, device.name(), x + 12, y + 36, UiTheme.TEXT_PRIMARY, false);
+        gui.text(font, device.name(), x + 12, y + 36, UiTheme.TEXT_PRIMARY, false);
         gui.fill(x + 10, y + 50, x + CARD_WIDTH - 10, y + 51, UiTheme.LINE);
 
         int rowY = y + 58;
@@ -131,12 +131,12 @@ public class HomePage implements Page {
         gui.fill(x + 10, y + 112, x + CARD_WIDTH - 10, y + 113, UiTheme.LINE);
 
         long seconds = (System.currentTimeMillis() - connectedAtMillis) / 1000L;
-        gui.drawString(font,
+        gui.text(font,
                 Component.translatable("gui.serialcraft.home.uptime", formatDuration(seconds)),
                 x + 12, y + 118, UiTheme.TEXT_MUTED, false);
     }
 
-    private void renderWifiRows(GuiGraphics gui, Font font, int x, int y) {
+    private void renderWifiRows(GuiGraphicsExtractor gui, Font font, int x, int y) {
         WifiHandler wifi = ConnectionManager.getWifi();
         String remote = wifi.getRemoteIp();
 
@@ -169,7 +169,7 @@ public class HomePage implements Page {
                 Component.translatable(key).getString(), color);
     }
 
-    private void renderUsbRows(GuiGraphics gui, Font font, int x, int y) {
+    private void renderUsbRows(GuiGraphicsExtractor gui, Font font, int x, int y) {
         UiDraw.labelledRow(gui, font, x, y,
                 Component.translatable("gui.serialcraft.home.port"),
                 device.address(), UiTheme.TEXT_PRIMARY);
@@ -184,10 +184,10 @@ public class HomePage implements Page {
                 UiTheme.TEXT_PRIMARY);
     }
 
-    private void renderConsole(GuiGraphics gui, Font font, int x) {
+    private void renderConsole(GuiGraphicsExtractor gui, Font font, int x) {
         int y = CARD_TOP + CARD_HEIGHT + BUTTON_GAP + 35;
 
-        gui.drawString(font, Component.translatable("gui.serialcraft.home.terminal"),
+        gui.text(font, Component.translatable("gui.serialcraft.home.terminal"),
                 x, y, UiTheme.TEXT_PRIMARY, false);
         gui.fill(x, y + 12, x + CARD_WIDTH, y + 12 + CONSOLE_H, UiTheme.BG_CONSOLE);
 
@@ -199,7 +199,7 @@ public class HomePage implements Page {
                       : UiTheme.ERROR;
             // Recorte al ancho de la consola: sin esto una linea larga de la
             // placa se dibujaba fuera del recuadro negro.
-            gui.drawString(font, font.plainSubstrByWidth(line, CARD_WIDTH - 12),
+            gui.text(font, font.plainSubstrByWidth(line, CARD_WIDTH - 12),
                     x + 6, lineY, color, false);
             lineY += 10;
         }

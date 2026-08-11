@@ -11,7 +11,7 @@ import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.ConnectorPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -150,7 +150,7 @@ public class PanelUI extends Screen {
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gui, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(@NotNull GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         gui.fill(0, 0, this.width, this.height, UiTheme.BG_APP);
 
         if (appState == AppState.WELCOME) {
@@ -159,7 +159,8 @@ public class PanelUI extends Screen {
             navBar.render(gui, this.width, this.height);
             pages.get(currentTab).render(gui, mouseX, mouseY, this.font, this.width, this.height);
         }
-        super.render(gui, mouseX, mouseY, delta);
+
+        super.extractRenderState(gui, mouseX, mouseY, delta);
     }
 
     @Override

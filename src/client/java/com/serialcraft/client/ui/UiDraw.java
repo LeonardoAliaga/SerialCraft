@@ -1,7 +1,7 @@
 package com.serialcraft.client.ui;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -21,19 +21,11 @@ public final class UiDraw {
 
     private UiDraw() {}
 
-    /** Rectangulo de un pixel de grosor. */
-    public static void border(GuiGraphics gui, int x, int y, int width, int height, int color) {
-        gui.fill(x,             y,              x + width, y + 1,      color);
-        gui.fill(x,             y + height - 1, x + width, y + height, color);
-        gui.fill(x,             y,              x + 1,     y + height, color);
-        gui.fill(x + width - 1, y,              x + width, y + height, color);
-    }
-
     /**
      * Tarjeta blanca con sombra y linea inferior.
      * @return la Y donde termina la tarjeta, sombra incluida.
      */
-    public static int card(GuiGraphics gui, int x, int y, int width, int height) {
+    public static int card(GuiGraphicsExtractor gui, int x, int y, int width, int height) {
         gui.fill(x + 2, y + height + 1, x + width + 2, y + height + 3, UiTheme.SHADOW);
         gui.fill(x, y, x + width, y + height, UiTheme.BG_CARD);
         gui.fill(x, y + height, x + width, y + height + 2, UiTheme.LINE);
@@ -48,15 +40,15 @@ public final class UiDraw {
      *
      * @return la X donde termina la insignia, util para encadenar varias.
      */
-    public static int badge(GuiGraphics gui, Font font, int x, int y,
+    public static int badge(GuiGraphicsExtractor gui, Font font, int x, int y,
                             String text, int background, int textColor) {
         int width = font.width(text) + 8;
         gui.fill(x, y, x + width, y + 14, background);
-        gui.drawString(font, text, x + 4, y + 3, textColor, false);
+        gui.text(font, text, x + 4, y + 3, textColor, false);
         return x + width;
     }
 
-    public static int badge(GuiGraphics gui, Font font, int x, int y,
+    public static int badge(GuiGraphicsExtractor gui, Font font, int x, int y,
                             Component text, int background, int textColor) {
         return badge(gui, font, x, y, text.getString(), background, textColor);
     }
@@ -65,7 +57,7 @@ public final class UiDraw {
      * Cabecera de pagina: una palabra en color de acento y otra en negro,
      * ambas a escala aumentada.
      */
-    public static void pageTitle(GuiGraphics gui, Font font, int x,
+    public static void pageTitle(GuiGraphicsExtractor gui, Font font, int x,
                                  Component accent, int accentColor, Component rest) {
         float scale = UiTheme.TITLE_SCALE;
         gui.pose().pushMatrix();
@@ -75,24 +67,24 @@ public final class UiDraw {
         int scaledY = (int) (UiTheme.TITLE_Y / scale);
 
         String accentText = accent.getString();
-        gui.drawString(font, accentText, scaledX, scaledY, accentColor, false);
-        gui.drawString(font, rest.getString(),
+        gui.text(font, accentText, scaledX, scaledY, accentColor, false);
+        gui.text(font, rest.getString(),
                 scaledX + font.width(accentText) + 4, scaledY, UiTheme.TEXT_PRIMARY, false);
 
         gui.pose().popMatrix();
     }
 
     /** Fila etiqueta/valor con la columna de valores alineada. */
-    public static void labelledRow(GuiGraphics gui, Font font, int x, int y,
+    public static void labelledRow(GuiGraphicsExtractor gui, Font font, int x, int y,
                                    Component label, String value, int valueColor) {
-        gui.drawString(font, label, x, y, UiTheme.TEXT_SECONDARY, false);
-        gui.drawString(font, value, x + LABEL_COLUMN_WIDTH, y, valueColor, false);
+        gui.text(font, label, x, y, UiTheme.TEXT_SECONDARY, false);
+        gui.text(font, value, x + LABEL_COLUMN_WIDTH, y, valueColor, false);
     }
 
     public static final int LABEL_COLUMN_WIDTH = 93;
 
     /** Campo de texto hundido, con borde y fondo oscuro. */
-    public static void inputWell(GuiGraphics gui, int x, int y, int width, int height) {
+    public static void inputWell(GuiGraphicsExtractor gui, int x, int y, int width, int height) {
         gui.fill(x, y, x + width, y + height, UiTheme.LINE_STRONG);
         gui.fill(x + 1, y + 1, x + width - 1, y + height - 1, UiTheme.BG_CONSOLE);
     }

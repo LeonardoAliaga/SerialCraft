@@ -2,7 +2,7 @@ package com.serialcraft.client.ui;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -60,7 +60,7 @@ public class SolidButton extends AbstractWidget {
     }
 
     @Override
-    public void renderWidget(GuiGraphics gui, int mouseX, int mouseY, float partialTick) {
+    public void extractWidgetRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float partialTick) {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
         int base = variant.baseColor;
         int background, border;
@@ -78,7 +78,7 @@ public class SolidButton extends AbstractWidget {
         }
 
         gui.fill(x, y, x + w, y + h, background);
-        UiDraw.border(gui, x, y, w, h, border);
+        gui.outline(x, y, w, h, border);
 
         Font font = Minecraft.getInstance().font;
         int textColor = this.active ? variant.textColor
@@ -89,7 +89,7 @@ public class SolidButton extends AbstractWidget {
         int textX = x + (w - font.width(label)) / 2;
         int textY = y + (h - font.lineHeight) / 2 + 1;
 
-        gui.drawString(font, label, textX, textY, textColor, false);
+        gui.text(font, label, textX, textY, textColor, false);
     }
 
     public Variant getVariant() { return variant; }

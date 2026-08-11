@@ -2,7 +2,7 @@ package com.serialcraft.client.ui.pages;
 
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * Contrato de una pagina del panel.
@@ -13,7 +13,7 @@ public interface Page {
     void init(PanelUI panel, int screenWidth, int screenHeight);
 
     /** Dibuja el contenido no interactivo. Los widgets se dibujan solos. */
-    void render(GuiGraphics gui, int mouseX, int mouseY, Font font, int screenWidth, int screenHeight);
+    void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int screenWidth, int screenHeight);
 
     /** Logica por tick. Vacio por defecto: la mayoria de paginas no lo necesita. */
     default void tick() {}

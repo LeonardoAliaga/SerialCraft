@@ -406,7 +406,7 @@ public class ArduinoIOBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide()) return;
         Component state = Component.translatable(
                 enabled ? "message.serialcraft.on" : "message.serialcraft.off");
-        player.displayClientMessage(
-                Component.translatable("message.serialcraft.io_status", boardId, state), true);
+        player.sendSystemMessage(
+                Component.translatable("message.serialcraft.io_status", boardId, state));
     }
 }

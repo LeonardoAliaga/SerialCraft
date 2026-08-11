@@ -97,7 +97,9 @@ public final class NetGuard {
     }
 
     public static void denyOwnership(ServerPlayer player) {
-        player.displayClientMessage(Component.translatable("message.serialcraft.not_owner"), true);
+        player.sendSystemMessage(
+                Component.translatable("message.serialcraft.not_owner"));
+
     }
 
     /**

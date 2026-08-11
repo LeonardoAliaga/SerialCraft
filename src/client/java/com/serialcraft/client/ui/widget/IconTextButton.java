@@ -5,7 +5,7 @@ import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.UiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -63,12 +63,12 @@ public class IconTextButton extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics gui, int mouseX, int mouseY, float delta) {
+    protected void extractWidgetRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         int x = getX();
         int y = getY();
 
         gui.fill(x, y, x + width, y + height, backgroundColor);
-        UiDraw.border(gui, x, y, width, height, borderColor);
+        gui.outline(x, y, width,height, borderColor);
 
         int textX = x + PADDING;
         if (icon != null) {
@@ -91,7 +91,7 @@ public class IconTextButton extends AbstractWidget {
         // que es como se rompen las interfaces al traducirlas.
         int available = x + width - PADDING - textX;
         String label = font.plainSubstrByWidth(getMessage().getString(), available);
-        gui.drawString(font, label, textX, textY, textColor, false);
+        gui.text(font, label, textX, textY, textColor, false);
     }
 
     @Override

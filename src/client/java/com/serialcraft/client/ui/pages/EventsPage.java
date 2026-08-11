@@ -5,7 +5,7 @@ import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -25,7 +25,7 @@ public class EventsPage implements Page {
     }
 
     @Override
-    public void render(GuiGraphics gui, int mouseX, int mouseY, Font font,
+    public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font,
                        int screenWidth, int screenHeight) {
         int x     = UiTheme.contentX(screenWidth);
         int width = screenWidth - x - UiTheme.CONTENT_MARGIN;
@@ -37,7 +37,7 @@ public class EventsPage implements Page {
         List<String> entries = ConnectionManager.recentHistory(VISIBLE_LINES);
 
         if (entries.isEmpty()) {
-            gui.drawString(font, Component.translatable("gui.serialcraft.events.empty"),
+            gui.text(font, Component.translatable("gui.serialcraft.events.empty"),
                     x, LOG_TOP + 10, UiTheme.TEXT_SECONDARY, false);
             return;
         }
@@ -50,7 +50,7 @@ public class EventsPage implements Page {
             int color = entry.startsWith("TX:") ? UiTheme.OK
                       : entry.startsWith("RX:") ? UiTheme.INFO
                       : UiTheme.ERROR;
-            gui.drawString(font, font.plainSubstrByWidth(entry, width - 12),
+            gui.text(font, font.plainSubstrByWidth(entry, width - 12),
                     x + 6, y, color, false);
             y += LINE_HEIGHT;
             if (y > LOG_TOP + height - LINE_HEIGHT) break;

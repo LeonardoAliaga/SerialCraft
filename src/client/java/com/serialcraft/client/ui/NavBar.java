@@ -3,7 +3,7 @@ package com.serialcraft.client.ui;
 import com.serialcraft.SerialCraft;
 import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.screen.PanelUI;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -38,7 +38,7 @@ public class NavBar {
 
     // ══════════════════════════════════════════════════════════════════════
 
-    public void render(GuiGraphics gui, int screenWidth, int screenHeight) {
+    public void render(GuiGraphicsExtractor gui, int screenWidth, int screenHeight) {
         int navWidth = UiTheme.navWidth(screenWidth);
 
         gui.fill(0, 0, screenWidth, screenHeight, UiTheme.BG_APP);

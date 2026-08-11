@@ -3,7 +3,6 @@ package com.serialcraft;
 import com.serialcraft.block.ModBlocks;
 import com.serialcraft.block.entity.ModBlockEntities;
 import com.serialcraft.board.BoardRegistry;
-import com.serialcraft.integration.cc.CCIntegration;
 import com.serialcraft.item.ModItems;
 import com.serialcraft.network.ModNetworking;
 import net.fabricmc.api.ModInitializer;
@@ -39,10 +38,6 @@ public class SerialCraft implements ModInitializer {
         ModNetworking.registerPayloads();
         ModNetworking.registerServerHandlers();
 
-        // 4. Integracion opcional.
-        if (FabricLoader.getInstance().isModLoaded(CC_MOD_ID)) {
-            CCIntegration.register();
-        }
 
         LOGGER.info("SerialCraft listo");
     }

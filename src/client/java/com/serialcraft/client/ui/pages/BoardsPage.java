@@ -18,7 +18,7 @@ import com.serialcraft.screen.PanelUI;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor ;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -180,9 +180,9 @@ public class BoardsPage implements Page {
         if (ConnectionManager.isAnyConnected()) return true;
         var player = Minecraft.getInstance().player;
         if (player != null) {
-            player.displayClientMessage(
+            player.sendSystemMessage(
                     Component.translatable("message.serialcraft.needs_connection")
-                             .withStyle(net.minecraft.ChatFormatting.RED), false);
+                            .withStyle(net.minecraft.ChatFormatting.RED));
         }
         return false;
     }
@@ -308,7 +308,7 @@ public class BoardsPage implements Page {
     // ══════════════════════════════════════════════════════════════════════
 
     @Override
-    public void render(GuiGraphics gui, int mouseX, int mouseY, Font font,
+    public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font,
                        int screenWidth, int screenHeight) {
         int contentX = UiTheme.contentX(screenWidth);
 
@@ -320,25 +320,25 @@ public class BoardsPage implements Page {
         else         renderList(gui, font, screenWidth, contentX);
     }
 
-    private void renderList(GuiGraphics gui, Font font, int screenWidth, int contentX) {
+    private void renderList(GuiGraphicsExtractor gui, Font font, int screenWidth, int contentX) {
         int cardWidth = screenWidth - contentX - UiTheme.CONTENT_MARGIN;
         int cardY     = CARD_TOP;
 
         if (awaitingResponse && boards.isEmpty()) {
-            gui.drawString(font, Component.translatable("gui.serialcraft.boards.loading"),
+            gui.text(font, Component.translatable("gui.serialcraft.boards.loading"),
                     contentX, cardY + 10, 0xFF90CAF9, false);
             return;
         }
 
         if (boards.isEmpty()) {
-            gui.drawString(font, Component.translatable("gui.serialcraft.boards.empty"),
+            gui.text(font, Component.translatable("gui.serialcraft.boards.empty"),
                     contentX, cardY + 10, UiTheme.TEXT_SECONDARY, false);
-            gui.drawString(font, Component.translatable("gui.serialcraft.boards.empty_hint"),
+            gui.text(font, Component.translatable("gui.serialcraft.boards.empty_hint"),
                     contentX, cardY + 24, UiTheme.TEXT_SECONDARY, false);
             return;
         }
 
-        gui.drawString(font, Component.translatable(
+        gui.text(font, Component.translatable(
                         boards.size() == 1 ? "gui.serialcraft.boards.count_one"
                                            : "gui.serialcraft.boards.count_many", boards.size()),
                 contentX, 48, UiTheme.TEXT_SECONDARY, false);
@@ -357,10 +357,10 @@ public class BoardsPage implements Page {
                      contentX + cardWidth - 209, cardY + 13,
                      board.enabled() ? UiTheme.OK : UiTheme.ERROR);
 
-            gui.drawString(font, board.id(), contentX + 48, cardY + 10, UiTheme.TEXT_PRIMARY, false);
-            gui.drawString(font, Component.translatable("gui.serialcraft.boards.cmd", board.data()),
+            gui.text(font, board.id(), contentX + 48, cardY + 10, UiTheme.TEXT_PRIMARY, false);
+            gui.text(font, Component.translatable("gui.serialcraft.boards.cmd", board.data()),
                     contentX + 48, cardY + 24, UiTheme.TEXT_SECONDARY, false);
-            gui.drawString(font, Component.translatable("gui.serialcraft.boards.pos",
+            gui.text(font, Component.translatable("gui.serialcraft.boards.pos",
                             board.pos().getX(), board.pos().getY(), board.pos().getZ()),
                     contentX + 48, cardY + 36, UiTheme.TEXT_MUTED, false);
 
@@ -368,7 +368,7 @@ public class BoardsPage implements Page {
         }
     }
 
-    private void renderEditor(GuiGraphics gui, Font font, int screenWidth) {
+    private void renderEditor(GuiGraphicsExtractor  gui, Font font, int screenWidth) {
         if (editTarget == null) return;
 
         int x     = UiTheme.contentX(screenWidth) + 10;
@@ -376,32 +376,32 @@ public class BoardsPage implements Page {
         int width = Math.min(EDITOR_W, screenWidth - UiTheme.navWidth(screenWidth) - 60);
 
         gui.fill(x, y, x + width, y + EDITOR_H, UiTheme.BG_PANEL);
-        UiDraw.border(gui, x, y, width, EDITOR_H, UiTheme.LINE_STRONG);
+        gui.outline(x, y, width, EDITOR_H, UiTheme.LINE_STRONG);
 
         gui.fill(x, y, x + width, y + 30, UiTheme.BG_PANEL_HEAD);
-        gui.drawCenteredString(font,
+        gui.centeredText(font,
                 Component.translatable("gui.serialcraft.editor.title", editTarget.id()),
                 x + width / 2, y + 10, UiTheme.TEXT_PRIMARY);
 
-        gui.drawString(font, Component.translatable("gui.serialcraft.editor.board_id"),
+        gui.text(font, Component.translatable("gui.serialcraft.editor.board_id"),
                 x + 5, y + 33, UiTheme.TEXT_SECONDARY, false);
         UiDraw.inputWell(gui, x + 4, y + 42, width - 91, 26);
 
-        gui.drawString(font, Component.translatable("gui.serialcraft.editor.power"),
+        gui.text(font, Component.translatable("gui.serialcraft.editor.power"),
                 x + width - 83, y + 33, UiTheme.TEXT_SECONDARY, false);
 
-        gui.drawCenteredString(font, Component.translatable(
+        gui.centeredText(font, Component.translatable(
                         editMode.isInput() ? "gui.serialcraft.editor.section_mode_logic"
                                            : "gui.serialcraft.editor.section_mode"),
                 x + width / 2, y + 78, UiTheme.ACCENT_PRIMARY);
         gui.fill(x + 8, y + 122, x + width - 8, y + 123, UiTheme.LINE_SOFT);
 
-        gui.drawString(font, Component.translatable("gui.serialcraft.editor.command"),
+        gui.text(font, Component.translatable("gui.serialcraft.editor.command"),
                 x + 5, y + 130, UiTheme.TEXT_SECONDARY, false);
         UiDraw.inputWell(gui, x + 4, y + 141, width - 16, 36);
 
         String command = (dataBox != null) ? dataBox.getValue() : editTarget.data();
-        gui.drawCenteredString(font, Component.translatable(helpKey(), command),
+        gui.centeredText(font, Component.translatable(helpKey(), command),
                 x + width / 2, y + 182, 0xFF666666);
     }
 

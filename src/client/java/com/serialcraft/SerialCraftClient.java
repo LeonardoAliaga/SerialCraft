@@ -10,10 +10,10 @@ import com.serialcraft.network.SerialOutputPayload;
 import com.serialcraft.screen.PanelUI;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -38,20 +38,25 @@ import org.lwjgl.glfw.GLFW;
  */
 public class SerialCraftClient implements ClientModInitializer {
 
-    private static final Identifier KEY_CATEGORY =
-            Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "general");
+    KeyMapping.Category KEY_CATEGORY = KeyMapping.Category.register(
+            Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "general")
+    );
 
     private static KeyMapping debugHudKey;
 
     @Override
     public void onInitializeClient() {
-        HudRenderCallback.EVENT.register(new SerialDebugHud());
+        HudElementRegistry.addLast(
+                Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "debug_hud"),
+                SerialDebugHud::render
+        );
 
-        debugHudKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        // CORRECCIÓN: Usar KeyMappingHelper en lugar de KeyBindingHelper
+        debugHudKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.serialcraft.debug_hud",
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_F7,
-                new KeyMapping.Category(KEY_CATEGORY)
+                KEY_CATEGORY
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -91,7 +96,7 @@ public class SerialCraftClient implements ClientModInitializer {
 
         ClientPlayNetworking.registerGlobalReceiver(BoardListResponsePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
-                    if (context.client().screen instanceof PanelUI panel) {
+                    if (context.client().gui.screen() instanceof PanelUI panel) {
                         panel.updateBoardList(payload.boards());
                     }
                 }));
@@ -108,7 +113,7 @@ public class SerialCraftClient implements ClientModInitializer {
             Minecraft client = Minecraft.getInstance();
 
             if (state.is(ModBlocks.CONNECTOR_BLOCK)) {
-                client.setScreen(new PanelUI(pos));
+                client.setScreenAndShow(new PanelUI(pos));
                 return InteractionResult.SUCCESS;
             }
 
@@ -127,7 +132,7 @@ public class SerialCraftClient implements ClientModInitializer {
                 // hacia esa comprobacion aqui como si fuera seguridad real.
                 // Abrir el editor no hace dano: el servidor rechazara el
                 // ConfigPayload si el jugador no es el dueno.
-                client.setScreen(new PanelUI(null, pos));
+                client.setScreenAndShow(new PanelUI(null, pos));
                 return InteractionResult.SUCCESS;
             }
 
