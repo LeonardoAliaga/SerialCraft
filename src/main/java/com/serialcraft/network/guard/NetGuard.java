@@ -9,6 +9,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.regex.Pattern;
+
 /**
  * Validaciones obligatorias para TODO paquete C2S.
  *
@@ -41,6 +43,9 @@ public final class NetGuard {
     private static final String BYPASS_PERMISSION = "serialcraft.admin.bypass";
     private static final int    BYPASS_OP_LEVEL   = 2;
 
+    /** Patron precompilado para filtrar caracteres de control sin instanciar regex por llamada. */
+    private static final Pattern CONTROL_CHARS = Pattern.compile("[\\p{Cntrl}]");
+
     /**
      * Resuelve un BlockEntity a partir de una posicion enviada por el cliente.
      *
@@ -51,25 +56,47 @@ public final class NetGuard {
     public static <T extends BlockEntity> @Nullable T resolve(
             ServerPlayer player, BlockPos pos, Class<T> type, double maxDistance) {
 
-        if (pos == null) return null;
+        if (pos == null) {
+            SerialCraft.LOGGER.debug("BlockPos nulo recibido de {}", player.getGameProfile().name());
+            return null;
+        }
 
         // FIX: En los mapeos recientes, usamos level() y casteamos a ServerLevel.
         ServerLevel level = (ServerLevel) player.level();
 
         // Altura valida del mundo. Descarta enteros absurdos de entrada.
-        if (level.isOutsideBuildHeight(pos)) return null;
+        if (level.isOutsideBuildHeight(pos)) {
+            SerialCraft.LOGGER.debug("Posicion {} fuera de altura valida para {}", pos, player.getGameProfile().name());
+            return null;
+        }
 
         // Alcance. Se compara al cuadrado para evitar la raiz cuadrada.
-        if (player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D)
-                > maxDistance * maxDistance) {
+        double distanceSq = player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
+        if (distanceSq > maxDistance * maxDistance) {
+            SerialCraft.LOGGER.debug("Posicion {} fuera de alcance ({:.2f}m > {:.2f}m) para {}",
+                    pos, Math.sqrt(distanceSq), maxDistance, player.getGameProfile().name());
             return null;
         }
 
         // CLAVE: isLoaded() NO genera el chunk. Cierra el DoS de carga forzada.
-        if (!level.isLoaded(pos)) return null;
+        if (!level.isLoaded(pos)) {
+            SerialCraft.LOGGER.debug("Chunk en {} no cargado para {}", pos, player.getGameProfile().name());
+            return null;
+        }
 
         BlockEntity be = level.getBlockEntity(pos);
-        return type.isInstance(be) ? type.cast(be) : null;
+        if (be == null) {
+            SerialCraft.LOGGER.debug("No hay BlockEntity en {} para {}", pos, player.getGameProfile().name());
+            return null;
+        }
+
+        if (!type.isInstance(be)) {
+            SerialCraft.LOGGER.debug("BlockEntity en {} no es del tipo esperado {} (actual: {}) para {}",
+                    pos, type.getSimpleName(), be.getClass().getSimpleName(), player.getGameProfile().name());
+            return null;
+        }
+
+        return type.cast(be);
     }
 
     public static <T extends BlockEntity> @Nullable T resolve(
@@ -99,7 +126,6 @@ public final class NetGuard {
     public static void denyOwnership(ServerPlayer player) {
         player.sendSystemMessage(
                 Component.translatable("message.serialcraft.not_owner"));
-
     }
 
     /**
@@ -116,15 +142,21 @@ public final class NetGuard {
      */
     public static String sanitize(@Nullable String raw, int maxLength, String fallback) {
         if (raw == null) return fallback;
-        String cleaned = raw.replace('\u00A7', ' ')      // codigos de formato
-                .replaceAll("[\\p{Cntrl}]", "")
-                .trim();
+        String cleaned = CONTROL_CHARS.matcher(raw.replace('\u00A7', ' ')).replaceAll("").trim();
         if (cleaned.isEmpty()) return fallback;
-        return cleaned.length() > maxLength ? cleaned.substring(0, maxLength) : cleaned;
+        if (cleaned.length() > maxLength) {
+            cleaned = cleaned.substring(0, maxLength).trim();
+            if (cleaned.isEmpty()) return fallback;
+        }
+        return cleaned;
     }
 
     public static void logRejected(String packet, ServerPlayer player) {
         // FIX: GameProfile es un 'record' en Authlib actual, el getter es name()
         SerialCraft.LOGGER.debug("Paquete {} rechazado para {}", packet, player.getGameProfile().name());
+    }
+
+    public static void logRejected(String packet, ServerPlayer player, String reason) {
+        SerialCraft.LOGGER.debug("Paquete {} rechazado para {}: {}", packet, player.getGameProfile().name(), reason);
     }
 }

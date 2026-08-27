@@ -31,7 +31,7 @@ public final class ModNetworking {
 
     private ModNetworking() {}
 
-    // ── Limitadores ───────────────────────────────────────────────────────
+    // ── Limitadores ──────────────────────────────────────────────────────────
     //
     // Las cifras salen del uso real, no de un numero redondo:
     //  - SERIAL: una placa util no cambia de estado mas de ~20 veces/s (1 por
@@ -52,9 +52,9 @@ public final class ModNetworking {
     private static final int MIN_SPEED_MODE = 0;
     private static final int MAX_SPEED_MODE = 2;
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
     //  REGISTRO
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
 
     public static void registerPayloads() {
         var c2s = PayloadTypeRegistry.serverboundPlay();
@@ -88,9 +88,9 @@ public final class ModNetworking {
         registerConnectorConfig();
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
     //  RECEPTORES
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
 
     private static void registerConfig() {
         ServerPlayNetworking.registerGlobalReceiver(ConfigPayload.TYPE, (payload, context) -> {
@@ -135,11 +135,13 @@ public final class ModNetworking {
                                 NetGuard.MAX_MANAGEMENT_DISTANCE);
                 if (io == null) { NetGuard.logRejected("RemoteToggle", player); return; }
 
-                // ESTA comprobacion faltaba por completo en el original.
                 if (!NetGuard.canOperate(player, io.getOwnerUUID())) {
                     NetGuard.denyOwnership(player);
                     return;
                 }
+                // Placa sin dueno: se reclama en vez de quedar publica.
+                if (io.getOwnerUUID() == null) io.claim(player);
+
                 io.setEnabled(!io.isEnabled());
             });
         });
@@ -226,7 +228,7 @@ public final class ModNetworking {
         });
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════
 
     private static boolean isValidBaudRate(int baud) {
         for (int valid : VALID_BAUD_RATES) if (valid == baud) return true;

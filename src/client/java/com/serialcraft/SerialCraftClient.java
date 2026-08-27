@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.serialcraft.block.ArduinoIOBlock;
 import com.serialcraft.block.ModBlocks;
 import com.serialcraft.client.SerialDebugHud;
+import com.serialcraft.client.events.GameEventsTracker;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardListResponsePayload;
 import com.serialcraft.network.SerialOutputPayload;
@@ -68,6 +69,12 @@ public class SerialCraftClient implements ClientModInitializer {
         registerLifecycle();
         registerNetworkHandlers();
         registerBlockInteraction();
+
+        // Telemetria de la pestana Eventos: un unico hook de tick, la logica
+        // vive en GameEventsTracker para no convertir esta clase en el sitio
+        // donde termina todo (ver el comentario de clase de ConnectionManager
+        // sobre que paso con los tres duenos del estado de conexion).
+        ClientTickEvents.END_CLIENT_TICK.register(GameEventsTracker::tick);
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -83,6 +90,7 @@ public class SerialCraftClient implements ClientModInitializer {
             ConnectionManager.disconnectAll();
             ConnectionManager.clearHistory();
             PanelUI.clearSelectedDevice();
+            GameEventsTracker.reset();
             SerialDebugHud.addLog("Desconectado del mundo. Estado limpiado.");
         });
     }
