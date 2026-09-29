@@ -8,7 +8,7 @@ import org.jetbrains.annotations.NotNull;
 
 /** Tipo de senal transportada por el canal serial. */
 public enum SignalType implements StringRepresentable {
-    /** ON/OFF. Redstone 0 o 15, serial "0" o "1". */
+    /** ON/OFF. Redstone 0 o 15, serial "0" o "255". */
     DIGITAL("digital"),
     /** Proporcional. Redstone 0..15 <-> serial 0..255 (PWM). */
     ANALOG("analog");
@@ -32,13 +32,12 @@ public enum SignalType implements StringRepresentable {
     /**
      * Redstone (0-15) -> valor enviado a la placa.
      *
-     * Centraliza la conversion para que ambos extremos usen la MISMA escala.
-     * El codigo original enviaba 0-255 en salida pero al recibir clampeaba a
-     * 0-15, dejando el protocolo asimetrico: un 200 enviado volvia como 15.
+     * Centraliza la conversion para que ambos extremos usen la MISMA escala (0-255).
+     * En modo digital envia 0 o 255 para compatibilidad directa con PWM/analogWrite.
      */
     public int redstoneToWire(int redstone) {
         int rs = Math.clamp(redstone, 0, REDSTONE_MAX);
-        return this == DIGITAL ? (rs > 0 ? 1 : 0)
+        return this == DIGITAL ? (rs > 0 ? PWM_MAX : 0)
                                : Math.round((rs * (float) PWM_MAX) / REDSTONE_MAX);
     }
 

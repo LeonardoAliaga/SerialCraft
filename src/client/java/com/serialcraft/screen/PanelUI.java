@@ -6,8 +6,10 @@ import com.serialcraft.client.ui.pages.BoardsPage;
 import com.serialcraft.client.ui.pages.EventsPage;
 import com.serialcraft.client.ui.pages.HomePage;
 import com.serialcraft.client.ui.pages.Page;
+import com.serialcraft.client.ui.pages.VisualizePage;
 import com.serialcraft.client.ui.pages.WelcomePage;
 import com.serialcraft.connection.ConnectionManager;
+import com.serialcraft.connection.WifiHandler;
 import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.ConnectorPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -25,28 +27,13 @@ import java.util.Map;
 
 /**
  * Pantalla contenedora del panel.
- *
- * Reestructuracion respecto al original:
- *
- *  - Las paginas viven en un EnumMap<Tab, Page>, no en tres campos con tipo
- *    concreto. Los cuatro switch sobre la pestana activa (init, render, tick,
- *    removed) desaparecen. El de EVENTS, que estaba vacio en init y tick, era
- *    justo el sitio donde se olvidaria algo al implementar esa pagina.
- *
- *  - onClose() se llama SIEMPRE sobre todas las paginas al cerrar, no solo
- *    sobre dos de ellas y solo si el estado era DASHBOARD. Esa condicion era
- *    la causa de la fuga del Timer de latencia.
- *
- *  - El estado de conexion se consulta a ConnectionManager en vez de guardarse
- *    en un campo estatico propio. El campo estatico currentConnectedDevice
- *    podia contradecir al hardware real: de ahi las "conexiones fantasma".
  */
 public class PanelUI extends Screen {
 
     public enum AppState { WELCOME, DASHBOARD }
 
     /** El orden del enum define el orden de los botones en la barra lateral. */
-    public enum Tab { HOME, BOARDS, EVENTS }
+    public enum Tab { HOME, BOARDS, EVENTS, VISUALIZE }
 
     /** Descripcion del dispositivo que el jugador eligio conectar. */
     public record DeviceInfo(String name, String address, String type,
@@ -57,11 +44,28 @@ public class PanelUI extends Screen {
     /** Dispositivo elegido en esta sesion. Se limpia al salir del mundo. */
     private static @Nullable DeviceInfo selectedDevice = null;
 
-    public static @Nullable DeviceInfo getSelectedDevice() { return selectedDevice; }
+    public static @Nullable DeviceInfo getSelectedDevice() {
+        if (selectedDevice == null && ConnectionManager.isAnyConnected()) {
+            if (ConnectionManager.getWifi().isConnected()) {
+                String ip = ConnectionManager.getWifi().getRemoteIp();
+                selectedDevice = new DeviceInfo(
+                        Component.translatable("gui.serialcraft.welcome.wifi_board", ip).getString(),
+                        ip + ":" + WifiHandler.DEFAULT_PORT,
+                        "WIFI", "Wi-Fi",
+                        () -> {});
+            } else if (ConnectionManager.getSerial().isConnected()) {
+                String port = ConnectionManager.getSerial().getPortName();
+                selectedDevice = new DeviceInfo(
+                        port, port, "USB", "Serial",
+                        () -> {});
+            }
+        }
+        return selectedDevice;
+    }
 
     public static void clearSelectedDevice() { selectedDevice = null; }
 
-    // ── Estado de instancia ───────────────────────────────────────────────
+    // ── Estado de instancia ───────────────────────────────────────
 
     private final @Nullable BlockPos connectorPos;
     private @Nullable BlockPos pendingBoardEditPos;
@@ -74,16 +78,17 @@ public class PanelUI extends Screen {
     private final Map<Tab, Page> pages = new EnumMap<>(Tab.class);
     private final BoardsPage boardsPage = new BoardsPage();
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════════
 
     public PanelUI(@Nullable BlockPos connectorPos, @Nullable BlockPos boardEditPos) {
         super(Component.translatable("gui.serialcraft.panel.title"));
         this.connectorPos        = connectorPos;
         this.pendingBoardEditPos = boardEditPos;
 
-        pages.put(Tab.HOME,   new HomePage());
-        pages.put(Tab.BOARDS, boardsPage);
-        pages.put(Tab.EVENTS, new EventsPage());
+        pages.put(Tab.HOME,      new HomePage());
+        pages.put(Tab.BOARDS,    boardsPage);
+        pages.put(Tab.EVENTS,    new EventsPage());
+        pages.put(Tab.VISUALIZE, new VisualizePage());
 
         resolveInitialState();
     }
@@ -94,10 +99,6 @@ public class PanelUI extends Screen {
 
     /**
      * Decide si abrir en bienvenida o en panel.
-     *
-     * La verdad la tiene ConnectionManager, no un campo estatico: si el puerto
-     * se cerro por desconexion del cable mientras el panel estaba cerrado, el
-     * panel debe abrir en bienvenida aunque selectedDevice siga puesto.
      */
     private void resolveInitialState() {
         boolean hardwareUp = ConnectionManager.isAnyConnected();
@@ -109,13 +110,14 @@ public class PanelUI extends Screen {
         }
         if (hardwareUp) {
             this.appState = AppState.DASHBOARD;
+            getSelectedDevice(); // Asegurar inicializacion de selectedDevice si ya hay conexion
         } else {
             this.appState = AppState.WELCOME;
             selectedDevice = null; // limpiar estado obsoleto
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════════
 
     @Override
     protected void init() {
@@ -166,15 +168,13 @@ public class PanelUI extends Screen {
     @Override
     public void removed() {
         super.removed();
-        // Incondicional y sobre TODAS las paginas. La version anterior solo
-        // cerraba dos de ellas y solo en un estado, dejando hilos vivos.
         welcomePage.onClose();
         pages.values().forEach(Page::onClose);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════════
     //  API para las paginas
-    // ══════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════════
 
     public void setTab(Tab tab) {
         if (this.currentTab == tab && appState == AppState.DASHBOARD) {

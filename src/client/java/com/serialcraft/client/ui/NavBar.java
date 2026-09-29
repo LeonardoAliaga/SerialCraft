@@ -27,16 +27,18 @@ public class NavBar {
 
     private static TabStyle styleOf(PanelUI.Tab tab) {
         return switch (tab) {
-            case HOME   -> new TabStyle(SpriteIcon.HOME, "gui.serialcraft.tab.home",
-                                        UiTheme.ACCENT_HOME,   UiTheme.ACCENT_HOME_BORDER);
-            case BOARDS -> new TabStyle(SpriteIcon.LIST, "gui.serialcraft.tab.boards",
-                                        UiTheme.ACCENT_BOARDS, UiTheme.ACCENT_BOARDS_BORDER);
-            case EVENTS -> new TabStyle(SpriteIcon.BELL, "gui.serialcraft.tab.events",
-                                        UiTheme.ACCENT_EVENTS, UiTheme.ACCENT_EVENTS_BORDER);
+            case HOME      -> new TabStyle(SpriteIcon.HOME, "gui.serialcraft.tab.home",
+                                        UiTheme.ACCENT_HOME,      UiTheme.ACCENT_HOME_BORDER);
+            case BOARDS    -> new TabStyle(SpriteIcon.LIST, "gui.serialcraft.tab.boards",
+                                        UiTheme.ACCENT_BOARDS,    UiTheme.ACCENT_BOARDS_BORDER);
+            case EVENTS    -> new TabStyle(SpriteIcon.BELL, "gui.serialcraft.tab.events",
+                                        UiTheme.ACCENT_EVENTS,    UiTheme.ACCENT_EVENTS_BORDER);
+            case VISUALIZE -> new TabStyle(SpriteIcon.MONITOR, "gui.serialcraft.tab.visualize",
+                                        UiTheme.ACCENT_VISUALIZE, UiTheme.ACCENT_VISUALIZE_BORDER);
         };
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
 
     public void render(GuiGraphicsExtractor gui, int screenWidth, int screenHeight) {
         int navWidth = UiTheme.navWidth(screenWidth);
@@ -90,7 +92,7 @@ public class NavBar {
         }
     }
 
-    // ── Metricas ──────────────────────────────────────────────────────────
+    // ── Metricas ──────────────────────────────────────────────────
 
     private static int panelX(int screenWidth) {
         return (UiTheme.navWidth(screenWidth) * 10) / 100;

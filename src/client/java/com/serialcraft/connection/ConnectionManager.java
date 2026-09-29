@@ -28,7 +28,7 @@ public final class ConnectionManager {
     private static final WifiHandler   WIFI   = new WifiHandler();
     private static final List<BoardLink> LINKS = List.of(SERIAL, WIFI);
 
-    // ── Consola visual ────────────────────────────────────────────────────
+    // ── Consola visual ─────────────────────────────────────────────────
     //
     // ArrayDeque en vez de CopyOnWriteArrayList. El original hacia
     // messageHistory.remove(0) sobre una CopyOnWriteArrayList: cada mensaje
@@ -38,7 +38,7 @@ public final class ConnectionManager {
     private static final int MAX_HISTORY = 64;
     private static final Deque<String> HISTORY = new ArrayDeque<>(MAX_HISTORY);
 
-    // ── Control de tasa de salida ─────────────────────────────────────────
+    // ── Control de tasa de salida ──────────────────────────────────────
     //
     // El servidor ya limita la tasa de entrada, pero limitar tambien aqui evita
     // que el cliente se auto-desconecte por spam de paquetes (Minecraft expulsa
@@ -66,6 +66,7 @@ public final class ConnectionManager {
         }
 
         if (delivered) {
+            SerialDebugHud.addLog("TX: " + message);
             addHistory("TX: " + message);
         } else {
             SerialDebugHud.addLog("Sin placa conectada (USB/Wi-Fi).");
@@ -135,7 +136,7 @@ public final class ConnectionManager {
         return Component.translatable("gui.serialcraft.status.disconnected");
     }
 
-    // ── Historial ─────────────────────────────────────────────────────────
+    // ── Historial ──────────────────────────────────────────────────────
 
     private static void addHistory(String entry) {
         synchronized (HISTORY) {

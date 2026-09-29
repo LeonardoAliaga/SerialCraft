@@ -74,7 +74,7 @@ public final class GameEventsTracker {
 
         if (!firstSample) {
             if (currentHealth < previousHealth && cfg.isEnabled(GameEvent.DAMAGE_TAKEN)) {
-                int amount = Math.clamp(Math.round(previousHealth - currentHealth), 1, 255);
+                int amount = Math.max(1, Math.round(previousHealth - currentHealth));
                 send(GameEvent.DAMAGE_TAKEN, amount);
             }
             if (previousHealth > 0f && currentHealth <= 0f && cfg.isEnabled(GameEvent.DEATH)) {
@@ -89,13 +89,18 @@ public final class GameEventsTracker {
         for (GameEvent event : GameEvent.values()) {
             if (!event.isPeriodic() || !cfg.isEnabled(event)) continue;
 
-            int value = Math.clamp(event.sample(player, level), 0, 255);
+            int value = event.sample(player, level);
             Integer previous = lastSent.get(event);
             if (previous != null && previous == value) continue;
 
             lastSent.put(event, value);
             send(event, value);
         }
+    }
+
+    /** Invalida la cache de un evento para forzar su envio inmediato si esta activado. */
+    public static void invalidate(GameEvent event) {
+        lastSent.remove(event);
     }
 
     /** Limpia el estado al salir del mundo, para que el siguiente empiece de cero. */

@@ -30,30 +30,30 @@ import java.util.Locale;
 public enum GameEvent {
 
     GAME_TIME(Category.WORLD, Kind.PERIODIC, "mc_time",
-            (player, level) -> (int) (level.getDefaultClockTime() % 24000L)),
+            (player, level) -> (int) Math.floorMod(level.getDefaultClockTime(), 24000L)),
 
     DAY_PHASE(Category.WORLD, Kind.PERIODIC, "mc_isday",
-            (player, level) -> (level.getDefaultClockTime() % 24000L) < 12000L ? 1 : 0),
+            (player, level) -> Math.floorMod(level.getDefaultClockTime(), 24000L) < 12000L ? 1 : 0),
 
     WEATHER(Category.WORLD, Kind.PERIODIC, "mc_weather",
             (player, level) -> level.isThundering() ? 2 : (level.isRaining() ? 1 : 0)),
 
     HEALTH(Category.PLAYER, Kind.PERIODIC, "mc_health",
-            (player, level) -> Math.round(player.getHealth())),
+            (player, level) -> Math.max(0, Math.round(player.getHealth()))),
 
     HUNGER(Category.PLAYER, Kind.PERIODIC, "mc_hunger",
-            (player, level) -> player.getFoodData().getFoodLevel()),
+            (player, level) -> Math.max(0, player.getFoodData().getFoodLevel())),
 
     SATURATION(Category.PLAYER, Kind.PERIODIC, "mc_saturation",
-            (player, level) -> Math.round(player.getFoodData().getSaturationLevel())),
+            (player, level) -> Math.max(0, Math.round(player.getFoodData().getSaturationLevel()))),
 
     XP_LEVEL(Category.PLAYER, Kind.PERIODIC, "mc_level",
-            (player, level) -> player.experienceLevel),
+            (player, level) -> Math.max(0, player.experienceLevel)),
 
     OXYGEN(Category.PLAYER, Kind.PERIODIC, "mc_air",
             (player, level) -> player.getMaxAirSupply() <= 0
                     ? 100
-                    : Math.round(player.getAirSupply() * 100f / player.getMaxAirSupply())),
+                    : Math.clamp(Math.round(player.getAirSupply() * 100f / player.getMaxAirSupply()), 0, 100)),
 
     ON_FIRE(Category.COMBAT, Kind.PERIODIC, "mc_fire",
             (player, level) -> player.isOnFire() ? 1 : 0),

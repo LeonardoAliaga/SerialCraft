@@ -98,7 +98,6 @@ public class SerialCraftClient implements ClientModInitializer {
     private void registerNetworkHandlers() {
         ClientPlayNetworking.registerGlobalReceiver(SerialOutputPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
-                    SerialDebugHud.addLog("TX: " + payload.message());
                     ConnectionManager.sendMessageToBoard(payload.message());
                 }));
 

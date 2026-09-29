@@ -40,7 +40,7 @@ public final class EventsConfig {
 
     private static EventsConfig instance;
 
-    // ── Opciones guardadas ────────────────────────────────────────────────
+    // ── Opciones guardadas ─────────────────────────────────────────────
     //
     // Se guarda por nombre de constante (Set<String>), no un EnumSet ni un
     // array de ordinales: si en el futuro se anade o reordena un GameEvent,
@@ -82,7 +82,10 @@ public final class EventsConfig {
 
     public void setEnabled(GameEvent event, boolean value) {
         boolean changed = value ? enabledEvents.add(event.name()) : enabledEvents.remove(event.name());
-        if (changed) save();
+        if (changed) {
+            save();
+            GameEventsTracker.invalidate(event);
+        }
     }
 
     public void cycleInterval() {
