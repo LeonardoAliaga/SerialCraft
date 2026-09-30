@@ -22,6 +22,14 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
   Microcontrollers like Arduino Uno R3 reset when their USB serial connection opens (DTR signal). To avoid missing states, active channels are quietly resent every 5 seconds without flooding logs.
 * **Live UI wire indicators**:
   The **Events** tab displays live values next to each toggle (`mc_hunger:20`), and the console highlights incoming and outgoing telemetry with the `TM:` prefix.
+* **Migration to Minecraft 26.2 & Java 25**:
+  The mod runs on Fabric Loader for Minecraft 26.2 and requires **Java 25** as its runtime environment.
+* **Visualizer tab (Real-time oscilloscope monitor)**:
+  The Laptop now includes a dedicated **Visualizer** tab offering real-time waveform graphing (oscilloscope) for IO Block inputs and outputs (analog and digital), making circuit diagnosis fast and intuitive.
+* **Removal of ComputerCraft integration**:
+  External peripheral classes (`ArduinoPeripheral` and `CCIntegration`) were removed to streamline the mod and focus purely on direct, native real-world hardware integration and game telemetry.
+* **Integrated recipes**:
+  Crafting recipes are built directly into mod assets for Survival mode, compatible with the vanilla recipe book and recipe viewers (JEI/REI).
 
 ---
 
@@ -42,7 +50,7 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/) for **Minecraft 1.21.11**.
+1. Install [Fabric Loader](https://fabricmc.net/) for **Minecraft 26.2** (requires **Java 25**).
 2. Download `Fabric API` and the SerialCraft v0.4.6-beta `.jar`.
 3. Drop both into your `mods` folder.
 4. Launch the game.
@@ -53,7 +61,7 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 
 | Piece | Purpose |
 | :--- | :--- |
-| **Laptop** | Handheld item. Opens the interface: connection, board list, events, and console. |
+| **Laptop** | Handheld item. Opens the interface: connection, board list, events, visualizer (oscilloscope), and console. |
 | **Connector Block** | Anchors the USB connection in the world and stores the baud rate. |
 | **IO Block** | The actual bridge. Each has a `Target Data`, a mode (INPUT/OUTPUT), a signal type (Digital/Analog) and configurable sides. |
 

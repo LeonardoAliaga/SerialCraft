@@ -101,7 +101,8 @@ export default defineConfig({
                 { text: 'Escala unificada 0-255', link: '/protocol#_2-escala-unificada-0-255' },
                 { text: 'Wi-Fi y emparejamiento', link: '/protocol#_5-wi-fi-el-mod-es-el-servidor' },
                 { text: 'Cambios respecto a 0.3.x', link: '/protocol#_8-cambios-respecto-a-0-3-x' },
-                { text: 'Telemetría del juego', link: '/protocol#_10-telemetria-del-juego-minecraft-hardware' }
+                { text: 'Cambios respecto a 0.4.3', link: '/protocol#_9-cambios-respecto-a-0-4-3' },
+                { text: 'Telemetría del juego', link: '/protocol#_11-telemetria-del-juego-minecraft-hardware' }
               ]
             },
             {
@@ -112,7 +113,6 @@ export default defineConfig({
                 { text: 'ESP32 (Wi-Fi)', link: '/ejemplos/#_3-esp32-wi-fi' },
                 { text: 'Arduino Uno Q', link: '/ejemplos/#_4-arduino-uno-q-bridge-python' },
                 { text: 'Rutina de prueba', link: '/ejemplos/#_5-rutina-de-prueba' },
-                { text: 'Prompts para esquemas', link: '/ejemplos/esquemas-ia' }
               ]
             }
           ]
@@ -189,7 +189,8 @@ export default defineConfig({
                 { text: 'Unified 0-255 scale', link: '/en/protocol#_2-unified-0-255-scale' },
                 { text: 'Wi-Fi and pairing', link: '/en/protocol#_5-wi-fi-the-mod-is-the-server' },
                 { text: 'Changes from 0.3.x', link: '/en/protocol#_8-changes-from-0-3-x' },
-                { text: 'Game telemetry', link: '/en/protocol#_10-game-telemetry-minecraft-hardware' }
+                { text: 'Changes from 0.4.3', link: '/en/protocol#_9-changes-from-0-4-3' },
+                { text: 'Game telemetry', link: '/en/protocol#_11-game-telemetry-minecraft-hardware' }
               ]
             },
             {
@@ -200,7 +201,6 @@ export default defineConfig({
                 { text: 'ESP32 (Wi-Fi)', link: '/en/examples/#_3-esp32-wi-fi' },
                 { text: 'Arduino Uno Q', link: '/en/examples/#_4-arduino-uno-q-bridge-python' },
                 { text: 'Test routine', link: '/en/examples/#_5-test-routine' },
-                { text: 'Wiring diagram prompts', link: '/en/examples/wiring-prompts' }
               ]
             }
           ]

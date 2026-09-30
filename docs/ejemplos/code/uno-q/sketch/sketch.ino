@@ -1,7 +1,7 @@
 /*
  * SerialCraft Wi-Fi Bridge — Arduino Uno Q (lado MCU)
  * ============================================================
- * Mod SerialCraft v0.4.3 (Minecraft Fabric 1.21.11)
+ * Mod SerialCraft v0.4.6 (Minecraft Fabric 26.2, Java 25)
  *
  * Arquitectura:
  *   MCU (STM32U585) <-> Bridge <-> MPU (QRB2210 / Python) <-> TCP <-> Mod

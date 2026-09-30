@@ -22,7 +22,7 @@ features:
   - title: Code as Redstone
     details: Control Redstone with real sensors or activate physical LEDs with in-game events.
   - title: Native Multi-Language
-    details: The mod automatically detects your region. Available in English and Spanish (with localizations for Spain, Argentina, Mexico, and Peru).
+    details: The mod automatically detects your region. Available in English and Spanish (with localizations for Spain, Argentina, and Mexico).
 ---
 
 # What is SerialCraft?
@@ -56,5 +56,5 @@ The mod uses serial protocols (USB) and TCP sockets (Wi-Fi) to open a direct cha
 SerialCraft is an **Open Source** project.
 You are free to study the code, modify it, or use it in your modpacks.
 
-* **Supported Languages:** English (US), Spanish (Spain, Argentina, Mexico, Peru).
+* **Supported Languages:** English (US), Spanish (Spain, Argentina, Mexico).
 * **Found a bug?** [Report it on GitHub](https://github.com/leonardoaliaga/serialcraft/issues).

@@ -1,4 +1,4 @@
-# Ejemplos y pruebas (v0.4.3)
+# Ejemplos y pruebas (v0.4.6)
 
 Tres montajes equivalentes del **mismo circuito** sobre plataformas distintas: un potenciómetro que controla un nivel de redstone dentro de Minecraft, y un LED físico cuyo brillo lo decide la redstone del juego.
 
@@ -59,7 +59,7 @@ El sketch usa `Serial.begin(115200)`. Si cambias uno de los dos valores, cambia 
 /*
  * SerialCraft USB Bridge — Arduino Uno R3
  * ============================================================
- * Mod SerialCraft v0.4.3 (Minecraft Fabric 1.21.11)
+ * Mod SerialCraft v0.4.6 (Minecraft Fabric 26.2, Java 25)
  * Comunicacion directa por cable USB (Serial).
  *
  * Hardware:
@@ -70,16 +70,20 @@ El sketch usa `Serial.begin(115200)`. Si cambias uno de los dos valores, cambia 
  *   - Target Data "pot_val"   -> modo INPUT   (placa -> Minecraft)
  *   - Target Data "led_verde" -> modo OUTPUT  (Minecraft -> placa)
  *
- * Protocolo (escala unificada 0-255 en AMBOS sentidos desde v0.4.3):
- *   - Enviar al mod:   "pot_val:<0-255>\n"
- *   - Recibir del mod: "led_verde:<0-255>\n"
+ * Protocolo y Canales:
+ *   - Canal Bloques IO:
+ *       Enviar al mod:   "pot_val:<0-255>\n"
+ *       Recibir del mod: "led_verde:<0-255>\n"
+ *   - Telemetria del juego:
+ *       Prefijo reservado "mc_" (ej. "mc_health:20\n", "mc_damage:4\n").
+ *       Permite descarte inmediato si la placa solo maneja pines.
  *
  * IMPORTANTE: los baudios de este sketch y los del Bloque Conector en el
  * juego deben coincidir. Aqui usamos 115200, que es el valor por defecto
  * del mod. Si los cambias en uno, cambialos en el otro.
  */
 
-// ── Pines ──────────────────────────────────────────────────
+// ── Pines ────────────────────────────────────────────────────────────
 const int POT_PIN = A0;
 const int LED_PIN = 9;
 
@@ -87,7 +91,7 @@ const int LED_PIN = 9;
 const char* BLOCK_ID_POT = "pot_val";
 const char* BLOCK_ID_LED = "led_verde";
 
-// ── Protocolo ──────────────────────────────────────────────
+// ── Protocolo ────────────────────────────────────────────────────────
 const long  BAUD_RATE     = 115200;  // debe coincidir con el Bloque Conector
 const int   ADC_MAX       = 1023;    // ADC de 10 bits del ATmega328P
 const int   PWM_MAX       = 255;
@@ -95,7 +99,7 @@ const int   POT_HYSTERESIS = 2;      // ignora ruido electrico del pot
 const int   BUFFER_LIMIT  = 48;      // el mod corta lineas de mas de 256
 const unsigned long LOOP_DELAY_MS = 30;  // ~33 msg/s < limite de 40/s del mod
 
-// ── Estado ─────────────────────────────────────────────────
+// ── Estado ───────────────────────────────────────────────────────────
 int    lastPotValue = -1;
 String inputBuffer  = "";
 
@@ -157,7 +161,14 @@ void readIncomingCommands() {
 
 void processCommand(String command) {
   command.trim();
+  if (command.length() == 0) return;
 
+  // 1. Discriminacion de telemetria:
+  // Si comienza por "mc_", pertenece a la telemetria del juego (mc_time, mc_health...).
+  // Al no procesar telemetria en este sketch, lo descartamos de inmediato sin procesar.
+  if (command.startsWith("mc_")) return;
+
+  // 2. Canal de bloques IO (<TARGET_DATA>:<VALOR>)
   int sep = command.indexOf(':');
   if (sep <= 0 || sep == command.length() - 1) return;  // "cmd", ":5" o "cmd:"
 
@@ -211,7 +222,7 @@ Laptop → Inicio → **Iniciar servidor Wi-Fi**. Copia al sketch la IP, el puer
 /*
  * SerialCraft Wi-Fi Bridge — ESP32
  * ============================================================
- * Mod SerialCraft v0.4.3 (Minecraft Fabric 1.21.11)
+ * Mod SerialCraft v0.4.6 (Minecraft Fabric 26.2, Java 25)
  *
  * DIRECCION DE LA CONEXION (cambio importante en v0.4.3):
  *   El MOD es el servidor TCP y la PLACA es el cliente.
@@ -222,6 +233,10 @@ Laptop → Inicio → **Iniciar servidor Wi-Fi**. Copia al sketch la IP, el puer
  *
  * Handshake obligatorio: la primera linea que envia la placa debe ser el
  * token. El mod responde "OK" o cierra con "ERR TOKEN".
+ *
+ * Canales de comunicacion:
+ *   - Canal de Bloques IO: "<id>:[0-255]\n"
+ *   - Telemetria del juego: "mc_<clave>:[valor]\n"
  *
  * Hardware:
  *   - Potenciometro en GPIO34 (ADC1, solo entrada; extremos a 3V3 y GND)
@@ -237,16 +252,16 @@ Laptop → Inicio → **Iniciar servidor Wi-Fi**. Copia al sketch la IP, el puer
 
 #include <WiFi.h>
 
-// ═══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
 //  CONFIGURACION  <- EDITA ESTO
-// ═══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
 const char* WIFI_SSID     = "TU_WIFI";
 const char* WIFI_PASSWORD = "TU_PASSWORD";
 
 const char* MINECRAFT_IP   = "192.168.1.50";  // IP que muestra la Laptop
 const uint16_t MINECRAFT_PORT = 25585;        // puerto por defecto del mod
 const char* PAIRING_TOKEN  = "XXXXXX";        // token que muestra la Laptop
-// ═══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
 
 const char* BLOCK_ID_POT = "pot_val";
 const char* BLOCK_ID_LED = "led_verde";
@@ -312,7 +327,7 @@ void loop() {
   sendPotentiometer();
 }
 
-// ── Conexion + handshake ───────────────────────────────────
+// ── Conexion + handshake ─────────────────────────────────────
 void connectToMod() {
   Serial.printf("Conectando a %s:%u ...\n", MINECRAFT_IP, MINECRAFT_PORT);
 
@@ -344,7 +359,7 @@ void connectToMod() {
   lastPotValue = -1;          // forzar el primer envio
 }
 
-// ── Minecraft -> LED ───────────────────────────────────────
+// ── Minecraft -> LED ─────────────────────────────────────────
 void readIncoming() {
   while (client.available()) {
     char c = client.read();
@@ -366,7 +381,14 @@ void readIncoming() {
 
 void processCommand(String command) {
   command.trim();
+  if (command.length() == 0) return;
 
+  // 1. Discriminacion de telemetria:
+  // Si comienza por "mc_", es telemetria del juego (mc_time, mc_health, etc.).
+  // Si la placa solo controla pines fisicos de redstone, se descarta directamente.
+  if (command.startsWith("mc_")) return;
+
+  // 2. Canal de bloques IO (<id>:[0-255])
   int sep = command.indexOf(':');
   if (sep <= 0 || sep == command.length() - 1) return;
 
@@ -380,7 +402,7 @@ void processCommand(String command) {
   }
 }
 
-// ── Potenciometro -> Minecraft ─────────────────────────────
+// ── Potenciometro -> Minecraft ───────────────────────────────
 void sendPotentiometer() {
   if (millis() - lastPotRead < POT_INTERVAL_MS) return;
   lastPotRead = millis();

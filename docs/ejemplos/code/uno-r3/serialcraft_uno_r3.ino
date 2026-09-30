@@ -1,7 +1,7 @@
 /*
  * SerialCraft USB Bridge — Arduino Uno R3
  * ============================================================
- * Mod SerialCraft v0.4.6 (Minecraft Fabric 1.21.11)
+ * Mod SerialCraft v0.4.6 (Minecraft Fabric 26.2, Java 25)
  * Comunicacion directa por cable USB (Serial).
  *
  * Hardware:

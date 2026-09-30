@@ -164,13 +164,30 @@ If the condition is not met the block neither emits nor accepts data, and drops 
 
 ---
 
-## 9. Full examples
+## 9. Changes from 0.4.3
+
+Version 0.4.6 introduces the game telemetry channel and enforces isolation between block signals and game state:
+
+1. **Reserved `mc_` prefix**:
+   The `mc_` prefix is strictly reserved for in-game telemetry (`mc_time`, `mc_health`, `mc_damage`, etc.).
+   * **Server-side rejection:** The server rejects any attempt to configure an IO Block whose `Target Data` starts with `mc_`, warning the player with a clear message (`message.serialcraft.reserved_key`).
+   * **Input discard:** In `ArduinoIOBlockEntity`, any message received from the board that begins with `mc_` is discarded immediately in $O(1)$ without touching redstone or NBT.
+2. **Game telemetry (Minecraft ➔ Hardware)**:
+   Player and world events are streamed to the microcontroller using the format `mc_<channel>:<integer>\n` enabled from the Laptop's **Events** tab.
+3. **Pacing and flow control**:
+   Outbound telemetry is strictly throttled to at most **1 line per tick** (20 lines/s max) via `TelemetryOutbox`, giving priority to edge events over state snapshots to avoid overflowing the 64-byte serial buffer on boards like the ATmega328P.
+4. **Periodic 5-second state resends**:
+   Active periodic channels are quietly resent every 100 ticks (5 s) without console spam, ensuring microcontrollers that reset upon opening serial DTR lines acquire current state without manual intervention.
+
+---
+
+## 10. Full examples
 
 Ready-to-flash sketches in [Examples and testing](/en/examples/): Arduino Uno R3 (USB), ESP32 (Wi-Fi) and Arduino Uno Q (Bridge + Python), with wiring diagrams.
 
 ---
 
-## 10. Game telemetry (Minecraft ➔ Hardware)
+## 11. Game telemetry (Minecraft ➔ Hardware)
 
 ::: tip New in 0.4.6-beta
 The panel's **Events** tab lets you choose which game data (time of day, hunger, damage taken...) is sent to the board. It is the same USB or Wi-Fi channel as in the previous sections; only the line format differs.

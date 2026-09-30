@@ -22,6 +22,14 @@ El uso de herramientas de inteligencia artificial es estratégico. **El proyecto
   Para placas como Arduino Uno R3 que se reinician al abrir la conexión USB (DTR), el mod reenvía periódicamente los estados activos para que la placa siempre reciba el estado actual sin requerir intervención manual.
 * **Valores en vivo en la interfaz**:
   La pestaña **Eventos** muestra al lado de cada interruptor el valor actual en el cable serial (`mc_hunger:20`), y la consola resalta los paquetes de telemetría (`TM:`).
+* **Migración a Minecraft 26.2 y Java 25**:
+  El mod corre sobre Fabric Loader para Minecraft 26.2 y requiere **Java 25** como entorno de ejecución estándar.
+* **Pestaña Visualizar (Monitor y Osciloscopio en tiempo real)**:
+  La Laptop incorpora una nueva pestaña **Visualizar**, que ofrece una gráfica interactiva en tiempo real del flujo de señales de los bloques IO (entradas y salidas analógicas y digitales) para diagnosticar circuitos rápidamente.
+* **Eliminación de ComputerCraft**:
+  Se eliminaron las clases de integración periférica (`ArduinoPeripheral` y `CCIntegration`), simplificando el mod para centrarse exclusivamente en la interacción nativa de hardware real con redstone y telemetría.
+* **Recetas integradas**:
+  Las recetas de crafteo están completamente integradas en los assets para supervivencia y son compatibles con el libro de recetas vainilla y visores como JEI/REI.
 
 ---
 
@@ -42,7 +50,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 
 ## Instalación
 
-1. Instala [Fabric Loader](https://fabricmc.net/) para **Minecraft 1.21.11**.
+1. Instala [Fabric Loader](https://fabricmc.net/) para **Minecraft 26.2** (requiere **Java 25**).
 2. Descarga `Fabric API` y el `.jar` de SerialCraft v0.4.6-beta.
 3. Coloca ambos en tu carpeta `mods`.
 4. Inicia el juego.
@@ -53,7 +61,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 
 | Elemento | Para qué sirve |
 | :--- | :--- |
-| **Laptop** | Objeto de mano. Abre la interfaz: conexión, lista de placas, eventos y consola. |
+| **Laptop** | Objeto de mano. Abre la interfaz: conexión, lista de placas, eventos, visualizar (osciloscopio) y consola. |
 | **Bloque Conector** | Ancla la conexión por USB en el mundo y guarda los baudios. |
 | **Bloque IO** | El puente real. Cada uno tiene un `Target Data`, un modo (INPUT/OUTPUT), un tipo de señal (Digital/Analógica) y lados configurables. |
 

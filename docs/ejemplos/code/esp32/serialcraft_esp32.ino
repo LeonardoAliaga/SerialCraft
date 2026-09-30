@@ -1,7 +1,7 @@
 /*
  * SerialCraft Wi-Fi Bridge — ESP32
  * ============================================================
- * Mod SerialCraft v0.4.6 (Minecraft Fabric 1.21.11)
+ * Mod SerialCraft v0.4.6 (Minecraft Fabric 26.2, Java 25)
  *
  * DIRECCION DE LA CONEXION (cambio importante en v0.4.3):
  *   El MOD es el servidor TCP y la PLACA es el cliente.

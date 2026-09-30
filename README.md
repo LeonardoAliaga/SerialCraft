@@ -5,8 +5,9 @@
 - [Documentación](https://github.com/leonardoaliaga/serialcraft)
 
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.21.11-2d8528?style=for-the-badge)](https://www.minecraft.net/)
-[![Versión](https://img.shields.io/badge/Versión-0.4.3--beta-c96f4a?style=for-the-badge)](RELEASE-0.4.3.md)
+[![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
+[![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge)](https://adoptium.net/)
+[![Versión](https://img.shields.io/badge/Versión-0.4.6--beta-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
 [![Licencia](https://img.shields.io/badge/Licencia-CC0_1.0-8a9a7b?style=for-the-badge)](LICENSE)
 
 **SerialCraft** es un mod experimental y educativo que rompe la cuarta pared: permite comunicación bidireccional en tiempo real entre un **Arduino** (o cualquier dispositivo serial) y **Minecraft**, escrito en Java sobre Fabric.
@@ -21,7 +22,7 @@ No es solo una demostración técnica. Está diseñado para encajar de forma nat
 El cerebro de la operación. En SerialCraft la conexión no aparece por arte de magia: hay que construirla.
 
 * **Integración en Survival:** la Laptop es un bloque crafteable. Tienes que reunir los recursos, así que encaja en el equilibrio de una partida de supervivencia.
-* **La interfaz:** al hacer clic derecho se abre una interfaz con cuatro páginas — Inicio, Conexión, Placas y Consola. El escaneo de puertos es automático: no necesitas saber qué es un puerto COM.
+* **La interfaz:** al hacer clic derecho se abre una interfaz con cinco páginas — Inicio, Conexión, Placas, Eventos, Visualizar y Consola. El escaneo de puertos es automático: no necesitas saber qué es un puerto COM.
 
 ### ⚡ Físico ➔ digital (entrada)
 Controla tu mundo con componentes reales.
@@ -96,7 +97,8 @@ Este mod es un tributo a esa conexión: usar código para cerrar el circuito ent
 
 ### Requisitos
 
-* **Minecraft:** 1.21.11
+* **Minecraft:** 26.2
+* **Java:** 25 o superior
 * **Loader:** Fabric
 * **Dependencia:** [Fabric API](https://modrinth.com/mod/fabric-api)
 * **Hardware:** Arduino Uno R3, Uno Q, ESP32, o cualquier microcontrolador con comunicación serial o TCP.
@@ -135,8 +137,7 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 * [Guía de instalación y uso](docs/guide.md)
 * [Referencia de protocolo](docs/protocol.md)
 * [Ejemplos y rutina de prueba](docs/ejemplos/)
-* [Prompts para generar esquemas de conexión](docs/ejemplos/esquemas-ia.md)
-* [Novedades de la v0.4.3](RELEASE-0.4.3.md)
+* [Notas de versión en GitHub Releases](https://github.com/LeonardoAliaga/serialcraft/releases)
 
 ---
 

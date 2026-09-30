@@ -1,7 +1,7 @@
-# Protocolo Bidireccional y Hardware (v0.4.3)
+# Protocolo Bidireccional y Hardware (v0.4.6)
 
-::: warning Versión Beta 0.4.3
-Esta versión **rompe compatibilidad** con los sketches escritos para la 0.3.x en dos puntos: la escala de los valores y la dirección de la conexión Wi-Fi. Lee la sección [Cambios respecto a 0.3.x](#_8-cambios-respecto-a-0-3-x) antes de reutilizar código antiguo.
+::: warning Versión Beta 0.4.6
+Esta especificación corresponde a **SerialCraft v0.4.6-beta**. Si vienes de la versión 0.4.3 o 0.3.x, consulta las secciones [Cambios respecto a 0.4.3](#_9-cambios-respecto-a-0-4-3) y [Cambios respecto a 0.3.x](#_8-cambios-respecto-a-0-3-x) para conocer las diferencias en el cable y la reserva del prefijo `mc_`.
 :::
 
 ## 1. Especificaciones de comunicación
@@ -164,13 +164,30 @@ Si la condición no se cumple, el bloque no emite ni acepta datos y deja su sali
 
 ---
 
-## 9. Ejemplos completos
+## 9. Cambios respecto a 0.4.3
+
+La versión 0.4.6 introduce el canal de telemetría y refuerza el aislamiento entre señales de bloques y datos del juego:
+
+1. **Prefijo reservado `mc_`**:
+   El prefijo `mc_` queda estrictamente reservado para la telemetría del juego (`mc_time`, `mc_health`, `mc_damage`, etc.).
+   * **Rechazo en servidor:** el servidor rechaza cualquier intento de configurar un Bloque IO cuyo `Target Data` comience por `mc_`, notificando al jugador con el mensaje `message.serialcraft.reserved_key`.
+   * **Descarte en entrada:** en `ArduinoIOBlockEntity`, cualquier paquete recibido desde el hardware que comience por `mc_` se descarta de inmediato en $O(1)$ sin procesar redstone ni modificar NBT.
+2. **Telemetría del juego hacia el hardware**:
+   Los eventos del jugador y del entorno se emiten hacia la placa mediante el formato `mc_<canal>:<entero>\n` activándolos desde la pestaña **Eventos** de la Laptop.
+3. **Control de flujo y ritmo (Pacing)**:
+   El envío de telemetría está estrictamente dosificado a un máximo de **1 línea por tick** (techo de 20 líneas/s) mediante `TelemetryOutbox`, con prioridad de sucesos frente a estados, evitando desbordar el búfer serie de 64 bytes en microcontroladores como el ATmega328P de Arduino Uno.
+4. **Reenvío periódico cada 5 segundos**:
+   Los canales periódicos activos se reenvían silenciosamente cada 100 ticks (5 s) sin emitir mensajes en la consola HUD, garantizando que microcontroladores que se reinician al abrir la conexión USB (DTR) adquieran el estado actual sin reconexión manual.
+
+---
+
+## 10. Ejemplos completos
 
 Sketches listos para cargar en [Ejemplos y pruebas](/ejemplos/): Arduino Uno R3 (USB), ESP32 (Wi-Fi) y Arduino Uno Q (Bridge + Python), con sus esquemas de conexión.
 
 ---
 
-## 10. Telemetría del juego (Minecraft ➔ Hardware)
+## 11. Telemetría del juego (Minecraft ➔ Hardware)
 
 ::: tip Novedad de la 0.4.6-beta
 La pestaña **Eventos** del panel permite elegir qué datos del juego (hora, hambre, daño recibido...) se envían a la placa. Es el mismo canal USB o Wi-Fi de las secciones anteriores; solo cambia el formato de las líneas.

@@ -1,7 +1,7 @@
 """
 SerialCraft Wi-Fi Bridge — Arduino Uno Q (lado MPU / Python)
 ============================================================
-Mod SerialCraft v0.4.3 (Minecraft Fabric 1.21.11)
+Mod SerialCraft v0.4.6 (Minecraft Fabric 26.2, Java 25)
 
 Corre en el Qualcomm QRB2210 (Linux) del Arduino Uno Q y se conecta como
 CLIENTE TCP al servidor Wi-Fi que levanta el mod desde la Laptop.
@@ -91,6 +91,8 @@ def receive_loop(connection: socket.socket) -> None:
 
 def process_mod_message(line: str) -> None:
     """Interpreta  BLOCK_ID:VALOR  y aplica la accion en el MCU."""
+    if line.startswith("mc_"):
+        return  # Telemetria del juego ignorada en este puente de pines
     block_id, sep, value_str = line.partition(":")
     if not sep:
         print(f"[Mod] Mensaje sin separador: {line!r}")
