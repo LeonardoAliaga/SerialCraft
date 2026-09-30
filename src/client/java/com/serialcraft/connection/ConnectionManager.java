@@ -60,10 +60,7 @@ public final class ConnectionManager {
     // ══════════════════════════════════════════════════════════════════════
 
     public static void sendMessageToBoard(String message) {
-        boolean delivered = false;
-        for (BoardLink link : LINKS) {
-            if (link.isConnected()) { link.send(message); delivered = true; }
-        }
+        boolean delivered = deliver(message);
 
         if (delivered) {
             SerialDebugHud.addLog("TX: " + message);
@@ -72,6 +69,36 @@ public final class ConnectionManager {
             SerialDebugHud.addLog("Sin placa conectada (USB/Wi-Fi).");
             addHistory("ERR: sin conexion");
         }
+    }
+
+    /**
+     * Envia una linea de telemetria (protocolo mc_clave:valor). Distinta de
+     * sendMessageToBoard en dos cosas, ambas a proposito:
+     *
+     *  - No registra "ERR: sin conexion" si no hay placa: el tracker ya
+     *    comprueba la conexion, y un enlace que se cae entre esa comprobacion
+     *    y este envio no merece una linea de error por cada dato pendiente.
+     *  - Se registra con el prefijo "TM:", para distinguir en la consola lo que
+     *    genera la pestana Eventos de lo que generan los Bloques IO (TX:).
+     *    {@code quiet} suprime el registro de los reenvios periodicos.
+     *
+     * @return true si al menos un enlace lo entrego
+     */
+    public static boolean sendTelemetry(String line, boolean quiet) {
+        boolean delivered = deliver(line);
+        if (delivered && !quiet) {
+            SerialDebugHud.addLog("TM: " + line);
+            addHistory("TM: " + line);
+        }
+        return delivered;
+    }
+
+    private static boolean deliver(String message) {
+        boolean delivered = false;
+        for (BoardLink link : LINKS) {
+            if (link.isConnected()) { link.send(message); delivered = true; }
+        }
+        return delivered;
     }
 
     // ══════════════════════════════════════════════════════════════════════

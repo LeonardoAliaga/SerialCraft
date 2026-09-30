@@ -121,6 +121,7 @@ public class EventsPage implements Page {
         for (String entry : entries) {
             int color = entry.startsWith("TX:") ? UiTheme.OK
                       : entry.startsWith("RX:") ? UiTheme.INFO
+                      : entry.startsWith("TM:") ? UiTheme.WARN
                       : UiTheme.ERROR;
             gui.text(font, font.plainSubstrByWidth(entry, width - 12),
                     x + 6, y, color, false);

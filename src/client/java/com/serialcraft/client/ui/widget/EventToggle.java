@@ -1,6 +1,7 @@
 package com.serialcraft.client.ui.widget;
 
 import com.serialcraft.client.events.GameEvent;
+import com.serialcraft.client.events.GameEventsTracker;
 import com.serialcraft.client.ui.UiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -16,7 +17,10 @@ import java.util.function.BiConsumer;
 
 /**
  * Fila de la pestana Eventos: casilla, nombre del dato y la clave con la que
- * viaja por el cable, alineada a la derecha.
+ * viaja por el cable, alineada a la derecha. Con el dato activo y ya enviado,
+ * la clave se muestra con su ultimo valor ("mc_hunger:20"): es exactamente la
+ * linea que ve la placa, y permite comprobar la telemetria sin abrir el
+ * monitor serie.
  *
  * Toda la fila reacciona al clic, no solo el cuadrado de 10x10: en una lista
  * de once filas apretadas exigir precision de pixel sobre la casilla es lo
@@ -64,7 +68,8 @@ public class EventToggle extends AbstractWidget {
         }
 
         Font font = Minecraft.getInstance().font;
-        String key = event.wireKey();
+        Integer live = checked ? GameEventsTracker.lastValue(event) : null;
+        String key = live == null ? event.wireKey() : event.wireKey() + ":" + live;
         int keyWidth = font.width(key);
         int textY = y + (height - font.lineHeight) / 2 + 1;
 

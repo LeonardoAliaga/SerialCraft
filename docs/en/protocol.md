@@ -167,3 +167,161 @@ If the condition is not met the block neither emits nor accepts data, and drops 
 ## 9. Full examples
 
 Ready-to-flash sketches in [Examples and testing](/en/examples/): Arduino Uno R3 (USB), ESP32 (Wi-Fi) and Arduino Uno Q (Bridge + Python), with wiring diagrams.
+
+---
+
+## 10. Game telemetry (Minecraft ➔ Hardware)
+
+::: tip New in 0.4.6-beta
+The panel's **Events** tab lets you choose which game data (time of day, hunger, damage taken...) is sent to the board. It is the same USB or Wi-Fi channel as in the previous sections; only the line format differs.
+:::
+
+### Format
+
+```text
+mc_<channel>:<integer>\n
+```
+
+| Rule | Detail |
+| :--- | :--- |
+| **Reserved prefix `mc_`** | No IO Block may use it as `Target Data` (the server rejects the configuration with a notice). A board can therefore never mistake game data for a redstone command. |
+| **Key** | `mc_[a-z0-9_]{1,29}`: lowercase letters, digits and `_`, 32 characters at most. |
+| **Value** | Signed decimal integer. Every channel fits a 16-bit `int` (the size on an Arduino Uno). Each channel also promises its own, narrower range, listed below. |
+| **Off by default** | No channel is sent until you tick it in the tab. An older sketch never receives lines it did not ask for. |
+| **Unknown keys** | Your sketch must ignore them. New channels will be added without breaking existing ones. |
+
+### Channels
+
+| Key | Kind | Range | Meaning |
+| :--- | :--- | :--- | :--- |
+| `mc_time` | State | 0-23999 | Time of day in ticks: `0` = 06:00, `6000` = 12:00, `12000` = 18:00, `18000` = 00:00. A day lasts 20 real minutes (20 ticks/s). |
+| `mc_isday` | State | 0-1 | `1` if `mc_time` is below 12000. |
+| `mc_weather` | State | 0-2 | `0` clear, `1` rain, `2` thunderstorm. |
+| `mc_health` | State | 0-1024 | Health in points, rounded (2 points = 1 heart). |
+| `mc_hunger` | State | 0-20 | Hunger level. |
+| `mc_saturation` | State | 0-20 | Saturation, rounded. |
+| `mc_level` | State | 0-32767 | Experience level. |
+| `mc_air` | State | 0-100 | Remaining air, as a percentage. |
+| `mc_fire` | State | 0-1 | `1` while the player is on fire. |
+| `mc_damage` | Event | 1-32767 | Health points lost between two consecutive ticks. It is a net loss: damage absorbed by golden hearts and the cut-back when a bonus-health effect ends do not count. |
+| `mc_death` | Event | 1 | The player has died. The line appearing is the event; the value is always `1`. |
+
+`mc_time` follows the clock of the dimension the player is in. In dimensions without their own day/night cycle it may stay fixed; the channel is meant for the Overworld.
+
+### Delivery guarantees
+
+| | **State** | **Event** |
+| :--- | :--- | :--- |
+| **When it is sent** | On change, at the interval chosen in the tab (0.25 to 10 s), and **every 5 s even if unchanged** | Once per occurrence |
+| **Resent** | Yes | **Never**: repeating it would make the board think there was another hit |
+| **If it is lost** | Recovered at the next resend | Lost: there is no acknowledgement |
+
+What this means for your sketch:
+
+* **Treat states as idempotent.** Receiving `mc_hunger:20` twice must change nothing.
+* **The 5 s resend exists because of USB.** An Arduino Uno resets when the computer opens its port, and the first lines land inside the bootloader's startup. Without a resend, a stable value would never arrive.
+* **Pacing.** At most **one line per tick** (20 lines/s), with events ahead of states. On connect, the full snapshot takes a few hundred milliseconds. The event queue holds 16; when full, the oldest is dropped.
+* **Game data and IO Block outputs share the same channel.** Tell them apart by the `mc_` prefix.
+
+### Example: ESP32 clock with a servo
+
+The hand sweeps 0° → 180° during the day and back to 0° at night (a standard servo cannot turn a full circle). Enable **Time of day** in the Events tab. The board interpolates between messages so the motion is smooth, and stops after 15 s without news so it does not drift while the game is paused.
+
+```cpp
+#include <WiFi.h>
+#include <ESP32Servo.h>
+
+// ── Settings ─────────────────────────────────────────────────
+const char*    WIFI_SSID = "TU_WIFI";
+const char*    WIFI_PASS = "TU_CLAVE";
+const char*    MOD_HOST  = "192.168.1.50";  // IP shown by the mod's Laptop
+const uint16_t MOD_PORT  = 25585;
+const char*    MOD_TOKEN = "ABC123";        // token shown by the mod's Laptop
+const int      SERVO_PIN = 18;              // power the servo from an external 5 V supply
+
+WiFiClient client;
+Servo hand;
+
+// Last time received and the local instant it arrived
+long          baseTicks  = 0;
+unsigned long baseMillis = 0;
+bool          haveTime   = false;
+
+int           currentAngle = 0;
+unsigned long lastStep     = 0;
+unsigned long lastTry      = 0;
+
+// 20 ticks/s = 1 tick every 50 ms. With no news from the mod for 15 s (above the
+// tab's maximum interval of 10 s) the hand stops advancing on its own, so it
+// does not drift while the game is paused.
+long estimatedTicks() {
+  long elapsed = (long)((millis() - baseMillis) / 50UL);
+  if (elapsed > 300) elapsed = 300;
+  return (baseTicks + elapsed) % 24000L;
+}
+
+// Day (0-12000): 0° -> 180°.  Night (12000-24000): 180° -> 0°.
+int targetAngle(long t) {
+  if (t < 12000L) return (int)(t * 180L / 12000L);
+  return (int)((24000L - t) * 180L / 12000L);
+}
+
+void handleLine(String line) {
+  line.trim();
+  int sep = line.indexOf(':');
+  if (sep <= 0) return;                        // not a KEY:VALUE line
+  String key  = line.substring(0, sep);
+  long   value = line.substring(sep + 1).toInt();
+
+  if (key == "mc_time") {
+    baseTicks  = value;
+    baseMillis = millis();
+    haveTime   = true;
+  }
+  // Unknown keys are ignored: the sketch keeps working if you enable more
+  // data in the Events tab.
+}
+
+bool connectToMod() {
+  if (!client.connect(MOD_HOST, MOD_PORT)) return false;
+  client.print(String(MOD_TOKEN) + "\n");      // the token is the first line
+  String reply = client.readStringUntil('\n');
+  reply.trim();
+  return reply == "OK";
+}
+
+void moveHand() {
+  if (millis() - lastStep < 15) return;        // at most 1° every 15 ms
+  lastStep = millis();
+  int target = targetAngle(estimatedTicks());
+  if (currentAngle == target) return;
+  currentAngle += (currentAngle < target) ? 1 : -1;
+  hand.write(currentAngle);
+}
+
+void setup() {
+  hand.setPeriodHertz(50);
+  hand.attach(SERVO_PIN, 500, 2400);
+  hand.write(currentAngle);
+
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) delay(250);
+}
+
+void loop() {
+  if (!client.connected()) {
+    if (millis() - lastTry > 2000) {           // retry every 2 s
+      lastTry = millis();
+      connectToMod();
+    }
+    return;
+  }
+
+  while (client.available()) handleLine(client.readStringUntil('\n'));
+  if (haveTime) moveHand();
+}
+```
+
+::: warning Do not power the servo from the ESP32
+Use its own 5 V supply and join the grounds. The ESP32's 3.3 V pin cannot supply a servo's startup current spike.
+:::

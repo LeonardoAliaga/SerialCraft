@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -46,13 +45,13 @@ public final class EventsConfig {
     // array de ordinales: si en el futuro se anade o reordena un GameEvent,
     // un archivo antiguo con nombres desconocidos simplemente los ignora en
     // vez de desplazar que evento corresponde a que indice.
-    public Set<String> enabledEvents = new LinkedHashSet<>(List.of(
-            GameEvent.GAME_TIME.name(),
-            GameEvent.WEATHER.name(),
-            GameEvent.HEALTH.name(),
-            GameEvent.HUNGER.name(),
-            GameEvent.DAMAGE_TAKEN.name()
-    ));
+    //
+    // Por defecto NO hay ningun evento activo: la telemetria es opt-in. Un
+    // sketch escrito antes de que existiera esta pestana no sabe que va a
+    // recibir lineas "mc_*" sin haberlas pedido, y uno que trate toda linea
+    // con ':' como una orden de salida las ejecutaria. Activar un dato es la
+    // senal de que el sketch lo espera.
+    public Set<String> enabledEvents = new LinkedHashSet<>();
     public int intervalTicks = 20;
 
     // ══════════════════════════════════════════════════════════════════════

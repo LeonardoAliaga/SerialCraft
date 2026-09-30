@@ -9,6 +9,7 @@ import com.serialcraft.network.guard.PacketRateLimiter;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
@@ -107,13 +108,27 @@ public final class ModNetworking {
                     NetGuard.denyOwnership(player);
                     return;
                 }
+
+                String targetData = NetGuard.sanitize(payload.targetData(), BoardInfo.MAX_DATA_LENGTH,
+                        ArduinoIOBlockEntity.DEFAULT_TARGET_DATA);
+
+                // El prefijo "mc_" es del protocolo de telemetria. Se rechaza
+                // ANTES de reclamar la placa: una configuracion invalida no
+                // debe dejar la placa a nombre de quien la envio.
+                if (TelemetryProtocol.isReservedKey(targetData)) {
+                    player.sendSystemMessage(Component.translatable(
+                            "message.serialcraft.reserved_key", TelemetryProtocol.RESERVED_PREFIX));
+                    NetGuard.logRejected("ConfigPayload", player,
+                            "Target Data con prefijo reservado: " + targetData);
+                    return;
+                }
+
                 // Placa sin dueno: se reclama en vez de quedar publica.
                 if (io.getOwnerUUID() == null) io.claim(player);
 
                 io.applyConfig(
                         payload.mode(),
-                        NetGuard.sanitize(payload.targetData(), BoardInfo.MAX_DATA_LENGTH,
-                                ArduinoIOBlockEntity.DEFAULT_TARGET_DATA),
+                        targetData,
                         payload.signalType(),
                         payload.enabled(),
                         NetGuard.sanitize(payload.boardId(), BoardInfo.MAX_ID_LENGTH,

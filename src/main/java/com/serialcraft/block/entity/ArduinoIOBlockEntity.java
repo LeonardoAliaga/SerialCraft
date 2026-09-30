@@ -8,6 +8,7 @@ import com.serialcraft.board.LogicMode;
 import com.serialcraft.board.SignalType;
 import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.SerialOutputPayload;
+import com.serialcraft.network.TelemetryProtocol;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -44,6 +45,8 @@ import java.util.UUID;
  *    cambia realmente, no una vez por tick por placa.
  *  - El parseo de la entrada serial ya no puede lanzar por indice fuera de
  *    rango, y ya no se traga toda excepcion con un catch vacio.
+ *  - Aislamiento de canales de comunicacion: se descartan rapidamente los mensajes
+ *    pertenecientes a la telemetria del juego ("mc_*").
  */
 public class ArduinoIOBlockEntity extends BlockEntity {
 
@@ -194,10 +197,15 @@ public class ArduinoIOBlockEntity extends BlockEntity {
      *  - la conversion usaba una escala distinta a la de salida.
      *  - no se avisaba al cliente del cambio, asi que el modelo del bloque no
      *    reflejaba nunca una entrada.
+     *  - Los mensajes de otros canales (ej. telemetria "mc_*") se descartan
+     *    de forma inmediata.
      */
     public void acceptSerialInput(String message) {
         if (!enabled || !logicSatisfied || !ioMode.isInput()) return;
         if (targetData.isEmpty()) return;
+
+        // Descarte rapido: mensajes de telemetria del juego ("mc_*")
+        if (message.isEmpty() || TelemetryProtocol.isReservedKey(message)) return;
 
         String prefix = targetData + PROTOCOL_SEPARATOR;
         if (!message.startsWith(prefix)) return;

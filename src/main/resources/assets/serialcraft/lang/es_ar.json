@@ -180,5 +180,6 @@
   "message.serialcraft.wifi_started": "Servidor Wi-Fi iniciado en el puerto %s",
   "message.serialcraft.wifi_already_running": "El servidor Wi-Fi ya está activo",
   "message.serialcraft.wifi_start_failed": "No se pudo iniciar el servidor Wi-Fi: %s",
-  "message.serialcraft.wifi_bad_port": "Puerto inválido: %s"
+  "message.serialcraft.wifi_bad_port": "Puerto inválido: %s",
+  "message.serialcraft.reserved_key": "El Target Data no puede empezar por \"%s\": ese prefijo está reservado para la telemetría del juego."
 }

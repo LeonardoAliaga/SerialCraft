@@ -45,46 +45,78 @@ export default defineConfig({
           { text: 'Ejemplos', link: '/ejemplos/' },
           // Menú Versiones (Español)
           {
-            text: 'v0.4.3 (Beta)',
+            text: 'v0.4.6 (Beta)',
             items: [
-              { text: 'v0.4.3 (Actual)', link: '/guide' },
-              { text: 'v0.3.6 (Antigua)', link: '/versiones/v0.3.6/guide' },
-              { text: 'Notas de Versión', link: 'https://github.com/leonardoaliaga/serialcraft/releases/tag/v0.4.3' },
+              { text: 'v0.4.6 (Actual)', link: '/guide' },
+              { text: 'v0.4.3 (Antigua)', link: '/versiones/v0.4.3/guide' },
+              { text: 'v0.3.6 (Legado)', link: '/versiones/v0.3.6/guide' },
+              { text: 'Notas de Versión', link: 'https://github.com/leonardoaliaga/serialcraft/releases' },
               { text: 'Reportar Bug', link: 'https://github.com/leonardoaliaga/serialcraft/issues' }
             ]
           }
         ],
-        sidebar: [
-          {
-            text: 'Introducción',
-            items: [
-              { text: 'Instalación', link: '/guide#instalacion' },
-              { text: 'Configuración de la conexión', link: '/guide#configuracion-de-la-conexion' },
-              { text: 'Tu primer circuito', link: '/guide#tu-primer-circuito-bidireccional' },
-              { text: 'Límites conocidos', link: '/guide#limites-conocidos-de-esta-version' }
-            ]
-          },
-          {
-            text: 'Hardware y código',
-            items: [
-              { text: 'Protocolo bidireccional', link: '/protocol' },
-              { text: 'Escala unificada 0-255', link: '/protocol#_2-escala-unificada-0-255' },
-              { text: 'Wi-Fi y emparejamiento', link: '/protocol#_5-wi-fi-el-mod-es-el-servidor' },
-              { text: 'Cambios respecto a 0.3.x', link: '/protocol#_8-cambios-respecto-a-0-3-x' }
-            ]
-          },
-          {
-            text: 'Ejemplos y pruebas',
-            items: [
-              { text: 'Índice de ejemplos', link: '/ejemplos/' },
-              { text: 'Arduino Uno R3 (USB)', link: '/ejemplos/#_2-arduino-uno-r3-usb' },
-              { text: 'ESP32 (Wi-Fi)', link: '/ejemplos/#_3-esp32-wi-fi' },
-              { text: 'Arduino Uno Q', link: '/ejemplos/#_4-arduino-uno-q-bridge-python' },
-              { text: 'Rutina de prueba', link: '/ejemplos/#_5-rutina-de-prueba' },
-              { text: 'Prompts para esquemas', link: '/ejemplos/esquemas-ia' }
-            ]
-          }
-        ]
+        sidebar: {
+          '/versiones/v0.4.3/': [
+            {
+              text: 'SerialCraft v0.4.3 (Beta)',
+              items: [
+                { text: 'Guía de la versión', link: '/versiones/v0.4.3/guide' },
+                { text: 'Protocolo y Hardware', link: '/versiones/v0.4.3/protocol' },
+                { text: 'Ejemplos y pruebas', link: '/versiones/v0.4.3/ejemplos' }
+              ]
+            },
+            {
+              text: 'Ejemplos v0.4.3',
+              items: [
+                { text: 'Arduino Uno R3 (USB)', link: '/versiones/v0.4.3/ejemplos#_2-arduino-uno-r3-usb' },
+                { text: 'ESP32 (Wi-Fi)', link: '/versiones/v0.4.3/ejemplos#_3-esp32-wi-fi' },
+                { text: 'Arduino Uno Q', link: '/versiones/v0.4.3/ejemplos#_4-arduino-uno-q-bridge-python' },
+                { text: 'Rutina de prueba', link: '/versiones/v0.4.3/ejemplos#_5-rutina-de-prueba' }
+              ]
+            }
+          ],
+          '/versiones/v0.3.6/': [
+            {
+              text: 'SerialCraft v0.3.6 (Beta)',
+              items: [
+                { text: 'Guía de la versión', link: '/versiones/v0.3.6/guide' },
+                { text: 'Protocolo de comunicación', link: '/versiones/v0.3.6/protocol' }
+              ]
+            }
+          ],
+          '/': [
+            {
+              text: 'Introducción',
+              items: [
+                { text: 'Instalación', link: '/guide#instalacion' },
+                { text: 'Configuración de la conexión', link: '/guide#configuracion-de-la-conexion' },
+                { text: 'Tu primer circuito', link: '/guide#tu-primer-circuito-bidireccional' },
+                { text: 'Límites conocidos', link: '/guide#limites-conocidos-de-esta-version' }
+              ]
+            },
+            {
+              text: 'Hardware y código',
+              items: [
+                { text: 'Protocolo bidireccional', link: '/protocol' },
+                { text: 'Escala unificada 0-255', link: '/protocol#_2-escala-unificada-0-255' },
+                { text: 'Wi-Fi y emparejamiento', link: '/protocol#_5-wi-fi-el-mod-es-el-servidor' },
+                { text: 'Cambios respecto a 0.3.x', link: '/protocol#_8-cambios-respecto-a-0-3-x' },
+                { text: 'Telemetría del juego', link: '/protocol#_10-telemetria-del-juego-minecraft-hardware' }
+              ]
+            },
+            {
+              text: 'Ejemplos y pruebas',
+              items: [
+                { text: 'Índice de ejemplos', link: '/ejemplos/' },
+                { text: 'Arduino Uno R3 (USB)', link: '/ejemplos/#_2-arduino-uno-r3-usb' },
+                { text: 'ESP32 (Wi-Fi)', link: '/ejemplos/#_3-esp32-wi-fi' },
+                { text: 'Arduino Uno Q', link: '/ejemplos/#_4-arduino-uno-q-bridge-python' },
+                { text: 'Rutina de prueba', link: '/ejemplos/#_5-rutina-de-prueba' },
+                { text: 'Prompts para esquemas', link: '/ejemplos/esquemas-ia' }
+              ]
+            }
+          ]
+        }
       }
     },
     en: {
@@ -101,46 +133,78 @@ export default defineConfig({
           { text: 'Examples', link: '/en/examples/' },
           // Version Menu (English)
           {
-            text: 'v0.4.3 (Beta)',
+            text: 'v0.4.6 (Beta)',
             items: [
-              { text: 'v0.4.3 (Current)', link: '/en/guide' },
-              { text: 'v0.3.6 (Legacy)', link: '/versiones/en/v0.3.6/guide' },
-              { text: 'Release Notes', link: 'https://github.com/leonardoaliaga/serialcraft/releases/tag/v0.4.3' },
+              { text: 'v0.4.6 (Current)', link: '/en/guide' },
+              { text: 'v0.4.3 (Legacy)', link: '/versiones/en/v0.4.3/guide' },
+              { text: 'v0.3.6 (Older)', link: '/versiones/en/v0.3.6/guide' },
+              { text: 'Release Notes', link: 'https://github.com/leonardoaliaga/serialcraft/releases' },
               { text: 'Report Bug', link: 'https://github.com/leonardoaliaga/serialcraft/issues' }
             ]
           }
         ],
-        sidebar: [
-          {
-            text: 'Getting Started',
-            items: [
-              { text: 'Installation', link: '/en/guide#installation' },
-              { text: 'Connection setup', link: '/en/guide#connection-setup' },
-              { text: 'Your first circuit', link: '/en/guide#your-first-bidirectional-circuit' },
-              { text: 'Known limits', link: '/en/guide#known-limits-in-this-version' }
-            ]
-          },
-          {
-            text: 'Hardware & Code',
-            items: [
-              { text: 'Bidirectional protocol', link: '/en/protocol' },
-              { text: 'Unified 0-255 scale', link: '/en/protocol#_2-unified-0-255-scale' },
-              { text: 'Wi-Fi and pairing', link: '/en/protocol#_5-wi-fi-the-mod-is-the-server' },
-              { text: 'Changes from 0.3.x', link: '/en/protocol#_8-changes-from-0-3-x' }
-            ]
-          },
-          {
-            text: 'Examples & Testing',
-            items: [
-              { text: 'Example index', link: '/en/examples/' },
-              { text: 'Arduino Uno R3 (USB)', link: '/en/examples/#_2-arduino-uno-r3-usb' },
-              { text: 'ESP32 (Wi-Fi)', link: '/en/examples/#_3-esp32-wi-fi' },
-              { text: 'Arduino Uno Q', link: '/en/examples/#_4-arduino-uno-q-bridge-python' },
-              { text: 'Test routine', link: '/en/examples/#_5-test-routine' },
-              { text: 'Wiring diagram prompts', link: '/en/examples/wiring-prompts' }
-            ]
-          }
-        ]
+        sidebar: {
+          '/versiones/en/v0.4.3/': [
+            {
+              text: 'SerialCraft v0.4.3 (Beta)',
+              items: [
+                { text: 'Version Guide', link: '/versiones/en/v0.4.3/guide' },
+                { text: 'Protocol & Hardware', link: '/versiones/en/v0.4.3/protocol' },
+                { text: 'Examples & Testing', link: '/versiones/en/v0.4.3/examples' }
+              ]
+            },
+            {
+              text: 'v0.4.3 Examples',
+              items: [
+                { text: 'Arduino Uno R3 (USB)', link: '/versiones/en/v0.4.3/examples#_2-arduino-uno-r3-usb' },
+                { text: 'ESP32 (Wi-Fi)', link: '/versiones/en/v0.4.3/examples#_3-esp32-wi-fi' },
+                { text: 'Arduino Uno Q', link: '/versiones/en/v0.4.3/examples#_4-arduino-uno-q-bridge-python' },
+                { text: 'Test routine', link: '/versiones/en/v0.4.3/examples#_5-test-routine' }
+              ]
+            }
+          ],
+          '/versiones/en/v0.3.6/': [
+            {
+              text: 'SerialCraft v0.3.6 (Beta)',
+              items: [
+                { text: 'Version Guide', link: '/versiones/en/v0.3.6/guide' },
+                { text: 'Communication Protocol', link: '/versiones/en/v0.3.6/protocol' }
+              ]
+            }
+          ],
+          '/en/': [
+            {
+              text: 'Getting Started',
+              items: [
+                { text: 'Installation', link: '/en/guide#installation' },
+                { text: 'Connection setup', link: '/en/guide#connection-setup' },
+                { text: 'Your first circuit', link: '/en/guide#your-first-bidirectional-circuit' },
+                { text: 'Known limits', link: '/en/guide#known-limits-in-this-version' }
+              ]
+            },
+            {
+              text: 'Hardware & Code',
+              items: [
+                { text: 'Bidirectional protocol', link: '/en/protocol' },
+                { text: 'Unified 0-255 scale', link: '/en/protocol#_2-unified-0-255-scale' },
+                { text: 'Wi-Fi and pairing', link: '/en/protocol#_5-wi-fi-the-mod-is-the-server' },
+                { text: 'Changes from 0.3.x', link: '/en/protocol#_8-changes-from-0-3-x' },
+                { text: 'Game telemetry', link: '/en/protocol#_10-game-telemetry-minecraft-hardware' }
+              ]
+            },
+            {
+              text: 'Examples & Testing',
+              items: [
+                { text: 'Example index', link: '/en/examples/' },
+                { text: 'Arduino Uno R3 (USB)', link: '/en/examples/#_2-arduino-uno-r3-usb' },
+                { text: 'ESP32 (Wi-Fi)', link: '/en/examples/#_3-esp32-wi-fi' },
+                { text: 'Arduino Uno Q', link: '/en/examples/#_4-arduino-uno-q-bridge-python' },
+                { text: 'Test routine', link: '/en/examples/#_5-test-routine' },
+                { text: 'Wiring diagram prompts', link: '/en/examples/wiring-prompts' }
+              ]
+            }
+          ]
+        }
       }
     }
   },

@@ -1,7 +1,7 @@
 /*
  * SerialCraft Wi-Fi Bridge — ESP32
  * ============================================================
- * Mod SerialCraft v0.4.3 (Minecraft Fabric 1.21.11)
+ * Mod SerialCraft v0.4.6 (Minecraft Fabric 1.21.11)
  *
  * DIRECCION DE LA CONEXION (cambio importante en v0.4.3):
  *   El MOD es el servidor TCP y la PLACA es el cliente.
@@ -12,6 +12,10 @@
  *
  * Handshake obligatorio: la primera linea que envia la placa debe ser el
  * token. El mod responde "OK" o cierra con "ERR TOKEN".
+ *
+ * Canales de comunicacion:
+ *   - Canal de Bloques IO: "<id>:[0-255]\n"
+ *   - Telemetria del juego: "mc_<clave>:[valor]\n"
  *
  * Hardware:
  *   - Potenciometro en GPIO34 (ADC1, solo entrada; extremos a 3V3 y GND)
@@ -27,16 +31,16 @@
 
 #include <WiFi.h>
 
-// ═══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
 //  CONFIGURACION  <- EDITA ESTO
-// ═══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
 const char* WIFI_SSID     = "TU_WIFI";
 const char* WIFI_PASSWORD = "TU_PASSWORD";
 
 const char* MINECRAFT_IP   = "192.168.1.50";  // IP que muestra la Laptop
 const uint16_t MINECRAFT_PORT = 25585;        // puerto por defecto del mod
 const char* PAIRING_TOKEN  = "XXXXXX";        // token que muestra la Laptop
-// ═══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
 
 const char* BLOCK_ID_POT = "pot_val";
 const char* BLOCK_ID_LED = "led_verde";
@@ -102,7 +106,7 @@ void loop() {
   sendPotentiometer();
 }
 
-// ── Conexion + handshake ───────────────────────────────────
+// ── Conexion + handshake ─────────────────────────────────────
 void connectToMod() {
   Serial.printf("Conectando a %s:%u ...\n", MINECRAFT_IP, MINECRAFT_PORT);
 
@@ -134,7 +138,7 @@ void connectToMod() {
   lastPotValue = -1;          // forzar el primer envio
 }
 
-// ── Minecraft -> LED ───────────────────────────────────────
+// ── Minecraft -> LED ─────────────────────────────────────────
 void readIncoming() {
   while (client.available()) {
     char c = client.read();
@@ -156,7 +160,14 @@ void readIncoming() {
 
 void processCommand(String command) {
   command.trim();
+  if (command.length() == 0) return;
 
+  // 1. Discriminacion de telemetria:
+  // Si comienza por "mc_", es telemetria del juego (mc_time, mc_health, etc.).
+  // Si la placa solo controla pines fisicos de redstone, se descarta directamente.
+  if (command.startsWith("mc_")) return;
+
+  // 2. Canal de bloques IO (<id>:[0-255])
   int sep = command.indexOf(':');
   if (sep <= 0 || sep == command.length() - 1) return;
 
@@ -170,7 +181,7 @@ void processCommand(String command) {
   }
 }
 
-// ── Potenciometro -> Minecraft ─────────────────────────────
+// ── Potenciometro -> Minecraft ───────────────────────────────
 void sendPotentiometer() {
   if (millis() - lastPotRead < POT_INTERVAL_MS) return;
   lastPotRead = millis();

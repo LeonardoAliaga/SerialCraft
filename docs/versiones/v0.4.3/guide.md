@@ -1,6 +1,10 @@
-# Guía SerialCraft — v0.4.6 (Beta)
+# Guía SerialCraft — v0.4.3 (Beta)
 
-Bienvenido a la guía oficial de **SerialCraft**. La 0.4.6 (Beta) incorpora telemetría del juego hacia el hardware, estandariza la comunicación por canales lógicos y optimiza el rendimiento tanto en el cliente de Minecraft como en microcontroladores con recursos reducidos (ej. Arduino Uno ATmega328P).
+::: warning Versión Antigua (Beta 0.4.3)
+Esta documentación corresponde a la versión **Beta 0.4.3** de SerialCraft. Para la versión actual estandarizada, consulta la [Guía Actual (v0.4.6)](/guide).
+:::
+
+Bienvenido a la guía oficial de **SerialCraft**. La 0.4.3 es la versión con más trabajo interno hasta la fecha: nueva interfaz, protocolo unificado, y una revisión completa de la capa de red pensando en servidores multijugador.
 
 ## Sobre el proyecto y su filosofía
 
@@ -10,32 +14,17 @@ El uso de herramientas de inteligencia artificial es estratégico. **El proyecto
 
 ---
 
-## Novedades en v0.4.6 (Beta)
+## Novedades en v0.4.3
 
-* **Telemetría del juego (Minecraft ➔ Hardware)**:
-  La nueva pestaña **Eventos** en la Laptop permite transmitir en tiempo real datos del juego (hora del día, hambre, vida, nivel, daño recibido, etc.) hacia la placa física mediante el formato `mc_<canal>:<valor>\n`.
-* **Prefijo reservado `mc_`**:
-  Se reserva el prefijo `mc_` exclusivamente para los canales de telemetría del juego. Los Bloques IO no pueden usar `Target Data` que empiece por `mc_` (el servidor lo rechaza con un aviso amigable), garantizando que las órdenes de redstone y la telemetría nunca colisionen.
-* **Control de flujo y ritmo (TelemetryOutbox)**:
-  La cola de telemetría dosifica los envíos a un máximo estricto de 1 línea por tick (20 líneas/s) priorizando sucesos frente a estados, evitando desbordar el buffer serial de 64 bytes del hardware (ATmega328P).
-* **Reenvío periódico cada 5 segundos**:
-  Para placas como Arduino Uno R3 que se reinician al abrir la conexión USB (DTR), el mod reenvía periódicamente los estados activos para que la placa siempre reciba el estado actual sin requerir intervención manual.
-* **Valores en vivo en la interfaz**:
-  La pestaña **Eventos** muestra al lado de cada interruptor el valor actual en el cable serial (`mc_hunger:20`), y la consola resalta los paquetes de telemetría (`TM:`).
-
----
-
-## Cambios previos introducidos en v0.4.3
-
-* **Escala unificada 0-255.** El cable habla en el mismo rango en ambos sentidos. Antes la salida enviaba 0-255 pero la entrada se recortaba a 0-15. En modo digital ahora se envía 255, no `1`.
-* **Wi-Fi con emparejamiento.** El mod es servidor TCP y la placa cliente, en el puerto **25585**, con token obligatorio.
-* **Preparado para servidor dedicado.** Las placas se indexan al cargarse del disco.
-* **Límite de ritmo.** 40 mensajes/s por jugador, con ráfaga de 80.
+* **Escala unificada 0-255.** El cable habla en el mismo rango en ambos sentidos. Antes la salida enviaba 0-255 pero la entrada se recortaba a 0-15: un `200` enviado por la placa volvía convertido en `15`. **En modo digital ahora se envía 255, no `1`**, así el mismo `analogWrite()` sirve para señal digital y analógica.
+* **Wi-Fi con emparejamiento.** El mod pasa a ser el servidor TCP y la placa el cliente, en el puerto **25585**, con un token obligatorio. En 0.3.x el puerto quedaba abierto sin autenticación: cualquiera en la misma red podía accionar tu redstone.
+* **Preparado para servidor dedicado.** Las placas ahora se indexan al cargarse del disco. En versiones anteriores, tras reiniciar el servidor las placas quedaban invisibles hasta volver a colocarlas a mano.
+* **Límite de ritmo.** 40 mensajes/s por jugador, con ráfaga de 80. Protege la partida de un sketch mal escrito.
 * **Interfaz reorganizada** en páginas independientes, con recorte de texto correcto en cualquier idioma.
 * **Cinco idiomas reales:** inglés, español de España, de México, de Perú y de Argentina (con voseo).
 
 ::: warning Compatibilidad
-Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cambios respecto a 0.3.x](/protocol#_8-cambios-respecto-a-0-3-x) del protocolo.
+Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cambios respecto a 0.3.x](/versiones/v0.4.3/protocol#_8-cambios-respecto-a-0-3-x) del protocolo.
 :::
 
 ---
@@ -43,7 +32,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 ## Instalación
 
 1. Instala [Fabric Loader](https://fabricmc.net/) para **Minecraft 1.21.11**.
-2. Descarga `Fabric API` y el `.jar` de SerialCraft v0.4.6-beta.
+2. Descarga `Fabric API` y el `.jar` de SerialCraft v0.4.3.
 3. Coloca ambos en tu carpeta `mods`.
 4. Inicia el juego.
 
@@ -53,7 +42,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 
 | Elemento | Para qué sirve |
 | :--- | :--- |
-| **Laptop** | Objeto de mano. Abre la interfaz: conexión, lista de placas, eventos y consola. |
+| **Laptop** | Objeto de mano. Abre la interfaz: conexión, lista de placas y consola. |
 | **Bloque Conector** | Ancla la conexión por USB en el mundo y guarda los baudios. |
 | **Bloque IO** | El puente real. Cada uno tiene un `Target Data`, un modo (INPUT/OUTPUT), un tipo de señal (Digital/Analógica) y lados configurables. |
 
@@ -101,7 +90,7 @@ El canal Wi-Fi va **en texto claro**. El token evita el acceso casual dentro de 
 
 Con dos bloques IO —uno `INPUT` llamado `pot_val` y otro `OUTPUT` llamado `led_verde`— ya tienes el circuito completo de los ejemplos.
 
-👉 **[Ejemplos listos para cargar y probar](/ejemplos/)** — Arduino Uno R3, ESP32 y Arduino Uno Q, con esquemas de conexión.
+👉 **[Ejemplos listos para cargar y probar](/versiones/v0.4.3/ejemplos)** — Arduino Uno R3, ESP32 y Arduino Uno Q, con esquemas de conexión.
 
 ---
 
