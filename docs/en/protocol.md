@@ -342,3 +342,34 @@ void loop() {
 ::: warning Do not power the servo from the ESP32
 Use its own 5 V supply and join the grounds. The ESP32's 3.3 V pin cannot supply a servo's startup current spike.
 :::
+
+## 12. Board identification and token-free reconnection
+
+Everything here is **optional and backward compatible**: a board that knows nothing about it keeps working with the usual token. These lines use the reserved `mc_` prefix and are consumed by the client — **they never reach the server**.
+
+### Identification
+
+| Direction | Line | Meaning |
+|---|---|---|
+| mod ➔ board | `mc_who:1` | "Who are you?". Sent 1.5 s, 4 s and 9 s after connecting until answered. Older boards ignore it. |
+| board ➔ mod | `mc_id:model=ESP32-S3;uid=ESP32-A1B2C3D4E5F6` | Model (≤ 32 chars) and a stable id (`[A-Za-z0-9_-]`, 4–32; e.g. derived from the MAC). Short form `mc_id:esp32-s3` also works. |
+
+The mod merges several sources and keeps the most reliable: **board announcement** > **exact USB model (VID:PID)** or **ESP boot banner** > **vendor** > **bridge chip**. A CH340 or CP2102 does not tell which board is behind it (the same chip ships on Nano clones and ESP32s), so the UI shows "Board with CH340 (model not identified)" until the board announces itself.
+
+### Remembered board (no token)
+
+1. **First time:** the board connects with the token and announces itself with `mc_id`. A **Remember board** button appears on the Home tab; pressing it makes the mod generate a 128-bit key, store it in `config/serialcraft-boards.properties`, and send it as `mc_key:<key>`. The board saves it in flash.
+2. **Later sessions**, the first line is `TRUST <uid>` instead of the token:
+
+```
+board ➔ mod   TRUST ESP32-A1B2C3D4E5F6
+mod   ➔ board CHAL 9d1f00aa11bb22cc33dd44ee55ff6677      (random challenge, different every time)
+board ➔ mod   <HMAC-SHA256(key, challenge) as lowercase hex>
+mod   ➔ board OK
+```
+
+The key (as ASCII hex) is the HMAC key and the challenge (as ASCII hex) is the message. The key **never travels again**. Errors: `ERR UNKNOWN` (mod doesn't know that board) and `ERR TRUST` (wrong answer); in both cases the board should delete its key and fall back to the token.
+
+With remembered boards, the Wi-Fi server **starts by itself when you join a world** (`settings.autoStartWifi`), so the board reconnects without opening the Laptop.
+
+> The first pairing (token and `mc_key`) travels in clear text over the LAN, exactly as the token always has: do it on a trusted network. To revoke a board press **Forget board** or delete its block from the file.

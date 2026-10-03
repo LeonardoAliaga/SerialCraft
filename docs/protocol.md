@@ -342,3 +342,34 @@ void loop() {
 ::: warning El servo no se alimenta desde el ESP32
 Usa una fuente de 5 V propia y une las tierras. El pin de 3,3 V del ESP32 no aguanta el pico de corriente de un servo al arrancar.
 :::
+
+## 12. Identificación de la placa y reconexión sin token
+
+Todo es **opcional y compatible hacia atrás**: una placa que no sepa nada de esto sigue funcionando con el token de siempre. Las líneas usan el prefijo reservado `mc_` y las consume el cliente: **nunca llegan al servidor**.
+
+### Identificación
+
+| Dirección | Línea | Significado |
+|---|---|---|
+| mod ➔ placa | `mc_who:1` | «¿Quién eres?». Se envía 1,5 s, 4 s y 9 s después de conectar, hasta recibir respuesta. Las placas antiguas la ignoran. |
+| placa ➔ mod | `mc_id:model=ESP32-S3;uid=ESP32-A1B2C3D4E5F6` | Modelo (≤ 32 caracteres) e identificador estable (`[A-Za-z0-9_-]`, 4–32; p. ej. derivado de la MAC). La forma corta `mc_id:esp32-s3` también vale. |
+
+El mod combina varias fuentes y se queda con la más fiable: **anuncio de la placa** > **modelo exacto por USB (VID:PID)** o **banner de arranque del ESP** > **fabricante** > **chip puente**. Un CH340 o CP2102 no dice qué placa hay detrás (el mismo chip va en un Nano clon y en un ESP32), así que la interfaz muestra «Placa con CH340 (modelo sin identificar)» hasta que la placa se anuncia.
+
+### Placa recordada (sin token)
+
+1. **Primera vez:** la placa entra con el token y se anuncia con `mc_id`. En la pestaña Inicio aparece **Recordar placa**; al pulsarla el mod genera una clave de 128 bits, la guarda en `config/serialcraft-boards.properties` y se la envía con `mc_key:<clave>`. La placa la guarda en flash.
+2. **Siguientes veces**, la primera línea es `TRUST <uid>` en lugar del token:
+
+```
+placa ➔ mod   TRUST ESP32-A1B2C3D4E5F6
+mod   ➔ placa CHAL 9d1f00aa11bb22cc33dd44ee55ff6677      (reto aleatorio, distinto cada vez)
+placa ➔ mod   <HMAC-SHA256(clave, reto) en hex minúscula>
+mod   ➔ placa OK
+```
+
+La clave (en ASCII hex) es la clave HMAC y el reto (en ASCII hex) es el mensaje. La clave **no vuelve a viajar** por la red. Errores: `ERR UNKNOWN` (el mod no conoce esa placa) y `ERR TRUST` (respuesta incorrecta); en ambos casos la placa debe borrar su clave y volver al token.
+
+Si hay placas recordadas, el servidor Wi-Fi **arranca solo al entrar a un mundo** (ajuste `settings.autoStartWifi`), así la placa se reconecta sin abrir la Laptop.
+
+> El primer emparejamiento (token y `mc_key`) viaja en claro por la LAN, igual que el token siempre lo ha hecho: hazlo en una red de confianza. Para revocar una placa pulsa **Olvidar placa** o borra su bloque del fichero.

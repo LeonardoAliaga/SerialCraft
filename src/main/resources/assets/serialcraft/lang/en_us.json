@@ -62,6 +62,11 @@
   "gui.serialcraft.board.ftdi": "Generic board (FTDI)",
   "gui.serialcraft.board.unknown": "Unknown serial device",
   "gui.serialcraft.board.generic": "Generic",
+  "gui.serialcraft.board.bridge": "Board with %s (model not identified)",
+  "gui.serialcraft.board.vendor": "%s (model not identified)",
+  "gui.serialcraft.welcome.wifi_remembered": "%s remembered board(s): they connect without a token",
+  "gui.serialcraft.home.remember": "Remember board",
+  "gui.serialcraft.home.forget": "Forget board",
 
   "_comment_home": "── Home page ──",
   "gui.serialcraft.home.title": "HOME",

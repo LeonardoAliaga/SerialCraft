@@ -102,7 +102,8 @@ export default defineConfig({
                 { text: 'Wi-Fi y emparejamiento', link: '/protocol#_5-wi-fi-el-mod-es-el-servidor' },
                 { text: 'Cambios respecto a 0.3.x', link: '/protocol#_8-cambios-respecto-a-0-3-x' },
                 { text: 'Cambios respecto a 0.4.3', link: '/protocol#_9-cambios-respecto-a-0-4-3' },
-                { text: 'Telemetría del juego', link: '/protocol#_11-telemetria-del-juego-minecraft-hardware' }
+                { text: 'Telemetría del juego', link: '/protocol#_11-telemetria-del-juego-minecraft-hardware' },
+                { text: 'Identificación y reconexión sin token', link: '/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token' }
               ]
             },
             {
@@ -190,7 +191,8 @@ export default defineConfig({
                 { text: 'Wi-Fi and pairing', link: '/en/protocol#_5-wi-fi-the-mod-is-the-server' },
                 { text: 'Changes from 0.3.x', link: '/en/protocol#_8-changes-from-0-3-x' },
                 { text: 'Changes from 0.4.3', link: '/en/protocol#_9-changes-from-0-4-3' },
-                { text: 'Game telemetry', link: '/en/protocol#_11-game-telemetry-minecraft-hardware' }
+                { text: 'Game telemetry', link: '/en/protocol#_11-game-telemetry-minecraft-hardware' },
+                { text: 'Board identification & token-free reconnection', link: '/en/protocol#_12-board-identification-and-token-free-reconnection' }
               ]
             },
             {

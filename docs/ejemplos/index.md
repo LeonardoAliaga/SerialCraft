@@ -231,8 +231,16 @@ Laptop → Inicio → **Iniciar servidor Wi-Fi**. Copia al sketch la IP, el puer
  *   servidor Wi-Fi". La UI te muestra la IP, el puerto y un token.
  *   Copia esos tres valores aqui abajo.
  *
- * Handshake obligatorio: la primera linea que envia la placa debe ser el
+ * Handshake: la primera vez, la primera linea que envia la placa es el
  * token. El mod responde "OK" o cierra con "ERR TOKEN".
+ *
+ * PLACA RECORDADA (sin token): tras conectar, la placa se anuncia con
+ *   mc_id:model=<chip>;uid=<id>
+ * y, si en el juego pulsas "Recordar placa", el mod le entrega una clave
+ * (mc_key:...) que se guarda en la memoria flash (NVS). Desde entonces la
+ * placa entra con "TRUST <uid>" + reto-respuesta HMAC-SHA256 y ya NO necesita
+ * el token. La clave no vuelve a viajar por la red. Si el mod la olvida
+ * (ERR UNKNOWN / ERR TRUST) la placa borra su copia y vuelve a usar el token.
  *
  * Canales de comunicacion:
  *   - Canal de Bloques IO: "<id>:[0-255]\n"
@@ -251,6 +259,8 @@ Laptop → Inicio → **Iniciar servidor Wi-Fi**. Copia al sketch la IP, el puer
  */
 
 #include <WiFi.h>
+#include <Preferences.h>
+#include "mbedtls/md.h"
 
 // ═════════════════════════════════════════════════════════════
 //  CONFIGURACION  <- EDITA ESTO
@@ -277,6 +287,8 @@ const unsigned long RECONNECT_DELAY_MS = 3000;
 const size_t MAX_LINE = 256;   // el mod corta la sesion si se excede
 
 WiFiClient client;
+Preferences prefs;                // memoria flash: guarda la clave recordada
+char boardUid[24];                // p. ej. ESP32-A1B2C3D4E5F6 (sale de la MAC)
 int    lastPotValue = -1;
 String rxBuffer = "";
 unsigned long lastPotRead = 0;
@@ -301,6 +313,8 @@ void ledWrite(int value) {
 
 void setup() {
   Serial.begin(115200);       // solo para depurar por el monitor serie
+  prefs.begin("serialcraft", false);
+  snprintf(boardUid, sizeof(boardUid), "ESP32-%012llX", (unsigned long long)ESP.getEfuseMac());
   ledSetup();
   ledWrite(0);
   rxBuffer.reserve(MAX_LINE + 8);
@@ -327,34 +341,95 @@ void loop() {
   sendPotentiometer();
 }
 
+// ── Identidad y clave ────────────────────────────────────────
+// Dice al mod que placa es: "ESP32-S3", "ESP32-C3"... (ESP.getChipModel()).
+void announce() {
+  client.print(String("mc_id:model=") + ESP.getChipModel() + ";uid=" + boardUid + "\n");
+}
+
+String hmacSha256Hex(const String& key, const String& msg) {
+  unsigned char out[32];
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char*)msg.c_str(), msg.length());
+  mbedtls_md_hmac_finish(&ctx, out);
+  mbedtls_md_free(&ctx);
+
+  const char* hex = "0123456789abcdef";
+  String result;
+  result.reserve(64);
+  for (int i = 0; i < 32; i++) {
+    result += hex[out[i] >> 4];
+    result += hex[out[i] & 0x0F];
+  }
+  return result;
+}
+
+// Lee una linea del mod con limite de tiempo; "" si no llega nada.
+String readLineTimeout(unsigned long ms) {
+  unsigned long deadline = millis() + ms;
+  while (client.connected() && !client.available() && millis() < deadline) delay(10);
+  String line = client.readStringUntil('\n');
+  line.trim();
+  return line;
+}
+
 // ── Conexion + handshake ─────────────────────────────────────
+bool handshakeWithToken() {
+  client.print(String(PAIRING_TOKEN) + "\n");
+  String reply = readLineTimeout(3000);
+  if (reply != "OK") {
+    Serial.println("Handshake rechazado: " + reply + " (revisa el token)");
+    return false;
+  }
+  return true;
+}
+
+bool handshakeWithKey(const String& key) {
+  client.print(String("TRUST ") + boardUid + "\n");
+  String chal = readLineTimeout(3000);
+
+  if (!chal.startsWith("CHAL ")) {
+    if (chal == "ERR UNKNOWN") {
+      Serial.println("El mod ya no recuerda esta placa. Pon el token nuevo.");
+      prefs.remove("key");
+    }
+    return false;
+  }
+
+  client.print(hmacSha256Hex(key, chal.substring(5)) + "\n");
+  String reply = readLineTimeout(3000);
+  if (reply == "OK") return true;
+
+  if (reply == "ERR TRUST") {
+    Serial.println("Clave rechazada: se borra. Pon el token nuevo.");
+    prefs.remove("key");
+  }
+  return false;
+}
+
 void connectToMod() {
   Serial.printf("Conectando a %s:%u ...\n", MINECRAFT_IP, MINECRAFT_PORT);
 
   if (!client.connect(MINECRAFT_IP, MINECRAFT_PORT, 5000)) {
-    Serial.println("Sin respuesta. ¿Iniciaste el servidor Wi-Fi en la Laptop?");
+    Serial.println("Sin respuesta. ¿Entraste al mundo? (el servidor Wi-Fi arranca solo con placas recordadas)");
     delay(RECONNECT_DELAY_MS);
     return;
   }
 
-  // Primera linea: token de emparejamiento.
-  client.print(String(PAIRING_TOKEN) + "\n");
-
-  // Esperar la respuesta del handshake antes de enviar datos.
-  unsigned long deadline = millis() + 3000;
-  while (client.connected() && !client.available() && millis() < deadline) delay(10);
-
-  String reply = client.readStringUntil('\n');
-  reply.trim();
-
-  if (reply != "OK") {
-    Serial.println("Handshake rechazado: " + reply + " (revisa el token)");
+  String key = prefs.getString("key", "");
+  bool ok = key.length() >= 16 ? handshakeWithKey(key) : handshakeWithToken();
+  if (!ok) {
     client.stop();
     delay(RECONNECT_DELAY_MS);
     return;
   }
 
-  Serial.println("Enlazado con SerialCraft.");
+  Serial.println(key.length() >= 16 ? "Enlazado con SerialCraft (placa recordada)."
+                                    : "Enlazado con SerialCraft.");
+  announce();                 // el mod muestra el modelo real de la placa
   rxBuffer = "";
   lastPotValue = -1;          // forzar el primer envio
 }
@@ -382,6 +457,17 @@ void readIncoming() {
 void processCommand(String command) {
   command.trim();
   if (command.length() == 0) return;
+
+  // 0. Mensajes del propio mod sobre la identidad de esta placa.
+  if (command.startsWith("mc_key:")) {            // clave para reconectar sin token
+    String newKey = command.substring(7);
+    if (newKey.length() >= 16 && newKey.length() <= 128) {
+      prefs.putString("key", newKey);
+      Serial.println("Clave guardada: esta placa ya no necesita token.");
+    }
+    return;
+  }
+  if (command.startsWith("mc_who:")) { announce(); return; }
 
   // 1. Discriminacion de telemetria:
   // Si comienza por "mc_", es telemetria del juego (mc_time, mc_health, etc.).

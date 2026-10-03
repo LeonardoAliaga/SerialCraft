@@ -5,6 +5,7 @@ import com.serialcraft.block.ArduinoIOBlock;
 import com.serialcraft.block.ModBlocks;
 import com.serialcraft.client.SerialDebugHud;
 import com.serialcraft.client.events.GameEventsTracker;
+import com.serialcraft.connection.BoardTrust;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardListResponsePayload;
 import com.serialcraft.network.SerialOutputPayload;
@@ -80,8 +81,11 @@ public class SerialCraftClient implements ClientModInitializer {
     // ══════════════════════════════════════════════════════════════════════
 
     private void registerLifecycle() {
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
-                SerialDebugHud.addLog("Mundo cargado. Servidor Wi-Fi en espera."));
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            SerialDebugHud.addLog("Mundo cargado. Servidor Wi-Fi en espera.");
+            // Con placas recordadas, el servidor arranca solo y se reconectan sin token.
+            BoardTrust.onWorldJoin();
+        });
 
         // Al salir del mundo se cierra TODO el hardware y se limpia el estado.
         // Sin esto, volver a entrar abria el panel con una conexion que ya no

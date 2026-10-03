@@ -1,6 +1,9 @@
 package com.serialcraft.connection;
 
 import com.serialcraft.client.SerialDebugHud;
+import com.serialcraft.identity.BannerSniffer;
+import com.serialcraft.identity.BoardHello;
+import com.serialcraft.identity.BoardIdentity;
 import com.serialcraft.network.SerialInputPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
@@ -9,6 +12,9 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Punto unico de control de las conexiones de hardware del cliente.
@@ -46,6 +52,68 @@ public final class ConnectionManager {
     private static final long   MIN_SEND_INTERVAL_NANOS = 25_000_000L; // 40 Hz
     private static long   lastSentNanos  = 0L;
     private static String lastSentMessage = null;
+
+    // ── Identidad de la placa conectada ────────────────────────────────
+    //
+    // Tres fuentes, de menor a mayor fiabilidad (BoardIdentity.best se queda
+    // con la mejor): descriptores USB, banner de arranque de la ROM del ESP, y
+    // lo que la propia placa anuncia con mc_id. Un chip puente (CH340...) no
+    // dice que placa hay detras; por eso, si no hay mejor dato, se pregunta con
+    // la sonda mc_who unos segundos despues de conectar.
+    private static final long[] PROBE_DELAYS_MS = {1500, 4000, 9000};
+    private static final ScheduledExecutorService PROBES =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "SerialCraft-Probe");
+                t.setDaemon(true);
+                return t;
+            });
+    private static volatile BoardIdentity announced = BoardIdentity.unknown();
+    private static volatile int linkEpoch = 0;
+
+    /** Mejor identidad conocida de la placa conectada (desconocida si no hay ninguna). */
+    public static BoardIdentity activeIdentity() {
+        BoardIdentity base = SERIAL.isConnected() ? SERIAL.getIdentity() : BoardIdentity.unknown();
+        return BoardIdentity.best(base, announced);
+    }
+
+    /**
+     * Un transporte acaba de quedar conectado.
+     * @param known lo que ya se sabe de la placa (p. ej. una placa recordada), o desconocida
+     */
+    static void onLinkConnected(BoardLink link, BoardIdentity known) {
+        final int epoch;
+        synchronized (ConnectionManager.class) {
+            announced = known;
+            epoch = ++linkEpoch;
+        }
+        if (!BoardTrust.store().probeBoards()) return;
+        for (long delay : PROBE_DELAYS_MS) {
+            PROBES.schedule(() -> probe(epoch), delay, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    /** Un transporte se cerro: lo que se sabia de esa placa ya no vale. */
+    static void onLinkClosed() {
+        synchronized (ConnectionManager.class) {
+            linkEpoch++;                       // cancela las sondas pendientes
+            if (!isAnyConnected()) announced = BoardIdentity.unknown();
+        }
+    }
+
+    private static void probe(int epoch) {
+        if (epoch != linkEpoch || !isAnyConnected()) return;
+        if (activeIdentity().confidence() == BoardIdentity.Confidence.DECLARED) return;
+        deliver(BoardHello.PROBE);             // placas antiguas: la ignoran
+    }
+
+    private static void onHello(String line) {
+        BoardHello.parse(line).ifPresent(id -> {
+            announced = BoardIdentity.best(announced, id);
+            SerialDebugHud.addLog("Placa identificada: " + id.model()
+                    + (id.hasUid() ? " [" + id.uid() + "]" : ""));
+            if (WIFI.isConnected()) WIFI.onBoardHello(id);
+        });
+    }
 
     public static SerialHandler getSerial() { return SERIAL; }
     public static WifiHandler   getWifi()   { return WIFI; }
@@ -123,6 +191,12 @@ public final class ConnectionManager {
         SerialDebugHud.addLog("RX: " + message);
         addHistory("RX: " + message);
 
+        // Identificacion: se queda en el cliente, nunca llega al servidor.
+        if (BoardHello.isHello(message)) { onHello(message); return; }
+        if (announced.confidence() != BoardIdentity.Confidence.DECLARED) {
+            BannerSniffer.identify(message).ifPresent(id -> announced = BoardIdentity.best(announced, id));
+        }
+
         long now = System.nanoTime();
         synchronized (ConnectionManager.class) {
             if (message.equals(lastSentMessage) && now - lastSentNanos < MIN_SEND_INTERVAL_NANOS) {
@@ -152,6 +226,8 @@ public final class ConnectionManager {
         synchronized (ConnectionManager.class) {
             lastSentMessage = null;
             lastSentNanos   = 0L;
+            announced = BoardIdentity.unknown();
+            linkEpoch++;
         }
     }
 

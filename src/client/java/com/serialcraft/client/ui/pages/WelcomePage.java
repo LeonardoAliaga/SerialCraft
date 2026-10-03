@@ -7,7 +7,10 @@ import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.client.ui.widget.MethodCard;
+import com.serialcraft.connection.BoardTrust;
 import com.serialcraft.connection.ConnectionManager;
+import com.serialcraft.connection.UsbBoards;
+import com.serialcraft.identity.BoardIdentity;
 import com.serialcraft.connection.WifiHandler;
 import com.serialcraft.screen.PanelUI;
 import com.serialcraft.util.NetUtils;
@@ -18,7 +21,6 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,8 +67,6 @@ public class WelcomePage implements Page {
     private IconTextButton pendingCopyButton;
     private Component pendingCopyOriginalLabel;
     private long copyFeedbackUntilMs;
-
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     // ════════════════════════════════════════════════════════════════════════════
     //  LAYOUT DINAMICO
@@ -199,12 +199,7 @@ public class WelcomePage implements Page {
         if (panel != null) panel.refreshWelcome();
     }
 
-    private static String generateToken() {
-        final String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin caracteres ambiguos
-        StringBuilder token = new StringBuilder(6);
-        for (int i = 0; i < 6; i++) token.append(alphabet.charAt(RANDOM.nextInt(alphabet.length())));
-        return token.toString();
-    }
+    private static String generateToken() { return WifiHandler.newSessionToken(); }
 
     // ════════════════════════════════════════════════════════════════════════════
     //  PANEL DE DATOS WI-FI CON COPIADO INDIVIDUAL
@@ -300,6 +295,12 @@ public class WelcomePage implements Page {
             gui.fill(valBoxX, y + 66, valBoxX + valBoxW, y + 82, 0xFFE8F5E9);
             gui.outline(valBoxX, y + 66, valBoxW, 16, 0xFFA5D6A7);
             gui.text(font, wifi.getPairingToken(), valBoxX + 6, y + 70, UiTheme.OK_DARK, false);
+
+            int remembered = BoardTrust.store().all().size();
+            if (remembered > 0) {
+                gui.text(font, Component.translatable("gui.serialcraft.welcome.wifi_remembered", remembered),
+                        x + 8, y + 85, UiTheme.TEXT_SECONDARY, false);
+            }
 
         } else if (wifi.getState() == WifiHandler.State.CONNECTED) {
             UiDraw.card(gui, x, y, CARD_WIDTH, h);
@@ -437,8 +438,9 @@ public class WelcomePage implements Page {
         devices.removeIf(device -> "USB".equals(device.type()));
         for (SerialPort port : SerialPort.getCommPorts()) {
             final String systemName = port.getSystemPortName();
-            String label    = describeBoard(port);
-            String platform = platformOf(port);
+            BoardIdentity identity = UsbBoards.identify(port);
+            String label    = describeBoard(port, identity);
+            String platform = platformOf(identity);
 
             devices.add(new PanelUI.DeviceInfo(
                     label, systemName, "USB", platform,
@@ -458,28 +460,43 @@ public class WelcomePage implements Page {
         }
     }
 
-    private static String describeBoard(SerialPort port) {
-        String key = switch (port.getVendorID()) {
-            case 0x2341, 0x2A03 -> "gui.serialcraft.board.arduino_official";
-            case 0x1A86         -> "gui.serialcraft.board.ch340";
-            case 0x10C4         -> "gui.serialcraft.board.cp2102";
-            case 0x0403         -> "gui.serialcraft.board.ftdi";
-            default             -> null;
-        };
-        if (key != null) return Component.translatable(key).getString();
-
-        String description = port.getDescriptivePortName();
-        return (description == null || description.isBlank() || description.contains("Generic"))
-                ? Component.translatable("gui.serialcraft.board.unknown").getString()
-                : description;
+    /**
+     * Etiqueta de la tarjeta. Un chip puente (CH340, CP2102...) NO dice que
+     * placa hay detras, asi que no se afirma nada que no se sepa: antes un
+     * ESP32 con CH340 salia como "Arduino generico". Si la placa se identifica
+     * al conectar (mc_id o banner de arranque), la pantalla de conexion
+     * muestra ya el modelo real.
+     */
+    private static String describeBoard(SerialPort port, BoardIdentity id) {
+        switch (id.confidence()) {
+            case DECLARED, MODEL:
+                return id.model();
+            case VENDOR:
+                return Component.translatable("gui.serialcraft.board.vendor", id.model()).getString();
+            case BRIDGE:
+                return Component.translatable("gui.serialcraft.board.bridge", bridgeName(id.bridge())).getString();
+            default:
+                String description = port.getDescriptivePortName();
+                return (description == null || description.isBlank() || description.contains("Generic"))
+                        ? Component.translatable("gui.serialcraft.board.unknown").getString()
+                        : description;
+        }
     }
 
-    private static String platformOf(SerialPort port) {
-        return switch (port.getVendorID()) {
-            case 0x2341, 0x2A03 -> "Arduino";
-            case 0x10C4         -> "ESP32";
-            default             -> Component.translatable("gui.serialcraft.board.generic").getString();
+    private static String bridgeName(BoardIdentity.Bridge bridge) {
+        return switch (bridge) {
+            case CH340  -> "CH340";
+            case CH9102 -> "CH9102";
+            case CP210X -> "CP210x";
+            case FTDI   -> "FTDI";
+            case PL2303 -> "PL2303";
+            default     -> "USB";
         };
+    }
+
+    private static String platformOf(BoardIdentity id) {
+        String label = id.platformLabel();
+        return label.isEmpty() ? Component.translatable("gui.serialcraft.board.generic").getString() : label;
     }
 
     // ════════════════════════════════════════════════════════════════════════════

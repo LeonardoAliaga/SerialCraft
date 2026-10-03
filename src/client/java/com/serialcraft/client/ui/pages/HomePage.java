@@ -7,6 +7,7 @@ import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.connection.WifiHandler;
+import com.serialcraft.identity.BoardIdentity;
 import com.serialcraft.screen.PanelUI;
 import com.serialcraft.util.NetUtils;
 import net.minecraft.client.Minecraft;
@@ -32,6 +33,7 @@ public class HomePage implements Page {
 
     private @Nullable PanelUI.DeviceInfo device;
     private @Nullable EditBox commandBox;
+    private @Nullable IconTextButton trustButton;
     private long connectedAtMillis;
 
     // ══════════════════════════════════════════════════════════════════════
@@ -51,6 +53,19 @@ public class HomePage implements Page {
                 UiTheme.ACCENT_HOME, UiTheme.ACCENT_HOME_BORDER, UiTheme.TEXT_INVERSE
         ));
 
+        // Recordar / olvidar la placa Wi-Fi conectada (reconecta sin token).
+        // Se crea oculto y tick() lo muestra cuando la placa ya se identifico.
+        trustButton = null;
+        if (ConnectionManager.getWifi().isConnected()) {
+            trustButton = new IconTextButton(
+                    x + 164, buttonY, 156, 24, null,
+                    Component.translatable("gui.serialcraft.home.remember"),
+                    btn -> toggleRemember(),
+                    UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK, UiTheme.TEXT_INVERSE);
+            trustButton.visible = false;
+            panel.addWidget(trustButton);
+        }
+
         if (device == null) return;
 
         // ── Terminal ──────────────────────────────────────────────────────
@@ -68,6 +83,34 @@ public class HomePage implements Page {
                 Component.translatable("gui.serialcraft.home.send"),
                 btn -> submitCommand()
         ));
+    }
+
+    @Override
+    public void tick() {
+        if (trustButton == null) return;
+        WifiHandler wifi = ConnectionManager.getWifi();
+        boolean remembered = wifi.isCurrentRemembered();
+        trustButton.visible = wifi.isConnected() && (remembered || wifi.canRemember());
+        trustButton.setMessage(Component.translatable(remembered
+                ? "gui.serialcraft.home.forget" : "gui.serialcraft.home.remember"));
+    }
+
+    private void toggleRemember() {
+        WifiHandler wifi = ConnectionManager.getWifi();
+        if (wifi.isCurrentRemembered()) wifi.forgetCurrentBoard();
+        else                            wifi.rememberCurrentBoard();
+    }
+
+    /** Nombre que mejor describe la placa: el modelo identificado, o el del dispositivo. */
+    private String boardTitle(PanelUI.DeviceInfo dev) {
+        BoardIdentity id = ConnectionManager.activeIdentity();
+        if (!id.hasModel()) return dev.name();
+        return id.model() + " (" + dev.address() + ")";
+    }
+
+    private String boardPlatform(PanelUI.DeviceInfo dev) {
+        String label = ConnectionManager.activeIdentity().platformLabel();
+        return label.isEmpty() ? dev.platform() : label;
     }
 
     private void submitCommand() {
@@ -113,7 +156,7 @@ public class HomePage implements Page {
                 Component.translatable("gui.serialcraft.status.connected"),
                 UiTheme.OK_BG, UiTheme.OK_DARK);
 
-        cursor = UiDraw.badge(gui, font, cursor + 6, y + 8, device.platform(),
+        cursor = UiDraw.badge(gui, font, cursor + 6, y + 8, boardPlatform(device),
                 wifi ? UiTheme.INFO_BG : UiTheme.WARN_BG,
                 wifi ? UiTheme.INFO_DARK : UiTheme.WARN_DARK);
 
@@ -121,7 +164,8 @@ public class HomePage implements Page {
                 wifi ? UiTheme.INFO_BG : UiTheme.NEUTRAL_BG,
                 wifi ? UiTheme.INFO_DARK : UiTheme.NEUTRAL_TX);
 
-        gui.text(font, device.name(), x + 12, y + 36, UiTheme.TEXT_PRIMARY, false);
+        gui.text(font, font.plainSubstrByWidth(boardTitle(device), CARD_WIDTH - 24),
+                x + 12, y + 36, UiTheme.TEXT_PRIMARY, false);
         gui.fill(x + 10, y + 50, x + CARD_WIDTH - 10, y + 51, UiTheme.LINE);
 
         int rowY = y + 58;

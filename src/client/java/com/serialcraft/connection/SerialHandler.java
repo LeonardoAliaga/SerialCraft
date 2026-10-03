@@ -2,6 +2,7 @@ package com.serialcraft.connection;
 
 import com.fazecast.jSerialComm.SerialPort;
 import com.serialcraft.SerialCraft;
+import com.serialcraft.identity.BoardIdentity;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,6 +38,7 @@ public class SerialHandler implements BoardLink {
 
     private volatile @Nullable SerialPort port;
     private volatile @Nullable Thread     readerThread;
+    private volatile BoardIdentity identity = BoardIdentity.unknown();
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     @Override public String name() { return "USB"; }
@@ -51,6 +53,9 @@ public class SerialHandler implements BoardLink {
         SerialPort p = port;
         return (p != null && p.isOpen()) ? p.getSystemPortName() : "";
     }
+
+    /** Lo que el USB dice de la placa conectada (ver {@link UsbBoards}). */
+    public BoardIdentity getIdentity() { return identity; }
 
     public int getBaudRate() {
         SerialPort p = port;
@@ -88,7 +93,12 @@ public class SerialHandler implements BoardLink {
             target.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, READ_TIMEOUT_MS, 0);
 
             this.port = target;
+            this.identity = UsbBoards.identify(target);
             running.set(true);
+
+            // Antes de arrancar el lector: si no, el banner de arranque de la
+            // placa podria llegar antes de que se reinicie el estado de identidad.
+            ConnectionManager.onLinkConnected(this, BoardIdentity.unknown());
 
             Thread thread = new Thread(this::readLoop, THREAD_NAME);
             thread.setDaemon(true);   // no debe impedir que el juego cierre
@@ -117,6 +127,7 @@ public class SerialHandler implements BoardLink {
 
         SerialPort p = port;
         port = null;
+        identity = BoardIdentity.unknown();
         closeQuietly(p);
 
         Thread thread = readerThread;

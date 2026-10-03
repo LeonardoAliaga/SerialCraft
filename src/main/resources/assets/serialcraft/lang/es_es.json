@@ -62,6 +62,11 @@
   "gui.serialcraft.board.ftdi": "Placa genérica (FTDI)",
   "gui.serialcraft.board.unknown": "Dispositivo serial desconocido",
   "gui.serialcraft.board.generic": "Genérica",
+  "gui.serialcraft.board.bridge": "Placa con %s (modelo sin identificar)",
+  "gui.serialcraft.board.vendor": "%s (modelo sin identificar)",
+  "gui.serialcraft.welcome.wifi_remembered": "%s placa(s) recordada(s): se conectan sin token",
+  "gui.serialcraft.home.remember": "Recordar placa",
+  "gui.serialcraft.home.forget": "Olvidar placa",
 
   "_comment_home": "── Página de inicio ──",
   "gui.serialcraft.home.title": "INICIO",
