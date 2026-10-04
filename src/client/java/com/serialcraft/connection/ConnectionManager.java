@@ -4,6 +4,8 @@ import com.serialcraft.client.SerialDebugHud;
 import com.serialcraft.identity.BannerSniffer;
 import com.serialcraft.identity.BoardHello;
 import com.serialcraft.identity.BoardIdentity;
+import com.serialcraft.signal.SignalRecorder;
+import com.serialcraft.signal.SignalRecorder.Direction;
 import com.serialcraft.network.SerialInputPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
@@ -131,6 +133,7 @@ public final class ConnectionManager {
         boolean delivered = deliver(message);
 
         if (delivered) {
+            SignalRecorder.INSTANCE.record(Direction.TX, message, System.nanoTime());
             SerialDebugHud.addLog("TX: " + message);
             addHistory("TX: " + message);
         } else {
@@ -154,10 +157,25 @@ public final class ConnectionManager {
      */
     public static boolean sendTelemetry(String line, boolean quiet) {
         boolean delivered = deliver(line);
+        if (delivered) SignalRecorder.INSTANCE.record(Direction.TX, line, System.nanoTime());
         if (delivered && !quiet) {
             SerialDebugHud.addLog("TM: " + line);
             addHistory("TM: " + line);
         }
+        return delivered;
+    }
+
+    /**
+     * Envia una senal continua (la del generador de la pestana Visualizar).
+     * Como {@link #sendTelemetry} no escribe en la consola, para no llenarla
+     * con diez lineas por segundo, pero SI queda anotada en el registro de
+     * senales para poder verla en pantalla junto a la respuesta de la placa.
+     *
+     * @return true si algun enlace lo entrego
+     */
+    public static boolean sendSignal(String line) {
+        boolean delivered = deliver(line);
+        if (delivered) SignalRecorder.INSTANCE.record(Direction.TX, line, System.nanoTime());
         return delivered;
     }
 
@@ -196,6 +214,11 @@ public final class ConnectionManager {
         if (announced.confidence() != BoardIdentity.Confidence.DECLARED) {
             BannerSniffer.identify(message).ifPresent(id -> announced = BoardIdentity.best(announced, id));
         }
+
+        // Registro de senales: ANTES del filtro de abajo, que descarta lo que
+        // llega demasiado seguido. Lo que se ve en Visualizar es lo que la placa
+        // realmente envio, no lo que sobrevivio al filtro.
+        SignalRecorder.INSTANCE.record(Direction.RX, message, System.nanoTime());
 
         long now = System.nanoTime();
         synchronized (ConnectionManager.class) {

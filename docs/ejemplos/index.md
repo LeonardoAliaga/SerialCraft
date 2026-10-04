@@ -863,6 +863,10 @@ Haz estos cinco pasos en orden. Cada uno aísla una capa distinta, así sabes ex
 | 4 | Gira el potenciómetro con el juego abierto | El bloque `pot_val` genera redstone | `Target Data` mal escrito o el bloque no está en INPUT |
 | 5 | Alimenta `led_verde` con una palanca | El LED enciende | El bloque no está en OUTPUT, o está desactivado desde la Laptop |
 
+### Atajo: probar el LED sin redstone
+
+El paso 5 se puede hacer sin palanca: abre **Visualizar**, deja `led_verde` en la clave del generador y pulsa **Generar**. La rampa debe verse como un fundido de brillo en el LED, y la pista naranja `led_verde` de la línea de tiempo muestra exactamente lo que recibe la placa. Si el LED responde aquí pero no con redstone, el fallo está en el bloque (modo, `Target Data` o lados) y no en la placa. Detalles en el [banco de pruebas](/guide#banco-de-pruebas-pestana-visualizar).
+
 ### Prueba del modo digital
 
 Cambia el bloque `led_verde` a **Digital** y vuelve a alimentarlo con la palanca. El LED debe encender **al máximo**, no tenuemente. Esa es la corrección de la v0.4.3: en modo digital el mod envía `255`, no `1`.
@@ -872,5 +876,7 @@ Si el LED enciende apenas perceptible, estás usando un sketch de la 0.3.x que c
 ### Prueba del límite de ritmo
 
 Quita temporalmente la histéresis del sketch y deja que envíe en cada vuelta de `loop()`. Verás que el juego deja de responder a algunos cambios: el limitador está descartando el exceso. Es el comportamiento correcto. Vuelve a poner la histéresis.
+
+La vista **Sensor** de la pestaña Visualizar te dice cuántos **mensajes por segundo** envía tu sketch y qué **zona muerta** le conviene según el ruido real de tu potenciómetro.
 
 ---

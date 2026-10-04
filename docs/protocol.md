@@ -178,6 +178,10 @@ La versión 0.4.6 introduce el canal de telemetría y refuerza el aislamiento en
    El envío de telemetría está estrictamente dosificado a un máximo de **1 línea por tick** (techo de 20 líneas/s) mediante `TelemetryOutbox`, con prioridad de sucesos frente a estados, evitando desbordar el búfer serie de 64 bytes en microcontroladores como el ATmega328P de Arduino Uno.
 4. **Reenvío periódico cada 5 segundos**:
    Los canales periódicos activos se reenvían silenciosamente cada 100 ticks (5 s) sin emitir mensajes en la consola HUD, garantizando que microcontroladores que se reinician al abrir la conexión USB (DTR) adquieran el estado actual sin reconexión manual.
+5. **Identificación de la placa y reconexión sin token**:
+   Líneas opcionales `mc_who`, `mc_id` y `mc_key`, y un segundo camino de handshake (`TRUST` con reto-respuesta) para placas recordadas. Ver la [sección 12](#_12-identificacion-de-la-placa-y-reconexion-sin-token).
+6. **Banco de pruebas (pestaña Visualizar)**:
+   El mod registra con hora real los mensajes `clave:valor` en ambos sentidos y puede enviar ondas de prueba a la placa. No añade nada al formato del cable. Ver la [sección 13](#_13-probar-con-el-generador-pestana-visualizar).
 
 ---
 
@@ -373,3 +377,38 @@ La clave (en ASCII hex) es la clave HMAC y el reto (en ASCII hex) es el mensaje.
 Si hay placas recordadas, el servidor Wi-Fi **arranca solo al entrar a un mundo** (ajuste `settings.autoStartWifi`), así la placa se reconecta sin abrir la Laptop.
 
 > El primer emparejamiento (token y `mc_key`) viaja en claro por la LAN, igual que el token siempre lo ha hecho: hazlo en una red de confianza. Para revocar una placa pulsa **Olvidar placa** o borra su bloque del fichero.
+
+---
+
+## 13. Probar con el generador (pestaña Visualizar)
+
+El generador de la pestaña **Visualizar** envía a la placa líneas con el formato de siempre, `clave:valor`. **No añade nada al protocolo**: tu sketch las trata igual que las de un Bloque IO de salida.
+
+| Propiedad | Valor |
+| :--- | :--- |
+| Formato | `<clave>:<0-255>\n`, entero |
+| Ritmo | Como máximo 10 líneas/s y solo si el valor cambió (el mismo límite que los Bloques IO de salida, un envío cada 2 ticks) |
+| Al detenerse | Envía `<clave>:0` una vez, para dejar el actuador en reposo |
+| Clave | `[A-Za-z0-9_.-]`, hasta 32 caracteres |
+| Consola | No escribe en la consola para no llenarla |
+
+**Formas de onda** (periodo de 1, 2, 5 o 10 s; amplitud del 100, 50 o 25 % de 0-255):
+
+| Forma | Valores |
+| :--- | :--- |
+| Rampa | Sube de 0 a 255 y vuelve a 0 de golpe |
+| Triángulo | Sube y baja suavemente |
+| Cuadrada | 0 la primera mitad del periodo y 255 la segunda |
+| Seno | Senoidal, empieza en 0 |
+| Escalera | 16 escalones: 0, 17, 34… 255, uno por cada nivel de redstone |
+
+Con un LED en un pin PWM, la rampa debe verse como un fundido de brillo y la escalera como 16 niveles distintos. Si el LED responde al generador pero no a la redstone, el fallo está en el bloque (modo, `Target Data` o lados), no en la placa ni en el cableado.
+
+### Qué registra el mod
+
+Cada línea `clave:valor` recibida (**RX**) o enviada (**TX**) se guarda con la hora real en que ocurrió. La pestaña Visualizar dibuja ese registro.
+
+* Se aceptan valores con signo y decimales (hasta 9 dígitos enteros y 6 decimales) **solo para mostrarlos**: los Bloques IO trabajan con enteros de 0 a 255.
+* Se ignoran las líneas que no tengan la forma `clave:número`: banners de arranque, texto libre y las líneas de identificación `mc_id:`.
+* Se guardan hasta **16 series** (cada pareja sentido + clave) y ~4000 muestras por serie; al llenarse se descarta lo más antiguo.
+* Lo recibido se anota **antes** del limitador de ritmo: se ve lo que la placa envió, no lo que sobrevivió al filtro.

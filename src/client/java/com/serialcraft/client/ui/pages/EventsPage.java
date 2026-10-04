@@ -2,6 +2,7 @@ package com.serialcraft.client.ui.pages;
 
 import com.serialcraft.client.events.EventsConfig;
 import com.serialcraft.client.events.GameEvent;
+import com.serialcraft.client.ui.ScrollState;
 import com.serialcraft.client.ui.SolidButton;
 import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.UiTheme;
@@ -10,21 +11,19 @@ import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Pagina "Eventos": que datos del juego se envian a la placa, y el log en
- * vivo de lo que realmente viaja por el cable.
+ * Pagina "Eventos": seleccion de datos del juego que se envian a la placa
+ * y log en vivo del cable.
  *
- * La lista de casillas es puramente una vista de EventsConfig: esta pagina no
- * guarda ningun estado propio de que esta activado, asi que cambiar de
- * pestana y volver, o reabrir el panel, siempre refleja lo que hay en disco.
- * El muestreo real ocurre en GameEventsTracker, en el hilo de tick del
- * cliente; esta clase solo dibuja y escribe la configuracion.
+ * Incluye barra de desplazamiento (scroll) adaptativa para pantallas compactas.
  */
 public class EventsPage implements Page {
 
@@ -34,20 +33,32 @@ public class EventsPage implements Page {
     private static final int ROW_HEIGHT_WIDGET = ROW_H - 2;
     private static final int INTERVAL_ROW_H = 18;
     private static final int SECTION_GAP    = 10;
-
     private static final int LINE_HEIGHT   = 11;
 
-    private record CategoryHeader(GameEvent.Category category, int y) {}
+    private record CategoryHeader(GameEvent.Category category, int baseY) {}
+    private record ToggleItem(EventToggle toggle, int baseY) {}
 
     private final List<CategoryHeader> categoryHeaders = new ArrayList<>();
-    private int logTop = LIST_TOP;
+    private final List<ToggleItem> toggleItems = new ArrayList<>();
+    private final ScrollState scroll = new ScrollState();
+
+    private @Nullable SolidButton intervalButton;
+    private int baseIntervalY;
+    private int baseLogTop = LIST_TOP;
+
+    private int screenWidth;
+    private int screenHeight;
 
     @Override
     public void init(PanelUI panel, int screenWidth, int screenHeight) {
-        categoryHeaders.clear();
+        this.screenWidth  = screenWidth;
+        this.screenHeight = screenHeight;
 
-        int x     = UiTheme.contentX(screenWidth);
-        int width = screenWidth - x - UiTheme.CONTENT_MARGIN;
+        categoryHeaders.clear();
+        toggleItems.clear();
+
+        int x = UiTheme.contentX(screenWidth);
+        int width = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
 
         EventsConfig cfg = EventsConfig.get();
         int y = LIST_TOP;
@@ -60,53 +71,120 @@ public class EventsPage implements Page {
             y += HEADER_H;
 
             for (GameEvent event : events) {
-                panel.addWidget(new EventToggle(x, y, width, ROW_HEIGHT_WIDGET, event,
+                EventToggle toggle = new EventToggle(x, y, width, ROW_HEIGHT_WIDGET, event,
                         cfg.isEnabled(event), Component.translatable(event.labelKey()),
-                        (ev, checked) -> EventsConfig.get().setEnabled(ev, checked)));
+                        (ev, checked) -> EventsConfig.get().setEnabled(ev, checked));
+                panel.addWidget(toggle);
+                toggleItems.add(new ToggleItem(toggle, y));
                 y += ROW_H;
             }
         }
 
         y += SECTION_GAP;
-        panel.addWidget(SolidButton.primary(x, y, width, INTERVAL_ROW_H, intervalLabel(cfg), btn -> {
+        this.baseIntervalY = y;
+        intervalButton = SolidButton.primary(x, y, width, INTERVAL_ROW_H, intervalLabel(cfg), btn -> {
             EventsConfig.get().cycleInterval();
             btn.setMessage(intervalLabel(EventsConfig.get()));
-        }));
+        });
+        panel.addWidget(intervalButton);
 
-        this.logTop = y + INTERVAL_ROW_H + SECTION_GAP;
+        this.baseLogTop = y + INTERVAL_ROW_H + SECTION_GAP;
     }
+
+    // ── EVENTOS DE RATÓN Y DESPLAZAMIENTO ─────────────────────────────────────
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        return scroll.mouseScrolled(verticalAmount);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        int x = UiTheme.contentX(screenWidth);
+        int width = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
+        int viewportTop = 40;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = viewportBottom - viewportTop;
+        return scroll.mouseClicked(event.x(), event.y(), event.button(),
+                x + width + 2, viewportTop, 8, viewportHeight);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return scroll.mouseReleased(event.button());
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        int viewportTop = 40;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = viewportBottom - viewportTop;
+        return scroll.mouseDragged(event.y(), viewportTop, viewportHeight);
+    }
+
+    // ── RENDER ────────────────────────────────────────────────────────────────
 
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font,
                        int screenWidth, int screenHeight) {
         int x     = UiTheme.contentX(screenWidth);
-        int width = screenWidth - x - UiTheme.CONTENT_MARGIN;
+        int width = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
 
         UiDraw.pageTitle(gui, font, x,
                 Component.translatable("gui.serialcraft.events.title"), UiTheme.ACCENT_EVENTS,
                 Component.translatable("gui.serialcraft.events.subtitle"));
 
-        for (CategoryHeader header : categoryHeaders) {
-            gui.text(font, Component.translatable(categoryLabelKey(header.category())),
-                    x, header.y() + 3, UiTheme.TEXT_MUTED, false);
+        int viewportTop = 40;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = Math.max(10, viewportBottom - viewportTop);
+
+        int totalContent = baseLogTop + 100 - viewportTop;
+        scroll.update(viewportHeight, totalContent);
+        int scrollY = (int) scroll.getScrollAmount();
+
+        // Actualizar posiciones de widgets
+        for (ToggleItem item : toggleItems) {
+            int currentY = item.baseY() - scrollY;
+            item.toggle().setY(currentY);
+            boolean inView = (currentY + item.toggle().getHeight() >= viewportTop && currentY <= viewportBottom);
+            item.toggle().visible = inView;
+            item.toggle().active  = inView;
         }
 
-        renderLog(gui, font, x, width, screenHeight);
+        if (intervalButton != null) {
+            int currentY = baseIntervalY - scrollY;
+            intervalButton.setY(currentY);
+            boolean inView = (currentY + intervalButton.getHeight() >= viewportTop && currentY <= viewportBottom);
+            intervalButton.visible = inView;
+            intervalButton.active  = inView;
+        }
+
+        gui.enableScissor(x - 2, viewportTop, screenWidth, viewportBottom);
+
+        for (CategoryHeader header : categoryHeaders) {
+            int currentY = header.baseY() - scrollY;
+            if (currentY >= viewportTop - 10 && currentY <= viewportBottom) {
+                gui.text(font, Component.translatable(categoryLabelKey(header.category())),
+                        x, currentY + 3, UiTheme.TEXT_MUTED, false);
+            }
+        }
+
+        renderLog(gui, font, x, width, baseLogTop - scrollY);
+
+        gui.disableScissor();
+
+        if (scroll.hasScroll()) {
+            scroll.renderScrollbar(gui, x + width + 3, viewportTop, 6, viewportHeight);
+        }
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  LOG
-    // ══════════════════════════════════════════════════════════════════════
-
-    private void renderLog(GuiGraphicsExtractor gui, Font font, int x, int width, int screenHeight) {
+    private void renderLog(GuiGraphicsExtractor gui, Font font, int x, int width, int logY) {
         gui.text(font, Component.translatable("gui.serialcraft.events.log_title"),
-                x, logTop, UiTheme.TEXT_SECONDARY, false);
-        int consoleTop = logTop + 12;
+                x, logY, UiTheme.TEXT_SECONDARY, false);
+        int consoleTop = logY + 12;
 
-        int available    = Math.max(40, screenHeight - consoleTop - 20);
-        int visibleLines = Math.max(1, available / LINE_HEIGHT);
-
-        List<String> entries = ConnectionManager.recentHistory(visibleLines);
+        int linesCount = 8;
+        List<String> entries = ConnectionManager.recentHistory(linesCount);
 
         if (entries.isEmpty()) {
             gui.text(font, Component.translatable("gui.serialcraft.events.empty"),
@@ -114,7 +192,7 @@ public class EventsPage implements Page {
             return;
         }
 
-        int height = Math.min(available, entries.size() * LINE_HEIGHT + 12);
+        int height = entries.size() * LINE_HEIGHT + 12;
         gui.fill(x, consoleTop, x + width, consoleTop + height, UiTheme.BG_CONSOLE);
 
         int y = consoleTop + 6;
@@ -126,11 +204,8 @@ public class EventsPage implements Page {
             gui.text(font, font.plainSubstrByWidth(entry, width - 12),
                     x + 6, y, color, false);
             y += LINE_HEIGHT;
-            if (y > consoleTop + height - LINE_HEIGHT) break;
         }
     }
-
-    // ══════════════════════════════════════════════════════════════════════
 
     private static List<GameEvent> eventsOf(GameEvent.Category category) {
         List<GameEvent> result = new ArrayList<>();

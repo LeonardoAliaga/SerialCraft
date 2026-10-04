@@ -867,6 +867,10 @@ Run these five steps in order. Each isolates a different layer, so you know exac
 | 4 | Turn the potentiometer with the game open | The `pot_val` block emits redstone | `Target Data` typo, or the block is not in INPUT |
 | 5 | Power `led_verde` with a lever | The LED lights | The block is not in OUTPUT, or is disabled from the Laptop |
 
+### Shortcut: test the LED without redstone
+
+Step 5 can be done without a lever: open **Visualizer**, leave `led_verde` as the generator key and press **Generate**. The ramp should look like a brightness fade on the LED, and the orange `led_verde` lane on the timeline shows exactly what the board receives. If the LED responds here but not with redstone, the fault is in the block (mode, `Target Data` or sides), not in the board. Details in the [test bench](/en/guide#test-bench-visualizer-tab).
+
 ### Testing digital mode
 
 Switch the `led_verde` block to **Digital** and power it again with the lever. The LED must light **fully**, not faintly. That is the v0.4.3 fix: digital mode sends `255`, not `1`.
@@ -876,5 +880,7 @@ If the LED is barely visible, you are running a 0.3.x sketch that compares `valu
 ### Testing the rate limit
 
 Temporarily remove the hysteresis so the sketch transmits on every `loop()` pass. The game will start ignoring some changes: the limiter is dropping the excess. That is correct behaviour. Put the hysteresis back.
+
+The **Sensor** view of the Visualizer tab tells you how many **messages per second** your sketch sends and which **deadband** suits your potentiometer's real noise.
 
 ---

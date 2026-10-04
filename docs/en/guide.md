@@ -24,8 +24,12 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
   The **Events** tab displays live values next to each toggle (`mc_hunger:20`), and the console highlights incoming and outgoing telemetry with the `TM:` prefix.
 * **Migration to Minecraft 26.2 & Java 25**:
   The mod runs on Fabric Loader for Minecraft 26.2 and requires **Java 25** as its runtime environment.
-* **Visualizer tab (Real-time oscilloscope monitor)**:
-  The Laptop now includes a dedicated **Visualizer** tab offering real-time waveform graphing (oscilloscope) for IO Block inputs and outputs (analog and digital), making circuit diagnosis fast and intuitive.
+* **Visualizer tab (test bench)**:
+  The Laptop now has a **Visualizer** tab with three tools: a **timeline** that shows several signals at once (sensors, values the game sends, and `mc_*` telemetry), a **Sensor** view that compares the raw value with the redstone it produces and suggests a deadband, and a wave **generator** to check that your board responds without building a redstone circuit. Every message carries its real timestamp and the line is never smoothed. See [Test bench](#test-bench-visualizer-tab).
+* **Board identification**:
+  A USB-serial bridge chip (CH340, CP2102) does not say which board is behind it, so the mod no longer labels every CH340 board "Arduino". It recognises the Arduino UNO Q, UNO R3/R4, Mega, Nano ESP32 and native-USB ESP32s over USB; for the rest it shows "Board with CH340 (model not identified)" until the board announces itself with `mc_id`. See [protocol, section 12](/en/protocol#_12-board-identification-and-token-free-reconnection).
+* **Remembered boards (Wi-Fi without a token)**:
+  With **Remember board** (Home tab) a Wi-Fi board stores a key and reconnects without typing the token. When remembered boards exist, the Wi-Fi server starts by itself when you join a world. See [protocol, section 12](/en/protocol#_12-board-identification-and-token-free-reconnection).
 * **Removal of ComputerCraft integration**:
   External peripheral classes (`ArduinoPeripheral` and `CCIntegration`) were removed to streamline the mod and focus purely on direct, native real-world hardware integration and game telemetry.
 * **Integrated recipes**:
@@ -113,6 +117,89 @@ With two IO Blocks — one `INPUT` named `pot_val` and one `OUTPUT` named `green
 
 ---
 
+## Test bench (Visualizer tab)
+
+The **Visualizer** tab shows what travels between the game and the board and lets you check that the board responds, without building redstone circuits.
+
+::: info This is not a lab oscilloscope
+The cable carries text messages with values from 0 to 255, a few dozen per second. What you see is **which messages arrived and when**; there is nothing to show about what happens between two messages.
+:::
+
+### What is on screen
+
+| Row | Controls |
+| :---: | :--- |
+| 1 | **View** (Timeline or Sensor), **Window** (5, 10, 30 or 60 s), **Pause** and **Clear** |
+| 2 | **Channels** field (timeline) or **sensor** field (Sensor view) |
+| 3 | **Generator**: Generate/Stop, shape, period, amplitude and the key to send |
+
+Below the controls, a status line tells you whether the generator is running, if something failed, or if the graph is paused.
+
+### How to read the graphs
+
+* **Green (RX):** what **the board sends** to the game, for example a `pot_val` sensor.
+* **Orange (TX):** what **the game sends** to the board: output IO Blocks, `mc_*` telemetry and the generator.
+* The line is a **step**: between two messages the value is held. It is never smoothed, because smoothing would draw values that were never sent (a jump from 0 to 255 would appear as a ramp). When there are few messages, each one is marked with a white dot.
+* `mc_damage` and `mc_death` are **events**, not states: they are drawn as bars at the instant they happened.
+* The scale is 0-255. It grows to 1023, 4095 or 65535 if the signal exceeds it (a 10 or 12-bit ADC), and `mc_*` channels use their own range.
+
+What is recorded is what the board really sent, including messages the rate limiter drops before they reach the block.
+
+### Timeline
+
+Shows several signals in lanes that share one time axis, to answer "where does the chain break?": is the sensor sending, is the game receiving, is the board responding?
+
+* With the channels field **empty**, it shows signals with activity in the last 2 minutes, the most recent ones that fit on screen; the rest is announced as "+N more signals".
+* To choose which ones to see, type names separated by commas or spaces. Each can be exact or end in `*`: `pot_val, led_verde` or `mc_*`.
+* Lane order is fixed (RX first, then TX, alphabetical): lanes do not jump around when a sensor talks.
+
+### Sensor view
+
+Shows **one** signal in detail: the raw wire value (green) and the **redstone** it produces (orange), drawn on the same scale. The `RS 0-15` axis is on the right.
+
+| Row | Meaning |
+| :--- | :--- |
+| Value | Last raw value and its matching redstone level |
+| Messages/s | How many messages per second the signal sends (last 3 s) |
+| Range | Minimum and maximum of the window, and the time-weighted average |
+| Variation 3 s | Maximum minus minimum over the last 3 s, and the **suggested deadband** |
+| Redstone | How many times the redstone level changed in the last 3 s |
+
+**How to calibrate a sensor:**
+
+1. Open the **Sensor** view and type the key (for example `pot_val`). Empty shows the latest active sensor.
+2. Keep the sensor **still** for a few seconds.
+3. Read **Variation 3 s**: with the sensor still, that number is its noise. If it is 0, the signal is clean.
+4. In the sketch, use a deadband equal to or larger than the suggested value: `if (abs(value - last) >= 4) { send(); }`.
+5. If **Redstone** changes several times while the sensor is still, the value sits on the edge between two redstone levels (each level is 17 wire units) and flickers. The deadband fixes it.
+
+::: warning The redstone conversion is the one for an Analog signal
+A **Digital** block turns any value above 0 into 15. The view only shows the conversion when the scale is 0-255 and the key does not start with `mc_`.
+:::
+
+### Generator
+
+Sends a test wave to a key on the board. Use it to check that an LED, servo or motor responds **without building a redstone circuit**.
+
+1. Connect the board.
+2. Type the actuator's key in the field on the right (`led_verde` by default).
+3. Pick the **shape**: Ramp, Triangle, Square, Sine or Stairs (16 steps, one per redstone level).
+4. Pick the **period** (1, 2, 5 or 10 s) and the **amplitude** (100, 50 or 25 % of 0-255).
+5. Press **Generate**. On the timeline you will see the orange lane with your key and, if the board answers with a sensor (for example an LDR facing the LED), its green lane right below.
+
+Generator rules:
+
+* It sends integers from 0 to 255, at most **10 messages per second** and only when the value changes: the same rate as output IO Blocks.
+* The key accepts letters, numbers, `_`, `.` and `-`, up to 32 characters.
+* It keeps running if you switch tabs. It **stops** when you press Stop, when you close the Laptop, or if the connection is lost.
+* When it stops on your command or when you close the Laptop, it leaves the board at rest by sending `key:0`.
+
+::: warning It sends real values to your hardware
+If a servo or motor is connected, start with the amplitude at 25 %.
+:::
+
+---
+
 ## Known limits in this version
 
 Worth knowing before you build something large:
@@ -121,6 +208,8 @@ Worth knowing before you build something large:
 * The interface is designed for standard resolutions; at maximum GUI scale on 854×480 the cards overflow the visible area.
 * There is no mode where **the server** owns the hardware. The serial port lives on each player's computer, so the model is "every player controls their own boards from their PC". This is an architectural choice, not an oversight.
 * The Wi-Fi channel is unencrypted.
+* The Visualizer tab keeps the last ~4000 samples of up to 16 signals at once. It is a log of **messages**, not an oscilloscope: it cannot see anything that happens between two messages.
+* The generator sends at most 10 messages per second.
 
 ---
 

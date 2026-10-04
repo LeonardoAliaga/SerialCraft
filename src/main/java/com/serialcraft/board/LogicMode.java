@@ -25,6 +25,10 @@ public enum LogicMode implements StringRepresentable {
         return (id >= 0 && id < VALUES.length) ? VALUES[id] : OR;
     }
 
+    public LogicMode next() {
+        return VALUES[(ordinal() + 1) % VALUES.length];
+    }
+
     /**
      * Evalua la condicion. Sin pines de entrada configurados la placa se
      * considera habilitada: no tiene sentido bloquearla por una condicion

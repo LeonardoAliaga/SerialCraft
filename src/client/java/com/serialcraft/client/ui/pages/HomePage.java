@@ -1,10 +1,9 @@
 package com.serialcraft.client.ui.pages;
 
+import com.serialcraft.client.ui.ScrollState;
 import com.serialcraft.client.ui.SolidButton;
-import com.serialcraft.client.ui.SpriteIcon;
 import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.UiTheme;
-import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.connection.WifiHandler;
 import com.serialcraft.identity.BoardIdentity;
@@ -14,75 +13,91 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 /**
- * Pagina de inicio: estado de la conexion y terminal bidireccional.
+ * Pagina "Inicio": estado del dispositivo conectado, acciones de sesion y consola serial.
+ *
+ * Totalmente adaptada a resoluciones reducidas mediante layout responsivo y scroll vertical.
  */
 public class HomePage implements Page {
 
-    private static final int CARD_WIDTH   = 320;
-    private static final int CARD_HEIGHT  = 140;
-    private static final int CARD_TOP     = 60;
-    private static final int BUTTON_GAP   = 12;
-    private static final int CONSOLE_H    = 93;
-    private static final int CONSOLE_LINES = 8;
+    private static final int BASE_CARD_TOP = 48;
+    private static final int CARD_HEIGHT   = 136;
+    private static final int BUTTON_GAP    = 8;
+    private static final int CONSOLE_LINES = 10;
+    private static final int CONSOLE_H     = 108;
+
+    private static long connectedAtMillis = 0L;
 
     private @Nullable PanelUI.DeviceInfo device;
-    private @Nullable EditBox commandBox;
-    private @Nullable IconTextButton trustButton;
-    private long connectedAtMillis;
+    private @Nullable EditBox     commandBox;
+    private @Nullable SolidButton trustButton;
+    private @Nullable SolidButton disconnectButton;
+    private @Nullable SolidButton sendButton;
 
-    // ══════════════════════════════════════════════════════════════════════
+    private int baseButtonsY;
+    private int baseTerminalY;
+
+    private final ScrollState scroll = new ScrollState();
+    private int screenWidth;
+    private int screenHeight;
 
     @Override
     public void init(PanelUI panel, int screenWidth, int screenHeight) {
-        this.device            = PanelUI.getSelectedDevice();
-        this.connectedAtMillis = System.currentTimeMillis();
-
-        int x = UiTheme.contentX(screenWidth) + 10;
-        int buttonY = CARD_TOP + CARD_HEIGHT + BUTTON_GAP;
-
-        panel.addWidget(new IconTextButton(
-                x, buttonY, 156, 24, SpriteIcon.DISCONNECT,
-                Component.translatable("gui.serialcraft.home.disconnect"),
-                btn -> panel.disconnectDevice(),
-                UiTheme.ACCENT_HOME, UiTheme.ACCENT_HOME_BORDER, UiTheme.TEXT_INVERSE
-        ));
-
-        // Recordar / olvidar la placa Wi-Fi conectada (reconecta sin token).
-        // Se crea oculto y tick() lo muestra cuando la placa ya se identifico.
-        trustButton = null;
-        if (ConnectionManager.getWifi().isConnected()) {
-            trustButton = new IconTextButton(
-                    x + 164, buttonY, 156, 24, null,
-                    Component.translatable("gui.serialcraft.home.remember"),
-                    btn -> toggleRemember(),
-                    UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK, UiTheme.TEXT_INVERSE);
-            trustButton.visible = false;
-            panel.addWidget(trustButton);
-        }
+        this.screenWidth  = screenWidth;
+        this.screenHeight = screenHeight;
+        this.device       = PanelUI.getSelectedDevice();
 
         if (device == null) return;
+        if (connectedAtMillis == 0L) connectedAtMillis = System.currentTimeMillis();
 
-        // ── Terminal ──────────────────────────────────────────────────────
-        int terminalY = buttonY + 35 + 110;
+        int x = UiTheme.contentX(screenWidth);
+        int cardWidth = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
 
-        commandBox = new EditBox(Minecraft.getInstance().font,
-                x, terminalY, CARD_WIDTH - 85, 20,
+        // ── Botones bajo la tarjeta ───────────────────────────────────────────
+        this.baseButtonsY = BASE_CARD_TOP + CARD_HEIGHT + BUTTON_GAP;
+        int halfW = (cardWidth - 8) / 2;
+
+        disconnectButton = SolidButton.danger(
+                x, baseButtonsY, halfW, 22,
+                Component.translatable("gui.serialcraft.home.disconnect"),
+                btn -> panel.disconnectDevice()
+        );
+        panel.addWidget(disconnectButton);
+
+        trustButton = SolidButton.soft(
+                x + halfW + 8, baseButtonsY, halfW, 22,
+                Component.translatable("gui.serialcraft.home.remember"),
+                btn -> toggleRemember()
+        );
+        trustButton.visible = device.isWifi();
+        panel.addWidget(trustButton);
+
+        // ── Consola y campo de envio ──────────────────────────────────────────
+        int terminalTop = baseButtonsY + 28;
+        this.baseTerminalY = terminalTop + 14 + CONSOLE_H + 8;
+
+        Font font = Minecraft.getInstance().font;
+        int sendBtnW = Math.clamp(cardWidth / 4, 60, 80);
+        int cmdBoxW = Math.max(80, cardWidth - sendBtnW - 6);
+
+        commandBox = new EditBox(font, x, baseTerminalY, cmdBoxW, 20,
                 Component.translatable("gui.serialcraft.home.command"));
-        commandBox.setMaxLength(64);   // igual al limite del payload
+        commandBox.setMaxLength(64);
         commandBox.setTextColor(UiTheme.TEXT_INVERSE);
         panel.addWidget(commandBox);
 
-        panel.addWidget(SolidButton.success(
-                x + CARD_WIDTH - 80, terminalY, 80, 20,
+        sendButton = SolidButton.success(
+                x + cmdBoxW + 6, baseTerminalY, sendBtnW, 20,
                 Component.translatable("gui.serialcraft.home.send"),
                 btn -> submitCommand()
-        ));
+        );
+        panel.addWidget(sendButton);
     }
 
     @Override
@@ -101,7 +116,6 @@ public class HomePage implements Page {
         else                            wifi.rememberCurrentBoard();
     }
 
-    /** Nombre que mejor describe la placa: el modelo identificado, o el del dispositivo. */
     private String boardTitle(PanelUI.DeviceInfo dev) {
         BoardIdentity id = ConnectionManager.activeIdentity();
         if (!id.hasModel()) return dev.name();
@@ -121,12 +135,43 @@ public class HomePage implements Page {
         commandBox.setValue("");
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // ── EVENTOS DE RATON Y DESPLAZAMIENTO ─────────────────────────────────────
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        return scroll.mouseScrolled(verticalAmount);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        int x = UiTheme.contentX(screenWidth);
+        int cardWidth = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
+        int viewportTop = 40;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = viewportBottom - viewportTop;
+        return scroll.mouseClicked(event.x(), event.y(), event.button(),
+                x + cardWidth + 2, viewportTop, 8, viewportHeight);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return scroll.mouseReleased(event.button());
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        int viewportTop = 40;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = viewportBottom - viewportTop;
+        return scroll.mouseDragged(event.y(), viewportTop, viewportHeight);
+    }
+
+    // ── RENDER ────────────────────────────────────────────────────────────────
 
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font,
                        int screenWidth, int screenHeight) {
-        int x = UiTheme.contentX(screenWidth) + 10;
+        int x = UiTheme.contentX(screenWidth);
 
         UiDraw.pageTitle(gui, font, x,
                 Component.translatable("gui.serialcraft.home.title"), UiTheme.ACCENT_HOME,
@@ -134,25 +179,70 @@ public class HomePage implements Page {
 
         if (device == null) {
             gui.text(font, Component.translatable("gui.serialcraft.home.no_device"),
-                    x, CARD_TOP, UiTheme.TEXT_SECONDARY, false);
+                    x, BASE_CARD_TOP, UiTheme.TEXT_SECONDARY, false);
             return;
         }
 
-        renderStatusCard(gui, font, x);
-        renderConsole(gui, font, x);
+        int cardWidth = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
+        int viewportTop = 40;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = Math.max(10, viewportBottom - viewportTop);
+
+        int totalContentHeight = baseTerminalY + 28 - BASE_CARD_TOP;
+        scroll.update(viewportHeight, totalContentHeight);
+        int scrollY = (int) scroll.getScrollAmount();
+
+        // Actualizar widgets segun el scroll
+        int btnY = baseButtonsY - scrollY;
+        if (disconnectButton != null) {
+            disconnectButton.setY(btnY);
+            boolean inView = (btnY + disconnectButton.getHeight() >= viewportTop && btnY <= viewportBottom);
+            disconnectButton.visible = inView;
+            disconnectButton.active = inView;
+        }
+        if (trustButton != null) {
+            trustButton.setY(btnY);
+            boolean inView = (btnY + trustButton.getHeight() >= viewportTop && btnY <= viewportBottom);
+            trustButton.visible = inView && device.isWifi();
+            trustButton.active = inView;
+        }
+
+        int cmdY = baseTerminalY - scrollY;
+        if (commandBox != null) {
+            commandBox.setY(cmdY);
+            boolean inView = (cmdY + commandBox.getHeight() >= viewportTop && cmdY <= viewportBottom);
+            commandBox.visible = inView;
+        }
+        if (sendButton != null) {
+            sendButton.setY(cmdY);
+            boolean inView = (cmdY + sendButton.getHeight() >= viewportTop && cmdY <= viewportBottom);
+            sendButton.visible = inView;
+            sendButton.active = inView;
+        }
+
+        // Renderizado recortado dentro del viewport
+        gui.enableScissor(x - 2, viewportTop, screenWidth, viewportBottom);
+
+        renderStatusCard(gui, font, x, BASE_CARD_TOP - scrollY, cardWidth);
+        renderConsole(gui, font, x, baseButtonsY + 28 - scrollY, cardWidth);
+
+        gui.disableScissor();
+
+        // Barra de desplazamiento
+        if (scroll.hasScroll()) {
+            scroll.renderScrollbar(gui, x + cardWidth + 3, viewportTop, 6, viewportHeight);
+        }
     }
 
-    private void renderStatusCard(GuiGraphicsExtractor gui, Font font, int x) {
-        int y = CARD_TOP;
+    private void renderStatusCard(GuiGraphicsExtractor gui, Font font, int x, int y, int cardWidth) {
         boolean wifi = device.isWifi();
-
-        UiDraw.card(gui, x, y, CARD_WIDTH, CARD_HEIGHT);
+        UiDraw.card(gui, x, y, cardWidth, CARD_HEIGHT);
 
         // Cabecera
-        gui.fill(x, y, x + CARD_WIDTH, y + 30, wifi ? 0xFFE3F2FD : 0xFFF1F8E9);
-        gui.fill(x + 12, y + 12, x + 18, y + 18, UiTheme.OK);
+        gui.fill(x, y, x + cardWidth, y + 30, wifi ? 0xFFE3F2FD : 0xFFF1F8E9);
+        gui.fill(x + 10, y + 12, x + 16, y + 18, UiTheme.OK);
 
-        int cursor = UiDraw.badge(gui, font, x + 24, y + 8,
+        int cursor = UiDraw.badge(gui, font, x + 20, y + 8,
                 Component.translatable("gui.serialcraft.status.connected"),
                 UiTheme.OK_BG, UiTheme.OK_DARK);
 
@@ -164,20 +254,20 @@ public class HomePage implements Page {
                 wifi ? UiTheme.INFO_BG : UiTheme.NEUTRAL_BG,
                 wifi ? UiTheme.INFO_DARK : UiTheme.NEUTRAL_TX);
 
-        gui.text(font, font.plainSubstrByWidth(boardTitle(device), CARD_WIDTH - 24),
-                x + 12, y + 36, UiTheme.TEXT_PRIMARY, false);
-        gui.fill(x + 10, y + 50, x + CARD_WIDTH - 10, y + 51, UiTheme.LINE);
+        gui.text(font, font.plainSubstrByWidth(boardTitle(device), cardWidth - 24),
+                x + 10, y + 36, UiTheme.TEXT_PRIMARY, false);
+        gui.fill(x + 8, y + 49, x + cardWidth - 8, y + 50, UiTheme.LINE);
 
-        int rowY = y + 58;
-        if (wifi) renderWifiRows(gui, font, x + 12, rowY);
-        else      renderUsbRows(gui, font, x + 12, rowY);
+        int rowY = y + 56;
+        if (wifi) renderWifiRows(gui, font, x + 10, rowY);
+        else      renderUsbRows(gui, font, x + 10, rowY);
 
-        gui.fill(x + 10, y + 112, x + CARD_WIDTH - 10, y + 113, UiTheme.LINE);
+        gui.fill(x + 8, y + 110, x + cardWidth - 8, y + 111, UiTheme.LINE);
 
         long seconds = (System.currentTimeMillis() - connectedAtMillis) / 1000L;
         gui.text(font,
                 Component.translatable("gui.serialcraft.home.uptime", formatDuration(seconds)),
-                x + 12, y + 118, UiTheme.TEXT_MUTED, false);
+                x + 10, y + 116, UiTheme.TEXT_MUTED, false);
     }
 
     private void renderWifiRows(GuiGraphicsExtractor gui, Font font, int x, int y) {
@@ -228,22 +318,18 @@ public class HomePage implements Page {
                 UiTheme.TEXT_PRIMARY);
     }
 
-    private void renderConsole(GuiGraphicsExtractor gui, Font font, int x) {
-        int y = CARD_TOP + CARD_HEIGHT + BUTTON_GAP + 35;
-
+    private void renderConsole(GuiGraphicsExtractor gui, Font font, int x, int y, int cardWidth) {
         gui.text(font, Component.translatable("gui.serialcraft.home.terminal"),
                 x, y, UiTheme.TEXT_PRIMARY, false);
-        gui.fill(x, y + 12, x + CARD_WIDTH, y + 12 + CONSOLE_H, UiTheme.BG_CONSOLE);
+        gui.fill(x, y + 12, x + cardWidth, y + 12 + CONSOLE_H, UiTheme.BG_CONSOLE);
 
-        int lineY = y + 18;
+        int lineY = y + 16;
         List<String> lines = ConnectionManager.recentHistory(CONSOLE_LINES);
         for (String line : lines) {
             int color = line.startsWith("TX:") ? UiTheme.OK
                       : line.startsWith("RX:") ? UiTheme.INFO
                       : UiTheme.ERROR;
-            // Recorte al ancho de la consola: sin esto una linea larga de la
-            // placa se dibujaba fuera del recuadro negro.
-            gui.text(font, font.plainSubstrByWidth(line, CARD_WIDTH - 12),
+            gui.text(font, font.plainSubstrByWidth(line, cardWidth - 12),
                     x + 6, lineY, color, false);
             lineY += 10;
         }

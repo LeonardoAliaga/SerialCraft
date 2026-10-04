@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
@@ -26,13 +27,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Pantalla contenedora del panel.
+ * Pantalla principal de la Laptop.
  */
 public class PanelUI extends Screen {
 
     public enum AppState { WELCOME, DASHBOARD }
 
-    /** El orden del enum define el orden de los botones en la barra lateral. */
     public enum Tab { HOME, BOARDS, EVENTS, VISUALIZE }
 
     /** Descripcion del dispositivo que el jugador eligio conectar. */
@@ -65,7 +65,7 @@ public class PanelUI extends Screen {
 
     public static void clearSelectedDevice() { selectedDevice = null; }
 
-    // ── Estado de instancia ───────────────────────────────────────
+    // ── Estado de instancia ──────────────────────────────────────────────────
 
     private final @Nullable BlockPos connectorPos;
     private @Nullable BlockPos pendingBoardEditPos;
@@ -78,7 +78,7 @@ public class PanelUI extends Screen {
     private final Map<Tab, Page> pages = new EnumMap<>(Tab.class);
     private final BoardsPage boardsPage = new BoardsPage();
 
-    // ════════════════════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────────────────
 
     public PanelUI(@Nullable BlockPos connectorPos, @Nullable BlockPos boardEditPos) {
         super(Component.translatable("gui.serialcraft.panel.title"));
@@ -117,7 +117,7 @@ public class PanelUI extends Screen {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     protected void init() {
@@ -144,11 +144,52 @@ public class PanelUI extends Screen {
     @Override
     public void tick() {
         super.tick();
+        Page visible = null;
         if (appState == AppState.WELCOME) {
             welcomePage.tick();
         } else {
-            pages.get(currentTab).tick();
+            visible = pages.get(currentTab);
+            visible.tick();
         }
+        for (Page page : pages.values()) {
+            if (page != visible) page.backgroundTick();
+        }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        Page page = (appState == AppState.WELCOME) ? welcomePage : pages.get(currentTab);
+        if (page != null && page.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        Page page = (appState == AppState.WELCOME) ? welcomePage : pages.get(currentTab);
+        if (page != null && page.mouseClicked(event, focused)) {
+            return true;
+        }
+        return super.mouseClicked(event, focused);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        Page page = (appState == AppState.WELCOME) ? welcomePage : pages.get(currentTab);
+        if (page != null && page.mouseReleased(event)) {
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        Page page = (appState == AppState.WELCOME) ? welcomePage : pages.get(currentTab);
+        if (page != null && page.mouseDragged(event, dragX, dragY)) {
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
@@ -172,9 +213,9 @@ public class PanelUI extends Screen {
         pages.values().forEach(Page::onClose);
     }
 
-    // ════════════════════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────────────────
     //  API para las paginas
-    // ════════════════════════════════════════════════════════════════════════════
+    // ─────────────────────────────────────────────────────────────────────────
 
     public void setTab(Tab tab) {
         if (this.currentTab == tab && appState == AppState.DASHBOARD) {

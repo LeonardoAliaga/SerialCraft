@@ -178,6 +178,10 @@ Version 0.4.6 introduces the game telemetry channel and enforces isolation betwe
    Outbound telemetry is strictly throttled to at most **1 line per tick** (20 lines/s max) via `TelemetryOutbox`, giving priority to edge events over state snapshots to avoid overflowing the 64-byte serial buffer on boards like the ATmega328P.
 4. **Periodic 5-second state resends**:
    Active periodic channels are quietly resent every 100 ticks (5 s) without console spam, ensuring microcontrollers that reset upon opening serial DTR lines acquire current state without manual intervention.
+5. **Board identification and token-free reconnection**:
+   Optional `mc_who`, `mc_id` and `mc_key` lines, and a second handshake path (`TRUST` with challenge-response) for remembered boards. See [section 12](#_12-board-identification-and-token-free-reconnection).
+6. **Test bench (Visualizer tab)**:
+   The mod records `key:value` messages in both directions with real timestamps and can send test waves to the board. It adds nothing to the wire format. See [section 13](#_13-testing-with-the-generator-visualizer-tab).
 
 ---
 
@@ -373,3 +377,38 @@ The key (as ASCII hex) is the HMAC key and the challenge (as ASCII hex) is the m
 With remembered boards, the Wi-Fi server **starts by itself when you join a world** (`settings.autoStartWifi`), so the board reconnects without opening the Laptop.
 
 > The first pairing (token and `mc_key`) travels in clear text over the LAN, exactly as the token always has: do it on a trusted network. To revoke a board press **Forget board** or delete its block from the file.
+
+---
+
+## 13. Testing with the generator (Visualizer tab)
+
+The **Visualizer** tab's generator sends the board lines in the usual `key:value` format. It **adds nothing to the protocol**: your sketch treats them like those from an output IO Block.
+
+| Property | Value |
+| :--- | :--- |
+| Format | `<key>:<0-255>\n`, integer |
+| Rate | At most 10 lines/s and only when the value changed (the same limit as output IO Blocks, one send every 2 ticks) |
+| On stop | Sends `<key>:0` once, to leave the actuator at rest |
+| Key | `[A-Za-z0-9_.-]`, up to 32 characters |
+| Console | Does not write to the console, to avoid flooding it |
+
+**Wave shapes** (period of 1, 2, 5 or 10 s; amplitude of 100, 50 or 25 % of 0-255):
+
+| Shape | Values |
+| :--- | :--- |
+| Ramp | Rises from 0 to 255 and drops back to 0 at once |
+| Triangle | Rises and falls smoothly |
+| Square | 0 for the first half of the period and 255 for the second |
+| Sine | Sinusoidal, starts at 0 |
+| Stairs | 16 steps: 0, 17, 34… 255, one per redstone level |
+
+With an LED on a PWM pin, the ramp should look like a brightness fade and the stairs like 16 distinct levels. If the LED responds to the generator but not to redstone, the fault is in the block (mode, `Target Data` or sides), not in the board or the wiring.
+
+### What the mod records
+
+Every `key:value` line received (**RX**) or sent (**TX**) is stored with the real time it happened. The Visualizer tab draws that log.
+
+* Signed and decimal values are accepted (up to 9 integer digits and 6 decimals) **for display only**: IO Blocks work with integers from 0 to 255.
+* Lines that are not shaped like `key:number` are ignored: boot banners, free text and the `mc_id:` identification lines.
+* Up to **16 series** are kept (each direction + key pair) with ~4000 samples per series; when full, the oldest is dropped.
+* Received lines are noted **before** the rate limiter: you see what the board sent, not what survived the filter.

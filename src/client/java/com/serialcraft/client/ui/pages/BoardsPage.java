@@ -1,9 +1,9 @@
 package com.serialcraft.client.ui.pages;
 
-import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import com.serialcraft.board.IoMode;
 import com.serialcraft.board.LogicMode;
 import com.serialcraft.board.SignalType;
+import com.serialcraft.client.ui.ScrollState;
 import com.serialcraft.client.ui.SolidButton;
 import com.serialcraft.client.ui.SpriteIcon;
 import com.serialcraft.client.ui.UiDraw;
@@ -18,8 +18,9 @@ import com.serialcraft.screen.PanelUI;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor ;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -28,72 +29,107 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Pagina "Placas": lista y editor.
+ * Pagina "Placas": gestion de todos los Bloques IO del jugador.
+ *
+ * Incluye barra de desplazamiento (scroll) con rueda y arrastre de raton,
+ * adaptabilidad completa a diferentes resoluciones de pantalla y centrado
+ * dinamico del editor.
  */
 public class BoardsPage implements Page {
 
-    private static final int CARD_TOP    = 75;
-    private static final int EDITOR_TOP  = 55;
-    private static final int EDITOR_W    = 320;
-    private static final int EDITOR_H    = 248;
+    private static final int CARD_TOP   = 56;
+    private static final int EDITOR_W   = 280;
+    private static final int EDITOR_H   = 232;
 
-    // ── Estado de la lista ────────────────────────────────────────────────
     private final List<BoardInfo> boards = new ArrayList<>();
-    private volatile @Nullable List<BoardInfo> incomingBoards = null;
-    private boolean awaitingResponse = false;
+    private final ScrollState scroll = new ScrollState();
 
-    // ── Estado del editor ─────────────────────────────────────────────────
+    private record BoardCardWidgets(IconTextButton toggleBtn, IconTextButton editBtn, int baseButtonY) {}
+    private final List<BoardCardWidgets> cardWidgets = new ArrayList<>();
+
+    private PanelUI panel;
+    private int screenWidth;
+    private int screenHeight;
+    private boolean awaitingResponse = false;
+    private @Nullable List<BoardInfo> incomingBoards = null;
+    private @Nullable BlockPos directEditRequestPos = null;
+
+    // ── Estado del editor ─────────────────────────────────────────────────────
     private boolean editing = false;
-    private @Nullable BoardInfo editTarget;
-    private IoMode     editMode   = IoMode.OUTPUT;
-    private SignalType editSignal = SignalType.DIGITAL;
-    private LogicMode  editLogic  = LogicMode.OR;
+    private @Nullable BoardInfo editTarget = null;
+    private IoMode     editMode    = IoMode.OUTPUT;
+    private SignalType editSignal  = SignalType.DIGITAL;
+    private LogicMode  editLogic   = LogicMode.OR;
     private boolean    editEnabled = true;
 
-    private @Nullable SolidButton logicButton;
     private @Nullable EditBox     idBox;
     private @Nullable EditBox     dataBox;
+    private @Nullable SolidButton logicButton;
 
-    private @Nullable PanelUI panel;
-    private @Nullable BlockPos directEditRequest;
-
-    // ══════════════════════════════════════════════════════════════════════
-
-    /** La invoca PanelUI cuando el panel se abre haciendo clic en una placa. */
-    public void requestDirectEdit(BlockPos pos) {
-        this.directEditRequest = pos;
-    }
+    // ──────────────────────────────────────────────────────────────────────────
 
     @Override
     public void init(PanelUI panelUi, int screenWidth, int screenHeight) {
-        this.panel       = panelUi;
-        this.logicButton = null;
-        this.idBox       = null;
-        this.dataBox     = null;
+        this.panel        = panelUi;
+        this.screenWidth  = screenWidth;
+        this.screenHeight = screenHeight;
+        this.cardWidgets.clear();
 
-        if (directEditRequest != null && !editing) {
-            BlockPos pos = directEditRequest;
-            directEditRequest = null;
-            if (requireConnection()) openEditorFromWorld(pos);
+        if (directEditRequestPos != null) {
+            BlockPos target = directEditRequestPos;
+            directEditRequestPos = null;
+            openEditorForPos(target);
+            return;
         }
 
         if (editing) {
-            buildEditor(panelUi, screenWidth);
-        } else {
-            requestBoardList();
-            buildList(panelUi, screenWidth);
+            buildEditor(panelUi, screenWidth, screenHeight);
+            return;
         }
+
+        requestBoardList();
+        buildList(panelUi, screenWidth);
+    }
+
+    public void requestDirectEdit(BlockPos pos) {
+        this.directEditRequestPos = pos;
+    }
+
+    private void openEditorForPos(BlockPos pos) {
+        for (BoardInfo b : boards) {
+            if (b.pos().equals(pos)) {
+                openEditor(b);
+                return;
+            }
+        }
+        BoardInfo synthetic = new BoardInfo(
+                pos,
+                "Board_" + pos.getX() + "_" + pos.getY() + "_" + pos.getZ(),
+                "led_verde",
+                IoMode.OUTPUT,
+                true
+        );
+        openEditor(synthetic);
+    }
+
+    private void openEditor(BoardInfo board) {
+        this.editing     = true;
+        this.editTarget  = board;
+        this.editMode    = board.mode();
+        this.editSignal  = SignalType.DIGITAL;
+        this.editLogic   = LogicMode.OR;
+        this.editEnabled = board.enabled();
+
+        if (panel != null) panel.setTab(PanelUI.Tab.BOARDS);
     }
 
     @Override
     public void tick() {
+        if (incomingBoards == null) return;
         List<BoardInfo> incoming = incomingBoards;
-        if (incoming == null) return;
-        incomingBoards   = null;
+        incomingBoards = null;
         awaitingResponse = false;
 
-        // Solo reconstruir si la lista cambio de verdad. El original
-        // reconstruia siempre, destruyendo el foco de los campos de texto.
         if (incoming.equals(boards)) return;
 
         boards.clear();
@@ -112,9 +148,7 @@ public class BoardsPage implements Page {
         this.incomingBoards = List.copyOf(received);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  LISTA
-    // ══════════════════════════════════════════════════════════════════════
+    // ── LISTA CON SCROLL ──────────────────────────────────────────────────────
 
     private void requestBoardList() {
         if (awaitingResponse) return;
@@ -125,16 +159,22 @@ public class BoardsPage implements Page {
 
     private void buildList(PanelUI panelUi, int screenWidth) {
         int contentX  = UiTheme.contentX(screenWidth);
-        int cardWidth = screenWidth - contentX - UiTheme.CONTENT_MARGIN;
+        int cardWidth = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
         int cardY     = CARD_TOP;
+
+        cardWidgets.clear();
 
         for (BoardInfo board : boards) {
             final BoardInfo target = board;
             boolean on = board.enabled();
             int buttonY = cardY + 13;
 
-            panelUi.addWidget(new IconTextButton(
-                    contentX + cardWidth - 192, buttonY, 88, 22,
+            int btnW = Math.clamp((cardWidth - 110) / 2, 60, 88);
+            int editBtnX = contentX + cardWidth - btnW - 8;
+            int toggleBtnX = editBtnX - btnW - 6;
+
+            IconTextButton toggleBtn = new IconTextButton(
+                    toggleBtnX, buttonY, btnW, 22,
                     on ? SpriteIcon.CONNECT : SpriteIcon.DISCONNECT,
                     Component.translatable(on ? "gui.serialcraft.boards.on"
                                               : "gui.serialcraft.boards.off"),
@@ -142,16 +182,19 @@ public class BoardsPage implements Page {
                     on ? UiTheme.OK_DARK    : UiTheme.ERROR_DARK,
                     on ? 0xFF1B5E20         : 0xFF8B0000,
                     UiTheme.TEXT_INVERSE
-            ));
+            );
+            panelUi.addWidget(toggleBtn);
 
-            panelUi.addWidget(new IconTextButton(
-                    contentX + cardWidth - 100, buttonY, 88, 22,
+            IconTextButton editBtn = new IconTextButton(
+                    editBtnX, buttonY, btnW, 22,
                     SpriteIcon.CODE,
                     Component.translatable("gui.serialcraft.boards.edit"),
                     btn -> { if (requireConnection()) openEditor(target); },
                     UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK, UiTheme.TEXT_INVERSE
-            ));
+            );
+            panelUi.addWidget(editBtn);
 
+            cardWidgets.add(new BoardCardWidgets(toggleBtn, editBtn, buttonY));
             cardY += UiTheme.CARD_ROW_HEIGHT;
         }
     }
@@ -159,126 +202,107 @@ public class BoardsPage implements Page {
     private void toggleBoard(BoardInfo board) {
         if (!ClientPlayNetworking.canSend(RemoteTogglePayload.TYPE)) return;
         ClientPlayNetworking.send(new RemoteTogglePayload(board.pos()));
-        // Una sola peticion, sin la ventana de carrera del original.
         awaitingResponse = false;
         requestBoardList();
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  EDITOR
-    // ══════════════════════════════════════════════════════════════════════
+    // ── EVENTOS DE RATÓN Y DESPLAZAMIENTO ─────────────────────────────────────
 
-    /**
-     * Comprueba que haya hardware conectado antes de dejar editar.
-     *
-     * Es una restriccion de diseno, no tecnica: una placa se puede configurar
-     * sin hardware. Se mantiene el comportamiento original, pero el mensaje
-     * ahora esta traducido en vez de ser una cadena con codigos de color
-     * incrustados dentro del codigo Java.
-     */
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (editing) return false;
+        return scroll.mouseScrolled(verticalAmount);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        if (editing) return false;
+        int contentX = UiTheme.contentX(screenWidth);
+        int cardWidth = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
+        int viewportTop = CARD_TOP;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = viewportBottom - viewportTop;
+        return scroll.mouseClicked(event.x(), event.y(), event.button(),
+                contentX + cardWidth + 2, viewportTop, 8, viewportHeight);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return scroll.mouseReleased(event.button());
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (editing) return false;
+        int viewportTop = CARD_TOP;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = viewportBottom - viewportTop;
+        return scroll.mouseDragged(event.y(), viewportTop, viewportHeight);
+    }
+
+    // ── EDITOR ────────────────────────────────────────────────────────────────
+
     private boolean requireConnection() {
         if (ConnectionManager.isAnyConnected()) return true;
-        var player = Minecraft.getInstance().player;
-        if (player != null) {
-            player.sendSystemMessage(
-                    Component.translatable("message.serialcraft.needs_connection")
-                            .withStyle(net.minecraft.ChatFormatting.RED));
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            mc.player.sendSystemMessage(
+                    Component.translatable("gui.serialcraft.boards.need_connection"));
         }
         return false;
     }
 
-    private void openEditor(BoardInfo board) {
-        this.editTarget  = board;
-        this.editMode    = board.mode();
-        this.editEnabled = board.enabled();
-        this.editSignal  = SignalType.DIGITAL;
-        this.editLogic   = LogicMode.OR;
-        this.editing     = true;
-        if (panel != null) panel.setTab(PanelUI.Tab.BOARDS);
-    }
+    private void buildEditor(PanelUI panelUi, int screenWidth, int screenHeight) {
+        if (editTarget == null) return;
 
-    /** Abre el editor leyendo el estado real del BlockEntity del cliente. */
-    private void openEditorFromWorld(BlockPos pos) {
-        Minecraft client = Minecraft.getInstance();
-        if (client.level == null) return;
+        Font font = Minecraft.getInstance().font;
+        int availW = UiTheme.contentWidth(screenWidth);
+        int width  = Math.min(EDITOR_W, availW);
+        int x      = UiTheme.contentX(screenWidth) + Math.max(0, (availW - width) / 2);
+        int y      = Math.max(16, (screenHeight - EDITOR_H) / 2);
 
-        if (client.level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
-            this.editTarget  = io.toBoardInfo();
-            this.editMode    = io.getIoMode();
-            this.editSignal  = io.getSignalType();
-            this.editLogic   = io.getLogicMode();
-            this.editEnabled = io.isEnabled();
-        } else {
-            this.editTarget  = new BoardInfo(pos, ArduinoIOBlockEntity.DEFAULT_BOARD_ID,
-                                             ArduinoIOBlockEntity.DEFAULT_TARGET_DATA,
-                                             IoMode.OUTPUT, true);
-            this.editMode    = IoMode.OUTPUT;
-            this.editSignal  = SignalType.DIGITAL;
-            this.editLogic   = LogicMode.OR;
-            this.editEnabled = true;
-        }
-        this.editing = true;
-    }
-
-    private void buildEditor(PanelUI panelUi, int screenWidth) {
-        if (editTarget == null) { editing = false; return; }
-
-        int x      = UiTheme.contentX(screenWidth) + 10;
-        int y      = EDITOR_TOP;
-        int width  = Math.min(EDITOR_W, screenWidth - UiTheme.navWidth(screenWidth) - 60);
-        Font font  = Minecraft.getInstance().font;
-
-        idBox = new EditBox(font, x + 5, y + 48, width - 90, 18,
+        idBox = new EditBox(font, x + 8, y + 44, width - 96, 20,
                 Component.translatable("gui.serialcraft.editor.board_id"));
         idBox.setValue(editTarget.id());
-        idBox.setTextColor(UiTheme.TEXT_ON_DARK);
-        idBox.setBordered(false);
         idBox.setMaxLength(BoardInfo.MAX_ID_LENGTH);
         panelUi.addWidget(idBox);
 
-        panelUi.addWidget(SolidButton.of(x + width - 80, y + 45, 70, 22,
-                powerLabel(), btn -> {
-                    editEnabled = !editEnabled;
-                    btn.setMessage(powerLabel());
-                    btn.setVariant(editEnabled ? SolidButton.Variant.SUCCESS
-                                               : SolidButton.Variant.DANGER);
-                },
-                editEnabled ? SolidButton.Variant.SUCCESS : SolidButton.Variant.DANGER));
+        panelUi.addWidget(SolidButton.of(x + width - 82, y + 44, 74, 20, powerLabel(), btn -> {
+            editEnabled = !editEnabled;
+            btn.setMessage(powerLabel());
+            btn.setVariant(editEnabled ? SolidButton.Variant.SUCCESS : SolidButton.Variant.DANGER);
+        }, editEnabled ? SolidButton.Variant.SUCCESS : SolidButton.Variant.DANGER));
 
-        int rowY  = y + 95;
-        int thirdW = (width - 20) / 3;
-        int gap    = 5;
+        int colW = (width - 24) / 3;
 
-        panelUi.addWidget(SolidButton.primary(x, rowY, thirdW, 20, modeLabel(), btn -> {
+        panelUi.addWidget(SolidButton.primary(x + 8, y + 94, colW, 20, modeLabel(), btn -> {
             editMode = (editMode == IoMode.OUTPUT) ? IoMode.INPUT : IoMode.OUTPUT;
             btn.setMessage(modeLabel());
-            if (logicButton != null) logicButton.visible = editMode.isInput();
+            if (logicButton != null) logicButton.active = editMode.isInput();
         }));
 
-        panelUi.addWidget(SolidButton.primary(x + thirdW + gap, rowY, thirdW, 20, signalLabel(), btn -> {
+        panelUi.addWidget(SolidButton.primary(x + 12 + colW, y + 94, colW, 20, signalLabel(), btn -> {
             editSignal = (editSignal == SignalType.DIGITAL) ? SignalType.ANALOG : SignalType.DIGITAL;
             btn.setMessage(signalLabel());
         }));
 
-        logicButton = SolidButton.primary(x + (thirdW + gap) * 2, rowY, thirdW, 20, logicLabel(), btn -> {
-            editLogic = LogicMode.byId((editLogic.ordinal() + 1) % LogicMode.VALUES.length);
+        logicButton = SolidButton.primary(x + 16 + colW * 2, y + 94, colW, 20, logicLabel(), btn -> {
+            editLogic = editLogic.next();
             btn.setMessage(logicLabel());
         });
-        logicButton.visible = editMode.isInput();
+        logicButton.active = editMode.isInput();
         panelUi.addWidget(logicButton);
 
-        dataBox = new EditBox(font, x + 5, y + 157, width - 20, 18,
+        dataBox = new EditBox(font, x + 8, y + 144, width - 16, 20,
                 Component.translatable("gui.serialcraft.editor.command"));
         dataBox.setValue(editTarget.data());
-        dataBox.setTextColor(UiTheme.TEXT_ON_DARK);
-        dataBox.setBordered(false);
         dataBox.setMaxLength(BoardInfo.MAX_DATA_LENGTH);
         panelUi.addWidget(dataBox);
 
         int halfW = (width - 20) / 2;
-        panelUi.addWidget(SolidButton.success(x + 5, y + 200, halfW, 22,
+        panelUi.addWidget(SolidButton.success(x + 6, y + 200, halfW, 22,
                 Component.translatable("gui.serialcraft.editor.save"), btn -> save()));
-        panelUi.addWidget(SolidButton.soft(x + halfW + 10, y + 200, halfW, 22,
+        panelUi.addWidget(SolidButton.soft(x + halfW + 14, y + 200, halfW, 22,
                 Component.translatable("gui.serialcraft.editor.cancel"), btn -> cancel()));
     }
 
@@ -303,9 +327,7 @@ public class BoardsPage implements Page {
         if (panel != null) panel.setTab(PanelUI.Tab.BOARDS);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  RENDER
-    // ══════════════════════════════════════════════════════════════════════
+    // ── RENDER ────────────────────────────────────────────────────────────────
 
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font,
@@ -316,93 +338,125 @@ public class BoardsPage implements Page {
                 Component.translatable("gui.serialcraft.boards.title"), UiTheme.ACCENT_BOARDS,
                 Component.translatable("gui.serialcraft.boards.subtitle"));
 
-        if (editing) renderEditor(gui, font, screenWidth);
-        else         renderList(gui, font, screenWidth, contentX);
+        if (editing) renderEditor(gui, font, screenWidth, screenHeight);
+        else         renderList(gui, font, screenWidth, screenHeight, contentX);
     }
 
-    private void renderList(GuiGraphicsExtractor gui, Font font, int screenWidth, int contentX) {
-        int cardWidth = screenWidth - contentX - UiTheme.CONTENT_MARGIN;
-        int cardY     = CARD_TOP;
+    private void renderList(GuiGraphicsExtractor gui, Font font, int screenWidth, int screenHeight, int contentX) {
+        int cardWidth = Math.max(160, UiTheme.contentWidth(screenWidth) - (scroll.hasScroll() ? 10 : 0));
+        int viewportTop = CARD_TOP;
+        int viewportBottom = screenHeight - UiTheme.contentMargin(screenWidth);
+        int viewportHeight = Math.max(10, viewportBottom - viewportTop);
+        int totalHeight = boards.size() * UiTheme.CARD_ROW_HEIGHT;
+
+        scroll.update(viewportHeight, totalHeight);
+        int scrollY = (int) scroll.getScrollAmount();
 
         if (awaitingResponse && boards.isEmpty()) {
             gui.text(font, Component.translatable("gui.serialcraft.boards.loading"),
-                    contentX, cardY + 10, 0xFF90CAF9, false);
+                    contentX, viewportTop + 10, 0xFF90CAF9, false);
             return;
         }
 
         if (boards.isEmpty()) {
             gui.text(font, Component.translatable("gui.serialcraft.boards.empty"),
-                    contentX, cardY + 10, UiTheme.TEXT_SECONDARY, false);
+                    contentX, viewportTop + 10, UiTheme.TEXT_SECONDARY, false);
             gui.text(font, Component.translatable("gui.serialcraft.boards.empty_hint"),
-                    contentX, cardY + 24, UiTheme.TEXT_SECONDARY, false);
+                    contentX, viewportTop + 24, UiTheme.TEXT_SECONDARY, false);
             return;
         }
 
         gui.text(font, Component.translatable(
                         boards.size() == 1 ? "gui.serialcraft.boards.count_one"
                                            : "gui.serialcraft.boards.count_many", boards.size()),
-                contentX, 48, UiTheme.TEXT_SECONDARY, false);
+                contentX, 42, UiTheme.TEXT_SECONDARY, false);
 
+        // Actualizar posiciones y visibilidad de los widgets segun el scroll
+        for (BoardCardWidgets cw : cardWidgets) {
+            int currentBtnY = cw.baseButtonY - scrollY;
+            cw.toggleBtn().setY(currentBtnY);
+            cw.editBtn().setY(currentBtnY);
+
+            boolean inView = (currentBtnY + cw.toggleBtn().getHeight() >= viewportTop
+                           && currentBtnY <= viewportBottom);
+            cw.toggleBtn().visible = inView;
+            cw.toggleBtn().active  = inView;
+            cw.editBtn().visible   = inView;
+            cw.editBtn().active    = inView;
+        }
+
+        // Renderizado recortado dentro del viewport
+        gui.enableScissor(contentX - 2, viewportTop, screenWidth, viewportBottom);
+
+        int cardY = CARD_TOP - scrollY;
         for (BoardInfo board : boards) {
-            UiDraw.card(gui, contentX, cardY, cardWidth, UiTheme.CARD_HEIGHT);
+            if (cardY + UiTheme.CARD_HEIGHT >= viewportTop && cardY <= viewportBottom) {
+                UiDraw.card(gui, contentX, cardY, cardWidth, UiTheme.CARD_HEIGHT);
 
-            boolean input = board.mode().isInput();
-            UiDraw.badge(gui, font, contentX + 10, cardY + 10,
-                    Component.translatable(input ? "gui.serialcraft.boards.badge_in"
-                                                 : "gui.serialcraft.boards.badge_out"),
-                    input ? UiTheme.OK_BG   : 0xFFE3F2FD,
-                    input ? UiTheme.OK_DARK : UiTheme.INFO_DARK);
+                boolean input = board.mode().isInput();
+                UiDraw.badge(gui, font, contentX + 10, cardY + 10,
+                        Component.translatable(input ? "gui.serialcraft.boards.badge_in"
+                                                     : "gui.serialcraft.boards.badge_out"),
+                        input ? UiTheme.OK_BG   : 0xFFE3F2FD,
+                        input ? UiTheme.OK_DARK : UiTheme.INFO_DARK);
 
-            gui.fill(contentX + cardWidth - 215, cardY + 7,
-                     contentX + cardWidth - 209, cardY + 13,
-                     board.enabled() ? UiTheme.OK : UiTheme.ERROR);
+                int maxTextW = Math.max(40, cardWidth - 210);
 
-            gui.text(font, board.id(), contentX + 48, cardY + 10, UiTheme.TEXT_PRIMARY, false);
-            gui.text(font, Component.translatable("gui.serialcraft.boards.cmd", board.data()),
-                    contentX + 48, cardY + 24, UiTheme.TEXT_SECONDARY, false);
-            gui.text(font, Component.translatable("gui.serialcraft.boards.pos",
-                            board.pos().getX(), board.pos().getY(), board.pos().getZ()),
-                    contentX + 48, cardY + 36, UiTheme.TEXT_MUTED, false);
-
+                gui.text(font, font.plainSubstrByWidth(board.id(), maxTextW),
+                        contentX + 48, cardY + 10, UiTheme.TEXT_PRIMARY, false);
+                gui.text(font, font.plainSubstrByWidth(
+                                Component.translatable("gui.serialcraft.boards.cmd", board.data()).getString(), maxTextW),
+                        contentX + 48, cardY + 24, UiTheme.TEXT_SECONDARY, false);
+                gui.text(font, Component.translatable("gui.serialcraft.boards.pos",
+                                board.pos().getX(), board.pos().getY(), board.pos().getZ()),
+                        contentX + 48, cardY + 36, UiTheme.TEXT_MUTED, false);
+            }
             cardY += UiTheme.CARD_ROW_HEIGHT;
+        }
+
+        gui.disableScissor();
+
+        // Barra de desplazamiento
+        if (scroll.hasScroll()) {
+            scroll.renderScrollbar(gui, contentX + cardWidth + 3, viewportTop, 6, viewportHeight);
         }
     }
 
-    private void renderEditor(GuiGraphicsExtractor  gui, Font font, int screenWidth) {
+    private void renderEditor(GuiGraphicsExtractor gui, Font font, int screenWidth, int screenHeight) {
         if (editTarget == null) return;
 
-        int x     = UiTheme.contentX(screenWidth) + 10;
-        int y     = EDITOR_TOP;
-        int width = Math.min(EDITOR_W, screenWidth - UiTheme.navWidth(screenWidth) - 60);
+        int availW = UiTheme.contentWidth(screenWidth);
+        int width  = Math.min(EDITOR_W, availW);
+        int x      = UiTheme.contentX(screenWidth) + Math.max(0, (availW - width) / 2);
+        int y      = Math.max(16, (screenHeight - EDITOR_H) / 2);
 
         gui.fill(x, y, x + width, y + EDITOR_H, UiTheme.BG_PANEL);
         gui.outline(x, y, width, EDITOR_H, UiTheme.LINE_STRONG);
 
-        gui.fill(x, y, x + width, y + 30, UiTheme.BG_PANEL_HEAD);
         gui.centeredText(font,
                 Component.translatable("gui.serialcraft.editor.title", editTarget.id()),
                 x + width / 2, y + 10, UiTheme.TEXT_PRIMARY);
 
         gui.text(font, Component.translatable("gui.serialcraft.editor.board_id"),
-                x + 5, y + 33, UiTheme.TEXT_SECONDARY, false);
-        UiDraw.inputWell(gui, x + 4, y + 42, width - 91, 26);
+                x + 8, y + 33, UiTheme.TEXT_SECONDARY, false);
+        UiDraw.inputWell(gui, x + 6, y + 42, width - 92, 24);
 
         gui.text(font, Component.translatable("gui.serialcraft.editor.power"),
-                x + width - 83, y + 33, UiTheme.TEXT_SECONDARY, false);
+                x + width - 82, y + 33, UiTheme.TEXT_SECONDARY, false);
 
         gui.centeredText(font, Component.translatable(
                         editMode.isInput() ? "gui.serialcraft.editor.section_mode_logic"
                                            : "gui.serialcraft.editor.section_mode"),
                 x + width / 2, y + 78, UiTheme.ACCENT_PRIMARY);
-        gui.fill(x + 8, y + 122, x + width - 8, y + 123, UiTheme.LINE_SOFT);
+        gui.fill(x + 8, y + 88, x + width - 8, y + 89, UiTheme.LINE_SOFT);
 
         gui.text(font, Component.translatable("gui.serialcraft.editor.command"),
-                x + 5, y + 130, UiTheme.TEXT_SECONDARY, false);
-        UiDraw.inputWell(gui, x + 4, y + 141, width - 16, 36);
+                x + 8, y + 130, UiTheme.TEXT_SECONDARY, false);
+        UiDraw.inputWell(gui, x + 6, y + 141, width - 12, 26);
 
         String command = (dataBox != null) ? dataBox.getValue() : editTarget.data();
         gui.centeredText(font, Component.translatable(helpKey(), command),
-                x + width / 2, y + 182, 0xFF666666);
+                x + width / 2, y + 178, 0xFF666666);
     }
 
     private String helpKey() {
@@ -413,7 +467,7 @@ public class BoardsPage implements Page {
         return digital ? "gui.serialcraft.help.in_digital" : "gui.serialcraft.help.in_analog";
     }
 
-    // ── Etiquetas ─────────────────────────────────────────────────────────
+    // ── Etiquetas ─────────────────────────────────────────────────────────────
 
     private Component powerLabel() {
         return Component.translatable(editEnabled ? "gui.serialcraft.editor.power_on"

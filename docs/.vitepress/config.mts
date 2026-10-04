@@ -91,6 +91,7 @@ export default defineConfig({
                 { text: 'Instalación', link: '/guide#instalacion' },
                 { text: 'Configuración de la conexión', link: '/guide#configuracion-de-la-conexion' },
                 { text: 'Tu primer circuito', link: '/guide#tu-primer-circuito-bidireccional' },
+                { text: 'Banco de pruebas', link: '/guide#banco-de-pruebas-pestana-visualizar' },
                 { text: 'Límites conocidos', link: '/guide#limites-conocidos-de-esta-version' }
               ]
             },
@@ -102,8 +103,9 @@ export default defineConfig({
                 { text: 'Wi-Fi y emparejamiento', link: '/protocol#_5-wi-fi-el-mod-es-el-servidor' },
                 { text: 'Cambios respecto a 0.3.x', link: '/protocol#_8-cambios-respecto-a-0-3-x' },
                 { text: 'Cambios respecto a 0.4.3', link: '/protocol#_9-cambios-respecto-a-0-4-3' },
-                { text: 'Telemetría del juego', link: '/protocol#_11-telemetria-del-juego-minecraft-hardware' },
-                { text: 'Identificación y reconexión sin token', link: '/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token' }
+                { text: 'Telemetría del juego', link: '/protocol#_11-telemetria-del-juego-minecraft-➔-hardware' },
+                { text: 'Identificación y reconexión sin token', link: '/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token' },
+                { text: 'Probar con el generador', link: '/protocol#_13-probar-con-el-generador-pestana-visualizar' }
               ]
             },
             {
@@ -180,6 +182,7 @@ export default defineConfig({
                 { text: 'Installation', link: '/en/guide#installation' },
                 { text: 'Connection setup', link: '/en/guide#connection-setup' },
                 { text: 'Your first circuit', link: '/en/guide#your-first-bidirectional-circuit' },
+                { text: 'Test bench', link: '/en/guide#test-bench-visualizer-tab' },
                 { text: 'Known limits', link: '/en/guide#known-limits-in-this-version' }
               ]
             },
@@ -191,8 +194,9 @@ export default defineConfig({
                 { text: 'Wi-Fi and pairing', link: '/en/protocol#_5-wi-fi-the-mod-is-the-server' },
                 { text: 'Changes from 0.3.x', link: '/en/protocol#_8-changes-from-0-3-x' },
                 { text: 'Changes from 0.4.3', link: '/en/protocol#_9-changes-from-0-4-3' },
-                { text: 'Game telemetry', link: '/en/protocol#_11-game-telemetry-minecraft-hardware' },
-                { text: 'Board identification & token-free reconnection', link: '/en/protocol#_12-board-identification-and-token-free-reconnection' }
+                { text: 'Game telemetry', link: '/en/protocol#_11-game-telemetry-minecraft-➔-hardware' },
+                { text: 'Board identification & token-free reconnection', link: '/en/protocol#_12-board-identification-and-token-free-reconnection' },
+                { text: 'Testing with the generator', link: '/en/protocol#_13-testing-with-the-generator-visualizer-tab' }
               ]
             },
             {

@@ -22,7 +22,7 @@ No es solo una demostración técnica. Está diseñado para encajar de forma nat
 El cerebro de la operación. En SerialCraft la conexión no aparece por arte de magia: hay que construirla.
 
 * **Integración en Survival:** la Laptop es un bloque crafteable. Tienes que reunir los recursos, así que encaja en el equilibrio de una partida de supervivencia.
-* **La interfaz:** al hacer clic derecho se abre una interfaz con cinco páginas — Inicio, Conexión, Placas, Eventos, Visualizar y Consola. El escaneo de puertos es automático: no necesitas saber qué es un puerto COM.
+* **La interfaz:** al hacer clic derecho se abre una interfaz con seis páginas — Inicio, Conexión, Placas, Eventos, Visualizar (banco de pruebas) y Consola. El escaneo de puertos es automático: no necesitas saber qué es un puerto COM.
 
 ### ⚡ Físico ➔ digital (entrada)
 Controla tu mundo con componentes reales.

@@ -24,8 +24,12 @@ El uso de herramientas de inteligencia artificial es estratégico. **El proyecto
   La pestaña **Eventos** muestra al lado de cada interruptor el valor actual en el cable serial (`mc_hunger:20`), y la consola resalta los paquetes de telemetría (`TM:`).
 * **Migración a Minecraft 26.2 y Java 25**:
   El mod corre sobre Fabric Loader para Minecraft 26.2 y requiere **Java 25** como entorno de ejecución estándar.
-* **Pestaña Visualizar (Monitor y Osciloscopio en tiempo real)**:
-  La Laptop incorpora una nueva pestaña **Visualizar**, que ofrece una gráfica interactiva en tiempo real del flujo de señales de los bloques IO (entradas y salidas analógicas y digitales) para diagnosticar circuitos rápidamente.
+* **Pestaña Visualizar (banco de pruebas)**:
+  La Laptop incorpora una pestaña **Visualizar** con tres herramientas: una **línea de tiempo** que muestra varias señales a la vez (sensores, valores que envía el juego y telemetría `mc_*`), una vista **Sensor** que compara el valor crudo con la redstone que produce y sugiere una zona muerta, y un **generador** de ondas para comprobar que la placa responde sin construir un circuito de redstone. Todo con la hora real de cada mensaje y sin suavizar la línea. Ver [Banco de pruebas](#banco-de-pruebas-pestana-visualizar).
+* **Identificación de la placa**:
+  Un chip puente (CH340, CP2102) no dice qué placa hay detrás, así que el mod ya no llama «Arduino» a cualquier placa con CH340. Reconoce por USB el Arduino UNO Q, UNO R3/R4, Mega, Nano ESP32 y los ESP32 con USB nativo; para el resto muestra «Placa con CH340 (modelo sin identificar)» hasta que la propia placa se anuncia con `mc_id`. Ver [protocolo, sección 12](/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token).
+* **Placas recordadas (Wi-Fi sin token)**:
+  Con **Recordar placa** (pestaña Inicio) una placa Wi-Fi guarda una clave y se reconecta sin teclear el token. Si hay placas recordadas, el servidor Wi-Fi arranca solo al entrar a un mundo. Ver [protocolo, sección 12](/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token).
 * **Eliminación de ComputerCraft**:
   Se eliminaron las clases de integración periférica (`ArduinoPeripheral` y `CCIntegration`), simplificando el mod para centrarse exclusivamente en la interacción nativa de hardware real con redstone y telemetría.
 * **Recetas integradas**:
@@ -113,6 +117,89 @@ Con dos bloques IO —uno `INPUT` llamado `pot_val` y otro `OUTPUT` llamado `led
 
 ---
 
+## Banco de pruebas (pestaña Visualizar)
+
+La pestaña **Visualizar** sirve para ver qué viaja entre el juego y la placa y para comprobar que la placa responde, sin construir circuitos de redstone.
+
+::: info No es un osciloscopio de laboratorio
+Por el cable van mensajes de texto con valores de 0 a 255, unas pocas decenas por segundo. Lo que ves es **qué mensajes llegaron y cuándo**; no hay nada que mostrar de lo que pase entre dos mensajes.
+:::
+
+### Qué hay en pantalla
+
+| Fila | Controles |
+| :---: | :--- |
+| 1 | **Vista** (Línea de tiempo o Sensor), **Ventana** (5, 10, 30 o 60 s), **Pausar** y **Limpiar** |
+| 2 | Campo de **canales** (línea de tiempo) o de **sensor** (vista Sensor) |
+| 3 | **Generador**: Generar/Detener, forma, periodo, amplitud y la clave a enviar |
+
+Bajo los controles, una línea de estado avisa si el generador está en marcha, si algo falló o si la gráfica está en pausa.
+
+### Cómo leer las gráficas
+
+* **Verde (RX):** lo que **la placa envía** al juego, por ejemplo un sensor `pot_val`.
+* **Naranja (TX):** lo que **el juego envía** a la placa: Bloques IO de salida, telemetría `mc_*` y el generador.
+* La línea es un **escalón**: entre dos mensajes el valor se mantiene. No se suaviza, porque suavizar dibujaría valores que nunca se enviaron (un salto de 0 a 255 saldría como una rampa). Cuando hay pocos mensajes, cada uno se marca con un punto blanco.
+* `mc_damage` y `mc_death` son **sucesos**, no estados: se dibujan como barras en el instante en que ocurrieron.
+* La escala es 0-255. Se amplía a 1023, 4095 o 65535 si la señal los supera (un ADC de 10 o 12 bits), y los canales `mc_*` usan su rango propio.
+
+Se registra lo que la placa envió de verdad, incluso los mensajes que el limitador de ritmo descarta antes de llegar al bloque.
+
+### Línea de tiempo
+
+Muestra varias señales en pistas que comparten el mismo eje de tiempo, para responder a «¿dónde se rompe la cadena?»: ¿el sensor envía?, ¿el juego recibe?, ¿la placa responde?
+
+* Con el campo de canales **vacío** se muestran las señales con actividad en los últimos 2 minutos, las más recientes que quepan en pantalla; el resto se anuncia como «+N señales más».
+* Para elegir cuáles ver, escribe nombres separados por coma o espacio. Cada uno puede ser exacto o terminar en `*`: `pot_val, led_verde` o `mc_*`.
+* El orden de las pistas es fijo (primero RX, luego TX, por orden alfabético): no saltan de sitio cuando un sensor habla.
+
+### Vista Sensor
+
+Muestra **una** señal con detalle: el valor crudo del cable (verde) y la **redstone** que produce (naranja), dibujados en la misma escala. A la derecha, el eje `RS 0-15`.
+
+| Fila | Qué significa |
+| :--- | :--- |
+| Valor | Último valor crudo y la redstone que le corresponde |
+| Mensajes/s | Cuántos mensajes por segundo envía la señal (últimos 3 s) |
+| Rango | Mínimo y máximo de la ventana y el promedio, ponderado por tiempo |
+| Variación 3 s | Máximo menos mínimo en los últimos 3 s, y la **zona muerta sugerida** |
+| Redstone | Cuántas veces cambió el nivel de redstone en los últimos 3 s |
+
+**Cómo calibrar un sensor:**
+
+1. Abre la vista **Sensor** y escribe la clave (por ejemplo `pot_val`). Vacío, muestra el último sensor activo.
+2. Deja el sensor **quieto** unos segundos.
+3. Mira **Variación 3 s**: con el sensor quieto, ese número es su ruido. Si es 0, la señal es limpia.
+4. En el sketch, usa una zona muerta igual o mayor que el valor sugerido: `if (abs(valor - ultimo) >= 4) { enviar(); }`.
+5. Si **Redstone** cambia varias veces con el sensor quieto, el valor está sobre el borde entre dos niveles de redstone (cada nivel son 17 unidades del cable) y parpadea. La zona muerta lo corrige.
+
+::: warning La conversión a redstone es la de una señal Analógica
+Un bloque **Digital** convierte cualquier valor mayor que 0 en 15. La vista solo muestra la conversión cuando la escala es 0-255 y la clave no empieza por `mc_`.
+:::
+
+### Generador
+
+Envía una onda de prueba a una clave de la placa. Sirve para comprobar que un LED, un servo o un motor responden **sin construir un circuito de redstone**.
+
+1. Conecta la placa.
+2. Escribe la clave del actuador en el campo de la derecha (por defecto, `led_verde`).
+3. Elige la **forma**: Rampa, Triángulo, Cuadrada, Seno o Escalera (16 escalones, uno por cada nivel de redstone).
+4. Elige el **periodo** (1, 2, 5 o 10 s) y la **amplitud** (100, 50 o 25 % de 0-255).
+5. Pulsa **Generar**. En la línea de tiempo verás la pista naranja con tu clave y, si la placa responde con un sensor (por ejemplo una LDR frente al LED), su pista verde justo debajo.
+
+Reglas del generador:
+
+* Envía enteros de 0 a 255, como máximo **10 mensajes por segundo** y solo cuando el valor cambia: el mismo ritmo que los Bloques IO de salida.
+* La clave admite letras, números, `_`, `.` y `-`, hasta 32 caracteres.
+* Sigue funcionando aunque cambies de pestaña. **Se detiene** al pulsar Detener, al cerrar la Laptop o si se pierde la conexión.
+* Al detenerse por tu orden o al cerrar la Laptop, deja la placa en reposo enviando `clave:0`.
+
+::: warning Envía valores reales a tu hardware
+Si hay un servo o un motor conectado, empieza con la amplitud al 25 %.
+:::
+
+---
+
 ## Límites conocidos de esta versión
 
 Vale la pena conocerlos antes de montar algo grande:
@@ -121,6 +208,8 @@ Vale la pena conocerlos antes de montar algo grande:
 * La interfaz está pensada para resoluciones normales; con la escala de GUI al máximo en 854×480 las tarjetas se salen del área visible.
 * No existe un modo en el que **el servidor** sea dueño del hardware. El puerto serie vive en el ordenador de cada jugador, así que el modelo es "cada jugador controla sus propias placas desde su PC". Esto es una decisión de arquitectura, no un olvido.
 * El canal Wi-Fi no está cifrado.
+* La pestaña Visualizar guarda las últimas ~4000 muestras de hasta 16 señales a la vez. Es un registro de **mensajes**, no un osciloscopio: no ve nada que ocurra entre dos mensajes.
+* El generador envía como máximo 10 mensajes por segundo.
 
 ---
 
