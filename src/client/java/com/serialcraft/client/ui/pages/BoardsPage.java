@@ -1,5 +1,6 @@
 package com.serialcraft.client.ui.pages;
 
+import com.serialcraft.block.entity.ArduinoIOBlockEntity;
 import com.serialcraft.board.IoMode;
 import com.serialcraft.board.LogicMode;
 import com.serialcraft.board.SignalType;
@@ -9,7 +10,6 @@ import com.serialcraft.client.ui.SpriteIcon;
 import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.client.ui.widget.IconTextButton;
-import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.BoardListRequestPayload;
 import com.serialcraft.network.ConfigPayload;
@@ -78,7 +78,8 @@ public class BoardsPage implements Page {
         if (directEditRequestPos != null) {
             BlockPos target = directEditRequestPos;
             directEditRequestPos = null;
-            openEditorForPos(target);
+            openEditorForPos(target, false);
+            buildEditor(panelUi, screenWidth, screenHeight);
             return;
         }
 
@@ -95,32 +96,47 @@ public class BoardsPage implements Page {
         this.directEditRequestPos = pos;
     }
 
-    private void openEditorForPos(BlockPos pos) {
+    private void openEditorForPos(BlockPos pos, boolean refreshUI) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
+            openEditor(io.toBoardInfo(), refreshUI);
+            return;
+        }
         for (BoardInfo b : boards) {
             if (b.pos().equals(pos)) {
-                openEditor(b);
+                openEditor(b, refreshUI);
                 return;
             }
         }
         BoardInfo synthetic = new BoardInfo(
                 pos,
                 "Board_" + pos.getX() + "_" + pos.getY() + "_" + pos.getZ(),
-                "led_verde",
+                ArduinoIOBlockEntity.DEFAULT_TARGET_DATA,
                 IoMode.OUTPUT,
+                SignalType.DIGITAL,
+                LogicMode.OR,
                 true
         );
-        openEditor(synthetic);
+        openEditor(synthetic, refreshUI);
     }
 
     private void openEditor(BoardInfo board) {
+        openEditor(board, true);
+    }
+
+    private void openEditor(BoardInfo board, boolean refreshUI) {
         this.editing     = true;
         this.editTarget  = board;
         this.editMode    = board.mode();
-        this.editSignal  = SignalType.DIGITAL;
-        this.editLogic   = LogicMode.OR;
+        this.editSignal  = board.signalType();
+        this.editLogic   = board.logicMode();
         this.editEnabled = board.enabled();
 
-        if (panel != null) panel.setTab(PanelUI.Tab.BOARDS);
+        if (refreshUI && panel != null && panel.getCurrentTab() != PanelUI.Tab.BOARDS) {
+            panel.setTab(PanelUI.Tab.BOARDS);
+        } else if (refreshUI && panel != null) {
+            panel.refresh();
+        }
     }
 
     @Override
@@ -134,7 +150,7 @@ public class BoardsPage implements Page {
 
         boards.clear();
         boards.addAll(incoming);
-        if (!editing && panel != null) panel.setTab(PanelUI.Tab.BOARDS);
+        if (!editing && panel != null) panel.refresh();
     }
 
     @Override
@@ -189,7 +205,7 @@ public class BoardsPage implements Page {
                     editBtnX, buttonY, btnW, 22,
                     SpriteIcon.CODE,
                     Component.translatable("gui.serialcraft.boards.edit"),
-                    btn -> { if (requireConnection()) openEditor(target); },
+                    btn -> openEditor(target),
                     UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK, UiTheme.TEXT_INVERSE
             );
             panelUi.addWidget(editBtn);
@@ -201,9 +217,22 @@ public class BoardsPage implements Page {
 
     private void toggleBoard(BoardInfo board) {
         if (!ClientPlayNetworking.canSend(RemoteTogglePayload.TYPE)) return;
+
+        for (int i = 0; i < boards.size(); i++) {
+            if (boards.get(i).pos().equals(board.pos())) {
+                BoardInfo cur = boards.get(i);
+                boards.set(i, new BoardInfo(
+                        cur.pos(), cur.id(), cur.data(),
+                        cur.mode(), cur.signalType(), cur.logicMode(),
+                        !cur.enabled()));
+                break;
+            }
+        }
+
         ClientPlayNetworking.send(new RemoteTogglePayload(board.pos()));
         awaitingResponse = false;
         requestBoardList();
+        if (panel != null) panel.refresh();
     }
 
     // ── EVENTOS DE RATÓN Y DESPLAZAMIENTO ─────────────────────────────────────
@@ -241,16 +270,6 @@ public class BoardsPage implements Page {
     }
 
     // ── EDITOR ────────────────────────────────────────────────────────────────
-
-    private boolean requireConnection() {
-        if (ConnectionManager.isAnyConnected()) return true;
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            mc.player.sendSystemMessage(
-                    Component.translatable("gui.serialcraft.boards.need_connection"));
-        }
-        return false;
-    }
 
     private void buildEditor(PanelUI panelUi, int screenWidth, int screenHeight) {
         if (editTarget == null) return;
@@ -310,9 +329,25 @@ public class BoardsPage implements Page {
         if (editTarget == null || idBox == null || dataBox == null) return;
         if (!ClientPlayNetworking.canSend(ConfigPayload.TYPE)) return;
 
+        String rawId = idBox.getValue().trim();
+        String rawData = dataBox.getValue().trim();
+        String newId = rawId.isEmpty() ? editTarget.id() : rawId;
+        String newData = rawData.isEmpty() ? editTarget.data() : rawData;
+
+        BoardInfo updated = new BoardInfo(
+                editTarget.pos(), newId, newData,
+                editMode, editSignal, editLogic, editEnabled);
+
+        for (int i = 0; i < boards.size(); i++) {
+            if (boards.get(i).pos().equals(updated.pos())) {
+                boards.set(i, updated);
+                break;
+            }
+        }
+
         ClientPlayNetworking.send(new ConfigPayload(
-                editTarget.pos(), editMode, dataBox.getValue(),
-                editSignal, editEnabled, idBox.getValue(), editLogic));
+                updated.pos(), updated.mode(), updated.data(),
+                updated.signalType(), updated.enabled(), updated.id(), updated.logicMode()));
 
         closeEditor();
     }
@@ -324,7 +359,7 @@ public class BoardsPage implements Page {
         editTarget       = null;
         logicButton      = null;
         awaitingResponse = false;
-        if (panel != null) panel.setTab(PanelUI.Tab.BOARDS);
+        if (panel != null) panel.refresh();
     }
 
     // ── RENDER ────────────────────────────────────────────────────────────────
@@ -455,7 +490,7 @@ public class BoardsPage implements Page {
         UiDraw.inputWell(gui, x + 6, y + 141, width - 12, 26);
 
         String command = (dataBox != null) ? dataBox.getValue() : editTarget.data();
-        gui.centeredText(font, Component.translatable(helpKey(), command),
+        gui.centeredText(font, Component.translatable(helpKey(), command, command),
                 x + width / 2, y + 178, 0xFF666666);
     }
 

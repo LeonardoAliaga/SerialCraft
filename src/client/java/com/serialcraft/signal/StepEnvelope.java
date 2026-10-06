@@ -30,6 +30,9 @@ public final class StepEnvelope {
         this.hi = new float[columns];
     }
 
+    /** Envolvente vacia (todas las columnas desconocidas); la rellena quien la crea. */
+    static StepEnvelope blank(int columns) { return new StepEnvelope(Math.max(columns, 0)); }
+
     public static StepEnvelope compute(Snapshot s, long from, long to, int columns) {
         StepEnvelope env = new StepEnvelope(Math.max(columns, 0));
         if (s == null || s.size() == 0 || columns <= 0 || to <= from) return env;

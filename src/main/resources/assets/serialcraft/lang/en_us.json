@@ -129,9 +129,9 @@
   "gui.serialcraft.logic.xor": "XOR",
 
   "_comment_help": "── Protocol hints ──",
-  "gui.serialcraft.help.out_digital": "Sends %s:1 (on) / %s:0 (off)",
+  "gui.serialcraft.help.out_digital": "Sends %s:255 (on) / %s:0 (off)",
   "gui.serialcraft.help.out_analog": "Sends %s:0-255 (PWM)",
-  "gui.serialcraft.help.in_digital": "Expects %s:1 or %s:0",
+  "gui.serialcraft.help.in_digital": "Expects %s:255 or %s:0",
   "gui.serialcraft.help.in_analog": "Expects %s:0-255 (PWM)",
 
   "_comment_events": "── Events page ──",
@@ -182,7 +182,7 @@
   "gui.serialcraft.visualize.view_timeline": "Timeline",
   "gui.serialcraft.visualize.view_sensor": "Sensor",
   "gui.serialcraft.visualize.window_s": "Window %s s",
-  "gui.serialcraft.visualize.timeline_filter_hint": "Channels (empty = all; e.g. pot_val, mc_*)",
+  "gui.serialcraft.visualize.timeline_filter_hint": "Channels: pot_val, mc_* (empty = all)",
   "gui.serialcraft.visualize.sensor_filter_hint": "Sensor (empty = latest active)",
   "gui.serialcraft.visualize.gen_start": "Generate",
   "gui.serialcraft.visualize.gen_stop": "Stop",
@@ -216,6 +216,8 @@
   "gui.serialcraft.visualize.stat_redstone_tip": "With the sensor still this is flicker: raise the deadband.",
   "gui.serialcraft.visualize.stat_quiet_tip": "Keep the sensor still: the variation is its noise.",
   "gui.serialcraft.visualize.stat_scale_note": "Scale beyond 0-255: no redstone conversion",
+  "gui.serialcraft.visualize.trace_line": "Trace: Line",
+  "gui.serialcraft.visualize.trace_step": "Trace: Steps",
 
   "_comment_msg": "── Action bar and chat messages ──",
   "message.serialcraft.on": "ACTIVE",

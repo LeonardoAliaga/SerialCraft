@@ -8,9 +8,10 @@ import com.serialcraft.signal.Waveform.Shape;
  *
  * Dos reglas de seguridad, porque esto mueve actuadores reales:
  *
- *  - Ritmo: como maximo 10 envios por segundo y solo si el valor cambio. Es el
- *    mismo limite que ya tienen los bloques IO de salida (cada 2 ticks); mas
- *    rapido no puede producir ningun efecto en el juego y solo satura el enlace.
+ *  - Ritmo: como maximo un envio por tick (20 por segundo) y solo si el valor
+ *    cambio. Es el mismo techo que ya usa la telemetria del juego; mas rapido
+ *    solo saturaria el enlace. A 20 por segundo un seno de 2 s tiene 40 puntos
+ *    por ciclo, suficientes para que se vea como una onda.
  *
  *  - Parada segura: si la pagina deja de llamar a {@link #tick} (cambiaste de
  *    pestana, el juego se congelo...) el generador se detiene y manda un valor
@@ -18,7 +19,13 @@ import com.serialcraft.signal.Waveform.Shape;
  */
 public final class GeneratorController {
 
-    public static final long SEND_INTERVAL_NANOS = 100_000_000L;   // 10 Hz
+    /**
+     * Separacion minima entre envios. El juego avanza a 20 ticks/s (uno cada 50 ms),
+     * asi que en la practica sale un mensaje por tick: 20 por segundo como maximo.
+     * Se deja 5 ms por debajo de 50 para que el desfase normal entre ticks no
+     * haga saltarse uno.
+     */
+    public static final long SEND_INTERVAL_NANOS = 45_000_000L;
     public static final long MAX_TICK_GAP_NANOS  = 500_000_000L;
     /** Valor que se deja en la placa al parar. */
     public static final int REST_VALUE = 0;

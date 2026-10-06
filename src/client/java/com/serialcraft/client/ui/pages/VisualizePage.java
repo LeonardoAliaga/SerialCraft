@@ -9,6 +9,7 @@ import com.serialcraft.screen.PanelUI;
 import com.serialcraft.signal.GeneratorController;
 import com.serialcraft.signal.LanePlanner;
 import com.serialcraft.signal.LaneScale;
+import com.serialcraft.signal.LineEnvelope;
 import com.serialcraft.signal.SignalRecorder;
 import com.serialcraft.signal.SignalRecorder.Direction;
 import com.serialcraft.signal.SignalRecorder.SeriesId;
@@ -43,8 +44,12 @@ import java.util.Locale;
  *     triangulo, cuadrada, seno o escalera) para comprobar que responde sin
  *     tener que construir un circuito de redstone.
  *
- * El trazo NO se suaviza: entre dos mensajes el valor se mantiene (escalon),
- * porque suavizar dibujaba valores que nunca se enviaron.
+ * Dos estilos de trazo, que se alternan con el boton "Trazo":
+ *  - LINEA (por defecto): une los mensajes reales con rectas, y una onda se ve
+ *    como onda. No es una curva spline: la recta nunca sale del rango de las dos
+ *    muestras que une. Si entre dos mensajes pasa mas de 0,3 s no se unen (un
+ *    sensor quieto no cambio gradualmente): se mantiene el valor.
+ *  - ESCALON: entre dos mensajes el valor se mantiene, tal como lo vio el juego.
  */
 public class VisualizePage implements Page {
 
@@ -82,6 +87,7 @@ public class VisualizePage implements Page {
     private int windowIndex = 1;                 // 10 s
     private boolean paused = false;
     private String filterText = "";
+    private boolean lineStyle = true;            // Linea (true) o Escalon (false)
 
     private final GeneratorController generator = new GeneratorController();
     private Shape shape = Shape.RAMP;
@@ -186,13 +192,21 @@ public class VisualizePage implements Page {
         String hintKey = (view == View.TIMELINE)
                 ? "gui.serialcraft.visualize.timeline_filter_hint"
                 : "gui.serialcraft.visualize.sensor_filter_hint";
-        EditBox filterBox = new EditBox(font, x, row2Y, width, btnH, Component.translatable(hintKey));
+        int styleW  = Math.max(62, width * 26 / 100);
+        int filterW = width - styleW - gap;
+        EditBox filterBox = new EditBox(font, x, row2Y, filterW, btnH, Component.translatable(hintKey));
         filterBox.setMaxLength(96);
         filterBox.setValue(filterText);
         filterBox.setHint(Component.translatable(hintKey));
         filterBox.setTextColor(UiTheme.TEXT_INVERSE);
         filterBox.setResponder(val -> this.filterText = val);
         panel.addWidget(filterBox);
+
+        panel.addWidget(SolidButton.soft(x + filterW + gap, row2Y, styleW, btnH, traceLabel(), btn -> {
+            lineStyle = !lineStyle;
+            btn.setMessage(traceLabel());
+            refreshData();                          // tambien en pausa: cambia el dibujo, no los datos
+        }));
 
         // ── Fila 3: generador ─────────────────────────────────────────────────
         int toggleW = Math.max(50, width * 24 / 100);
@@ -303,6 +317,13 @@ public class VisualizePage implements Page {
 
     private long windowNanos() { return WINDOW_SECONDS[windowIndex] * NANOS_PER_SEC; }
 
+    /** Envolvente de dibujo segun el estilo elegido (Linea o Escalon). */
+    private StepEnvelope envelope(Snapshot snap, int columns) {
+        return lineStyle
+                ? LineEnvelope.compute(snap, viewFrom, viewTo, columns)
+                : StepEnvelope.compute(snap, viewFrom, viewTo, columns);
+    }
+
     private void refreshData() {
         if (screenW == 0) return;
         if (view == View.TIMELINE) { sensor = null; refreshTimeline(); }
@@ -334,7 +355,7 @@ public class VisualizePage implements Page {
             d.last = snap.values()[snap.size() - 1];
             d.ageNanos = viewTo - snap.times()[snap.size() - 1];
             d.range = LaneScale.of(id.key(), min, max);
-            d.env = StepEnvelope.compute(snap, viewFrom, viewTo, g.traceW);
+            d.env = envelope(snap, g.traceW);
             lanes.add(d);
         }
     }
@@ -356,7 +377,7 @@ public class VisualizePage implements Page {
         d.range = LaneScale.of(id.key(), d.stats.min(), d.stats.max());
         // La conversion a redstone solo tiene sentido en la escala del cable (0-255).
         d.showRedstone = d.range.lo() >= 0f && d.range.hi() <= 255f && !id.key().startsWith("mc_");
-        d.env = StepEnvelope.compute(snap, viewFrom, viewTo, g.sensorGridW);
+        d.env = envelope(snap, g.sensorGridW);
         sensor = d;
     }
 
@@ -784,6 +805,12 @@ public class VisualizePage implements Page {
         return Component.translatable(view == View.TIMELINE
                 ? "gui.serialcraft.visualize.view_timeline"
                 : "gui.serialcraft.visualize.view_sensor");
+    }
+
+    private Component traceLabel() {
+        return Component.translatable(lineStyle
+                ? "gui.serialcraft.visualize.trace_line"
+                : "gui.serialcraft.visualize.trace_step");
     }
 
     private Component windowLabel() {

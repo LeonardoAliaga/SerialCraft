@@ -192,6 +192,18 @@ public class PanelUI extends Screen {
         return super.mouseDragged(event, dragX, dragY);
     }
 
+    /**
+     * La Laptop NO pausa el juego en un mundo de un jugador: el tiempo del mundo
+     * sigue corriendo (y con el la telemetria de hora, clima y salud que llega a
+     * la placa) mientras se usa. Con el valor por defecto (true) el mundo se
+     * congelaba al abrirla. Ojo: con la Laptop abierta el jugador sigue en el
+     * mundo y puede recibir dano.
+     */
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+
     @Override
     public void extractRenderState(@NotNull GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         gui.fill(0, 0, this.width, this.height, UiTheme.BG_APP);
@@ -216,6 +228,10 @@ public class PanelUI extends Screen {
     // ─────────────────────────────────────────────────────────────────────────
     //  API para las paginas
     // ─────────────────────────────────────────────────────────────────────────
+
+    public Tab getCurrentTab() { return currentTab; }
+
+    public void refresh() { this.init(); }
 
     public void setTab(Tab tab) {
         if (this.currentTab == tab && appState == AppState.DASHBOARD) {

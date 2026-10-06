@@ -387,7 +387,7 @@ The **Visualizer** tab's generator sends the board lines in the usual `key:value
 | Property | Value |
 | :--- | :--- |
 | Format | `<key>:<0-255>\n`, integer |
-| Rate | At most 10 lines/s and only when the value changed (the same limit as output IO Blocks, one send every 2 ticks) |
+| Rate | At most 20 lines/s (one per tick) and only when the value changed: the same ceiling as the game's telemetry |
 | On stop | Sends `<key>:0` once, to leave the actuator at rest |
 | Key | `[A-Za-z0-9_.-]`, up to 32 characters |
 | Console | Does not write to the console, to avoid flooding it |

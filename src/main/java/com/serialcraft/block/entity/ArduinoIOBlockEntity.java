@@ -101,7 +101,7 @@ public class ArduinoIOBlockEntity extends BlockEntity {
     public @Nullable UUID getOwnerUUID() { return ownerUUID; }
 
     public BoardInfo toBoardInfo() {
-        return new BoardInfo(worldPosition, boardId, targetData, ioMode, enabled);
+        return new BoardInfo(worldPosition, boardId, targetData, ioMode, signalType, logicMode, enabled);
     }
 
     /** Senal que este bloque emite. Cero si esta apagado o su logica no se cumple. */

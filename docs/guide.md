@@ -25,11 +25,13 @@ El uso de herramientas de inteligencia artificial es estratégico. **El proyecto
 * **Migración a Minecraft 26.2 y Java 25**:
   El mod corre sobre Fabric Loader para Minecraft 26.2 y requiere **Java 25** como entorno de ejecución estándar.
 * **Pestaña Visualizar (banco de pruebas)**:
-  La Laptop incorpora una pestaña **Visualizar** con tres herramientas: una **línea de tiempo** que muestra varias señales a la vez (sensores, valores que envía el juego y telemetría `mc_*`), una vista **Sensor** que compara el valor crudo con la redstone que produce y sugiere una zona muerta, y un **generador** de ondas para comprobar que la placa responde sin construir un circuito de redstone. Todo con la hora real de cada mensaje y sin suavizar la línea. Ver [Banco de pruebas](#banco-de-pruebas-pestana-visualizar).
+  La Laptop incorpora una pestaña **Visualizar** con tres herramientas: una **línea de tiempo** que muestra varias señales a la vez (sensores, valores que envía el juego y telemetría `mc_*`), una vista **Sensor** que compara el valor crudo con la redstone que produce y sugiere una zona muerta, y un **generador** de ondas para comprobar que la placa responde sin construir un circuito de redstone. Todo con la hora real de cada mensaje, uniendo solo puntos reales (nunca una curva inventada). Ver [Banco de pruebas](#banco-de-pruebas-pestana-visualizar).
 * **Identificación de la placa**:
   Un chip puente (CH340, CP2102) no dice qué placa hay detrás, así que el mod ya no llama «Arduino» a cualquier placa con CH340. Reconoce por USB el Arduino UNO Q, UNO R3/R4, Mega, Nano ESP32 y los ESP32 con USB nativo; para el resto muestra «Placa con CH340 (modelo sin identificar)» hasta que la propia placa se anuncia con `mc_id`. Ver [protocolo, sección 12](/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token).
 * **Placas recordadas (Wi-Fi sin token)**:
   Con **Recordar placa** (pestaña Inicio) una placa Wi-Fi guarda una clave y se reconecta sin teclear el token. Si hay placas recordadas, el servidor Wi-Fi arranca solo al entrar a un mundo. Ver [protocolo, sección 12](/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token).
+* **La Laptop ya no pausa el juego**:
+  En un mundo de un jugador, abrir la Laptop deja el mundo en marcha. Así la telemetría (`mc_*`: hora, clima, salud…) sigue llegando a la placa y se ve cambiar en Visualizar. Ten en cuenta que, con la Laptop abierta, el jugador sigue en el mundo y puede recibir daño.
 * **Eliminación de ComputerCraft**:
   Se eliminaron las clases de integración periférica (`ArduinoPeripheral` y `CCIntegration`), simplificando el mod para centrarse exclusivamente en la interacción nativa de hardware real con redstone y telemetría.
 * **Recetas integradas**:
@@ -130,16 +132,18 @@ Por el cable van mensajes de texto con valores de 0 a 255, unas pocas decenas po
 | Fila | Controles |
 | :---: | :--- |
 | 1 | **Vista** (Línea de tiempo o Sensor), **Ventana** (5, 10, 30 o 60 s), **Pausar** y **Limpiar** |
-| 2 | Campo de **canales** (línea de tiempo) o de **sensor** (vista Sensor) |
+| 2 | Campo de **canales** (línea de tiempo) o de **sensor** (vista Sensor), y el botón **Trazo** (Línea o Escalón) |
 | 3 | **Generador**: Generar/Detener, forma, periodo, amplitud y la clave a enviar |
 
 Bajo los controles, una línea de estado avisa si el generador está en marcha, si algo falló o si la gráfica está en pausa.
+
+La Laptop **no pausa el juego** en un mundo de un jugador: el mundo sigue en marcha mientras la usas, así que vigila que no te ataquen.
 
 ### Cómo leer las gráficas
 
 * **Verde (RX):** lo que **la placa envía** al juego, por ejemplo un sensor `pot_val`.
 * **Naranja (TX):** lo que **el juego envía** a la placa: Bloques IO de salida, telemetría `mc_*` y el generador.
-* La línea es un **escalón**: entre dos mensajes el valor se mantiene. No se suaviza, porque suavizar dibujaría valores que nunca se enviaron (un salto de 0 a 255 saldría como una rampa). Cuando hay pocos mensajes, cada uno se marca con un punto blanco.
+* El **trazo** tiene dos estilos, que se alternan con el botón **Trazo**. **Línea** (por defecto) une los mensajes reales con rectas, así una onda se ve como onda. **Escalón** mantiene el valor hasta el siguiente mensaje, tal como lo vio el juego. Ninguno es una curva suavizada, porque una curva dibujaría valores que nunca se enviaron. En modo Línea, si entre dos mensajes pasan más de 0,3 s no se unen (un sensor que estuvo quieto no cambió poco a poco): el valor se mantiene hasta el siguiente. Cuando hay pocos mensajes, cada uno se marca con un punto blanco.
 * `mc_damage` y `mc_death` son **sucesos**, no estados: se dibujan como barras en el instante en que ocurrieron.
 * La escala es 0-255. Se amplía a 1023, 4095 o 65535 si la señal los supera (un ADC de 10 o 12 bits), y los canales `mc_*` usan su rango propio.
 
@@ -189,7 +193,7 @@ Envía una onda de prueba a una clave de la placa. Sirve para comprobar que un L
 
 Reglas del generador:
 
-* Envía enteros de 0 a 255, como máximo **10 mensajes por segundo** y solo cuando el valor cambia: el mismo ritmo que los Bloques IO de salida.
+* Envía enteros de 0 a 255, como máximo **20 mensajes por segundo** (uno por tick) y solo cuando el valor cambia: el mismo techo que la telemetría del juego. A ese ritmo un seno de 2 s tiene 40 puntos por ciclo, suficientes para que se vea como una onda.
 * La clave admite letras, números, `_`, `.` y `-`, hasta 32 caracteres.
 * Sigue funcionando aunque cambies de pestaña. **Se detiene** al pulsar Detener, al cerrar la Laptop o si se pierde la conexión.
 * Al detenerse por tu orden o al cerrar la Laptop, deja la placa en reposo enviando `clave:0`.
@@ -209,7 +213,7 @@ Vale la pena conocerlos antes de montar algo grande:
 * No existe un modo en el que **el servidor** sea dueño del hardware. El puerto serie vive en el ordenador de cada jugador, así que el modelo es "cada jugador controla sus propias placas desde su PC". Esto es una decisión de arquitectura, no un olvido.
 * El canal Wi-Fi no está cifrado.
 * La pestaña Visualizar guarda las últimas ~4000 muestras de hasta 16 señales a la vez. Es un registro de **mensajes**, no un osciloscopio: no ve nada que ocurra entre dos mensajes.
-* El generador envía como máximo 10 mensajes por segundo.
+* El generador envía como máximo 20 mensajes por segundo.
 
 ---
 

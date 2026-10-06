@@ -1,6 +1,8 @@
 package com.serialcraft.network;
 
 import com.serialcraft.board.IoMode;
+import com.serialcraft.board.LogicMode;
+import com.serialcraft.board.SignalType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -15,11 +17,13 @@ import net.minecraft.network.codec.StreamCodec;
  * tamano de paquete de Minecraft y desconectaria al cliente.
  */
 public record BoardInfo(
-        BlockPos pos,
-        String id,
-        String data,
-        IoMode mode,
-        boolean enabled
+        BlockPos   pos,
+        String     id,
+        String     data,
+        IoMode     mode,
+        SignalType signalType,
+        LogicMode  logicMode,
+        boolean    enabled
 ) {
     public static final int MAX_ID_LENGTH   = 32;
     public static final int MAX_DATA_LENGTH = 32;
@@ -29,6 +33,8 @@ public record BoardInfo(
             ByteBufCodecs.stringUtf8(MAX_ID_LENGTH),  BoardInfo::id,
             ByteBufCodecs.stringUtf8(MAX_DATA_LENGTH),BoardInfo::data,
             IoMode.STREAM_CODEC,                      BoardInfo::mode,
+            SignalType.STREAM_CODEC,                  BoardInfo::signalType,
+            LogicMode.STREAM_CODEC,                   BoardInfo::logicMode,
             ByteBufCodecs.BOOL,                       BoardInfo::enabled,
             BoardInfo::new
     );

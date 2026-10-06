@@ -387,7 +387,7 @@ El generador de la pestaña **Visualizar** envía a la placa líneas con el form
 | Propiedad | Valor |
 | :--- | :--- |
 | Formato | `<clave>:<0-255>\n`, entero |
-| Ritmo | Como máximo 10 líneas/s y solo si el valor cambió (el mismo límite que los Bloques IO de salida, un envío cada 2 ticks) |
+| Ritmo | Como máximo 20 líneas/s (una por tick) y solo si el valor cambió: el mismo techo que la telemetría del juego |
 | Al detenerse | Envía `<clave>:0` una vez, para dejar el actuador en reposo |
 | Clave | `[A-Za-z0-9_.-]`, hasta 32 caracteres |
 | Consola | No escribe en la consola para no llenarla |

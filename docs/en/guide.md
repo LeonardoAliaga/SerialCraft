@@ -25,11 +25,13 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 * **Migration to Minecraft 26.2 & Java 25**:
   The mod runs on Fabric Loader for Minecraft 26.2 and requires **Java 25** as its runtime environment.
 * **Visualizer tab (test bench)**:
-  The Laptop now has a **Visualizer** tab with three tools: a **timeline** that shows several signals at once (sensors, values the game sends, and `mc_*` telemetry), a **Sensor** view that compares the raw value with the redstone it produces and suggests a deadband, and a wave **generator** to check that your board responds without building a redstone circuit. Every message carries its real timestamp and the line is never smoothed. See [Test bench](#test-bench-visualizer-tab).
+  The Laptop now has a **Visualizer** tab with three tools: a **timeline** that shows several signals at once (sensors, values the game sends, and `mc_*` telemetry), a **Sensor** view that compares the raw value with the redstone it produces and suggests a deadband, and a wave **generator** to check that your board responds without building a redstone circuit. Every message carries its real timestamp, and only real points are joined (never an invented curve). See [Test bench](#test-bench-visualizer-tab).
 * **Board identification**:
   A USB-serial bridge chip (CH340, CP2102) does not say which board is behind it, so the mod no longer labels every CH340 board "Arduino". It recognises the Arduino UNO Q, UNO R3/R4, Mega, Nano ESP32 and native-USB ESP32s over USB; for the rest it shows "Board with CH340 (model not identified)" until the board announces itself with `mc_id`. See [protocol, section 12](/en/protocol#_12-board-identification-and-token-free-reconnection).
 * **Remembered boards (Wi-Fi without a token)**:
   With **Remember board** (Home tab) a Wi-Fi board stores a key and reconnects without typing the token. When remembered boards exist, the Wi-Fi server starts by itself when you join a world. See [protocol, section 12](/en/protocol#_12-board-identification-and-token-free-reconnection).
+* **The Laptop no longer pauses the game**:
+  In a singleplayer world, opening the Laptop leaves the world running. That way telemetry (`mc_*`: time, weather, health…) keeps reaching the board and you can watch it change in Visualizer. Note that with the Laptop open the player is still in the world and can take damage.
 * **Removal of ComputerCraft integration**:
   External peripheral classes (`ArduinoPeripheral` and `CCIntegration`) were removed to streamline the mod and focus purely on direct, native real-world hardware integration and game telemetry.
 * **Integrated recipes**:
@@ -130,16 +132,18 @@ The cable carries text messages with values from 0 to 255, a few dozen per secon
 | Row | Controls |
 | :---: | :--- |
 | 1 | **View** (Timeline or Sensor), **Window** (5, 10, 30 or 60 s), **Pause** and **Clear** |
-| 2 | **Channels** field (timeline) or **sensor** field (Sensor view) |
+| 2 | **Channels** field (timeline) or **sensor** field (Sensor view), and the **Trace** button (Line or Steps) |
 | 3 | **Generator**: Generate/Stop, shape, period, amplitude and the key to send |
 
 Below the controls, a status line tells you whether the generator is running, if something failed, or if the graph is paused.
+
+The Laptop **does not pause the game** in a singleplayer world: the world keeps running while you use it, so watch out for attacks.
 
 ### How to read the graphs
 
 * **Green (RX):** what **the board sends** to the game, for example a `pot_val` sensor.
 * **Orange (TX):** what **the game sends** to the board: output IO Blocks, `mc_*` telemetry and the generator.
-* The line is a **step**: between two messages the value is held. It is never smoothed, because smoothing would draw values that were never sent (a jump from 0 to 255 would appear as a ramp). When there are few messages, each one is marked with a white dot.
+* The **trace** has two styles, switched with the **Trace** button. **Line** (default) joins the real messages with straight segments, so a wave looks like a wave. **Steps** holds the value until the next message, exactly as the game saw it. Neither is a smoothed curve, because a curve would draw values that were never sent. In Line mode, if more than 0.3 s pass between two messages they are not joined (a sensor that stayed still did not change gradually): the value is held until the next one. When there are few messages, each one is marked with a white dot.
 * `mc_damage` and `mc_death` are **events**, not states: they are drawn as bars at the instant they happened.
 * The scale is 0-255. It grows to 1023, 4095 or 65535 if the signal exceeds it (a 10 or 12-bit ADC), and `mc_*` channels use their own range.
 
@@ -189,7 +193,7 @@ Sends a test wave to a key on the board. Use it to check that an LED, servo or m
 
 Generator rules:
 
-* It sends integers from 0 to 255, at most **10 messages per second** and only when the value changes: the same rate as output IO Blocks.
+* It sends integers from 0 to 255, at most **20 messages per second** (one per tick) and only when the value changes: the same ceiling as the game's telemetry. At that rate a 2 s sine has 40 points per cycle, enough for it to look like a wave.
 * The key accepts letters, numbers, `_`, `.` and `-`, up to 32 characters.
 * It keeps running if you switch tabs. It **stops** when you press Stop, when you close the Laptop, or if the connection is lost.
 * When it stops on your command or when you close the Laptop, it leaves the board at rest by sending `key:0`.
@@ -209,7 +213,7 @@ Worth knowing before you build something large:
 * There is no mode where **the server** owns the hardware. The serial port lives on each player's computer, so the model is "every player controls their own boards from their PC". This is an architectural choice, not an oversight.
 * The Wi-Fi channel is unencrypted.
 * The Visualizer tab keeps the last ~4000 samples of up to 16 signals at once. It is a log of **messages**, not an oscilloscope: it cannot see anything that happens between two messages.
-* The generator sends at most 10 messages per second.
+* The generator sends at most 20 messages per second.
 
 ---
 
