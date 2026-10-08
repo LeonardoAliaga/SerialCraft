@@ -1,7 +1,9 @@
 import { defineConfig } from 'vitepress'
+import { registerMediaSlots } from './media-slots.mts'
 
 export default defineConfig({
   // Configuración compartida
+  markdown: { config: registerMediaSlots },
   sitemap: { hostname: 'https://serialcraft.xyz' },
   lastUpdated: true,
   title: "SerialCraft",
