@@ -51,7 +51,7 @@ public class WelcomePage implements Page {
     private static final int HELPER_LINK_H = 16;
     private static final int HELPER_PANEL_H = 138;
 
-    private static final int DEFAULT_USB_BAUD = 9600;
+    private static final int DEFAULT_USB_BAUD = 115200;
 
     private static final int PLATFORM_ESP32 = 0;
     private static final int PLATFORM_UNO_Q = 1;

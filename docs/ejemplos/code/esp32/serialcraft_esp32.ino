@@ -69,6 +69,7 @@ WiFiClient client;
 Preferences prefs;                // memoria flash: guarda la clave recordada
 char boardUid[24];                // p. ej. ESP32-A1B2C3D4E5F6 (sale de la MAC)
 int    lastPotValue = -1;
+unsigned long lastPotSent = 0;
 String rxBuffer = "";
 unsigned long lastPotRead = 0;
 
@@ -274,8 +275,11 @@ void sendPotentiometer() {
 
   int potValue = map(analogRead(POT_PIN), 0, ADC_MAX, 0, PWM_MAX);
 
-  if (abs(potValue - lastPotValue) >= POT_HYSTERESIS) {
+  // First zero is valid; periodic snapshots restore RX after a chunk reload.
+  if (lastPotValue < 0 || abs(potValue - lastPotValue) >= POT_HYSTERESIS
+      || millis() - lastPotSent >= 1000UL) {
     client.print(String(BLOCK_ID_POT) + ":" + String(potValue) + "\n");
     lastPotValue = potValue;
+    lastPotSent = millis();
   }
 }

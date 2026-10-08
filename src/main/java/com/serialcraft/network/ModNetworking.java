@@ -1,9 +1,11 @@
 package com.serialcraft.network;
 
 import com.serialcraft.SerialCraft;
-import com.serialcraft.block.entity.ArduinoIOBlockEntity;
+import com.serialcraft.block.entity.HardwareIOBlockEntity;
 import com.serialcraft.block.entity.ConnectorBlockEntity;
 import com.serialcraft.board.BoardRegistry;
+import com.serialcraft.board.HardwareSessions;
+import com.serialcraft.block.IOSide;
 import com.serialcraft.network.guard.NetGuard;
 import com.serialcraft.network.guard.PacketRateLimiter;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -45,6 +47,8 @@ public final class ModNetworking {
     private static final PacketRateLimiter SERIAL_LIMITER = new PacketRateLimiter(80, 40);
     private static final PacketRateLimiter CONFIG_LIMITER = new PacketRateLimiter(20, 10);
     private static final PacketRateLimiter LIST_LIMITER   = new PacketRateLimiter(10, 5);
+    private static final PacketRateLimiter REJECT_LIMITER = new PacketRateLimiter(2, 1);
+    private static final PacketRateLimiter LINK_LIMITER = new PacketRateLimiter(10, 5);
 
     // Rango valido de baudios. Fuera de esta lista el ajuste se ignora.
     private static final int[] VALID_BAUD_RATES =
@@ -65,10 +69,12 @@ public final class ModNetworking {
         c2s.register(SerialInputPayload.TYPE,      SerialInputPayload.CODEC);
         c2s.register(BoardListRequestPayload.TYPE, BoardListRequestPayload.CODEC);
         c2s.register(RemoteTogglePayload.TYPE,     RemoteTogglePayload.CODEC);
+        c2s.register(HardwareLinkPayload.TYPE,     HardwareLinkPayload.CODEC);
 
         var s2c = PayloadTypeRegistry.clientboundPlay();
         s2c.register(SerialOutputPayload.TYPE,      SerialOutputPayload.CODEC);
         s2c.register(BoardListResponsePayload.TYPE, BoardListResponsePayload.CODEC);
+        s2c.register(ConfigResultPayload.TYPE,     ConfigResultPayload.CODEC);
     }
 
     public static void registerServerHandlers() {
@@ -79,6 +85,20 @@ public final class ModNetworking {
             SERIAL_LIMITER.forget(id);
             CONFIG_LIMITER.forget(id);
             LIST_LIMITER.forget(id);
+            REJECT_LIMITER.forget(id);
+            LINK_LIMITER.forget(id);
+            HardwareSessions.update(id, false);
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(HardwareLinkPayload.TYPE, (payload, context) -> {
+            if (!LINK_LIMITER.tryAcquire(context.player())) return;
+            context.server().execute(() -> {
+                if (payload.resyncOnly()) {
+                    if (HardwareSessions.connected(context.player().getUUID())) {
+                        for (var io : BoardRegistry.boardsOf(context.player())) io.forceResend();
+                    }
+                } else HardwareSessions.update(context.player().getUUID(), payload.connected());
+            });
         });
 
         registerConfig();
@@ -96,30 +116,34 @@ public final class ModNetworking {
     private static void registerConfig() {
         ServerPlayNetworking.registerGlobalReceiver(ConfigPayload.TYPE, (payload, context) -> {
             ServerPlayer player = context.player();
-            if (!CONFIG_LIMITER.tryAcquire(player)) return;
+            if (!CONFIG_LIMITER.tryAcquire(player)) {
+                if (REJECT_LIMITER.tryAcquire(player)) context.server().execute(() ->
+                        configResult(player, payload, false, "gui.serialcraft.editor.rate_limited"));
+                return;
+            }
 
             context.server().execute(() -> {
-                ArduinoIOBlockEntity io =
-                        NetGuard.resolve(player, payload.pos(), ArduinoIOBlockEntity.class,
+                if (!player.level().dimension().identifier().toString().equals(payload.dimension())) {
+                    configResult(player, payload, false, "gui.serialcraft.editor.unavailable");
+                    return;
+                }
+                HardwareIOBlockEntity io =
+                        NetGuard.resolve(player, payload.pos(), HardwareIOBlockEntity.class,
                                 NetGuard.MAX_MANAGEMENT_DISTANCE);
-                if (io == null) { NetGuard.logRejected("ConfigPayload", player); return; }
-
-                if (!NetGuard.canOperate(player, io.getOwnerUUID())) {
-                    NetGuard.denyOwnership(player);
+                if (io == null) {
+                    configResult(player, payload, false, "gui.serialcraft.editor.unavailable");
                     return;
                 }
 
-                String targetData = NetGuard.sanitize(payload.targetData(), BoardInfo.MAX_DATA_LENGTH,
-                        ArduinoIOBlockEntity.DEFAULT_TARGET_DATA);
+                if (!NetGuard.canOperate(player, io.getOwnerUUID())) {
+                    NetGuard.denyOwnership(player);
+                    configResult(player, payload, false, "message.serialcraft.not_owner");
+                    return;
+                }
 
-                // El prefijo "mc_" es del protocolo de telemetria. Se rechaza
-                // ANTES de reclamar la placa: una configuracion invalida no
-                // debe dejar la placa a nombre de quien la envio.
-                if (TelemetryProtocol.isReservedKey(targetData)) {
-                    player.sendSystemMessage(Component.translatable(
-                            "message.serialcraft.reserved_key", TelemetryProtocol.RESERVED_PREFIX));
-                    NetGuard.logRejected("ConfigPayload", player,
-                            "Target Data con prefijo reservado: " + targetData);
+                String targetData = payload.targetData().trim();
+                if (!SignalProtocol.isValidChannel(targetData) || !IOSide.isValidPacked(payload.sides())) {
+                    configResult(player, payload, false, "gui.serialcraft.editor.invalid_channel");
                     return;
                 }
 
@@ -132,9 +156,11 @@ public final class ModNetworking {
                         payload.signalType(),
                         payload.enabled(),
                         NetGuard.sanitize(payload.boardId(), BoardInfo.MAX_ID_LENGTH,
-                                ArduinoIOBlockEntity.DEFAULT_BOARD_ID),
+                                HardwareIOBlockEntity.DEFAULT_BOARD_ID),
                         payload.logicMode()
                 );
+                io.setSides(payload.sides());
+                configResult(player, payload, true, "gui.serialcraft.editor.saved");
             });
         });
     }
@@ -145,8 +171,9 @@ public final class ModNetworking {
             if (!CONFIG_LIMITER.tryAcquire(player)) return;
 
             context.server().execute(() -> {
-                ArduinoIOBlockEntity io =
-                        NetGuard.resolve(player, payload.targetPos(), ArduinoIOBlockEntity.class,
+                if (!player.level().dimension().identifier().toString().equals(payload.dimension())) return;
+                HardwareIOBlockEntity io =
+                        NetGuard.resolve(player, payload.targetPos(), HardwareIOBlockEntity.class,
                                 NetGuard.MAX_MANAGEMENT_DISTANCE);
                 if (io == null) { NetGuard.logRejected("RemoteToggle", player); return; }
 
@@ -154,10 +181,16 @@ public final class ModNetworking {
                     NetGuard.denyOwnership(player);
                     return;
                 }
+                if (!io.isEnabled() && !SignalProtocol.isValidChannel(io.getTargetData())) {
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("gui.serialcraft.editor.invalid_channel"));
+                    sendBoardList(player);
+                    return;
+                }
                 // Placa sin dueno: se reclama en vez de quedar publica.
                 if (io.getOwnerUUID() == null) io.claim(player);
 
                 io.setEnabled(!io.isEnabled());
+                sendBoardList(player);
             });
         });
     }
@@ -171,12 +204,12 @@ public final class ModNetworking {
             if (!SERIAL_LIMITER.tryAcquire(player)) return;
 
             String message = payload.message();
-            if (message.isBlank()) return;
+            if (SignalProtocol.parse(message).isEmpty()) return;
 
             context.server().execute(() -> {
                 // BoardRegistry ya devuelve solo las placas del jugador en SU
                 // dimension actual. El original recorria todas las del servidor.
-                for (ArduinoIOBlockEntity io : BoardRegistry.boardsOf(player)) {
+                for (HardwareIOBlockEntity io : BoardRegistry.boardsOf(player)) {
                     io.acceptSerialInput(message);
                 }
             });
@@ -189,15 +222,7 @@ public final class ModNetworking {
             if (!LIST_LIMITER.tryAcquire(player)) return;
 
             context.server().execute(() -> {
-                List<ArduinoIOBlockEntity> boards = BoardRegistry.boardsOf(player);
-                List<BoardInfo> infos = new ArrayList<>(
-                        Math.min(boards.size(), BoardListResponsePayload.MAX_BOARDS));
-
-                for (ArduinoIOBlockEntity io : boards) {
-                    if (infos.size() >= BoardListResponsePayload.MAX_BOARDS) break;
-                    infos.add(io.toBoardInfo());
-                }
-                ServerPlayNetworking.send(player, new BoardListResponsePayload(infos));
+                sendBoardList(player);
             });
         });
     }
@@ -214,8 +239,9 @@ public final class ModNetworking {
                 ConnectorBlockEntity connector =
                         NetGuard.resolve(player, payload.pos(), ConnectorBlockEntity.class);
                 if (connector == null) { NetGuard.logRejected("ConnectorPayload", player); return; }
-
-                connector.setConnectionState(payload.connected());
+                if (!NetGuard.canOperate(player, connector.getOwnerUUID())) { NetGuard.denyOwnership(player); return; }
+                if (connector.getOwnerUUID() == null) connector.claim(player);
+                connector.setConnectionState(HardwareSessions.connected(connector.getOwnerUUID()));
             });
         });
     }
@@ -229,6 +255,7 @@ public final class ModNetworking {
                 ConnectorBlockEntity connector =
                         NetGuard.resolve(player, payload.pos(), ConnectorBlockEntity.class);
                 if (connector == null) { NetGuard.logRejected("ConnectorConfig", player); return; }
+                if (!NetGuard.canOperate(player, connector.getOwnerUUID())) { NetGuard.denyOwnership(player); return; }
 
                 if (!isValidBaudRate(payload.baudRate())) {
                     SerialCraft.LOGGER.debug("Baudios invalidos ({}) de {}",
@@ -236,9 +263,9 @@ public final class ModNetworking {
                     return;
                 }
                 int speed = Math.clamp(payload.speedMode(), MIN_SPEED_MODE, MAX_SPEED_MODE);
-
+                if (connector.getOwnerUUID() == null) connector.claim(player);
                 connector.updateSettings(payload.baudRate(), speed);
-                connector.setConnectionState(payload.connected());
+                connector.setConnectionState(HardwareSessions.connected(connector.getOwnerUUID()));
             });
         });
     }
@@ -248,5 +275,19 @@ public final class ModNetworking {
     private static boolean isValidBaudRate(int baud) {
         for (int valid : VALID_BAUD_RATES) if (valid == baud) return true;
         return false;
+    }
+
+    private static void configResult(ServerPlayer player, ConfigPayload request, boolean accepted, String reason) {
+        ServerPlayNetworking.send(player, new ConfigResultPayload(request.pos(), accepted, reason, request.requestId()));
+    }
+
+    private static void sendBoardList(ServerPlayer player) {
+        if (!ServerPlayNetworking.canSend(player, BoardListResponsePayload.TYPE)) return;
+        List<BoardInfo> infos = new ArrayList<>();
+        for (var io : BoardRegistry.boardsOf(player)) {
+            if (infos.size() >= BoardListResponsePayload.MAX_BOARDS) break;
+            infos.add(io.toBoardInfo());
+        }
+        ServerPlayNetworking.send(player, new BoardListResponsePayload(infos, player.level().dimension().identifier().toString()));
     }
 }

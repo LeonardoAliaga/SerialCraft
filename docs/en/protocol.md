@@ -1,7 +1,7 @@
-# Bidirectional Protocol and Hardware (v0.4.3)
+# Bidirectional Protocol and Hardware (v0.4.6)
 
-::: warning Beta 0.4.3
-This release **breaks compatibility** with 0.3.x sketches in two places: the value scale and the direction of the Wi-Fi connection. Read [Changes from 0.3.x](#_8-changes-from-0-3-x) before reusing older code.
+::: warning Beta 0.4.6
+This specification describes 0.4.6-beta. The [IO module](./io-module) documents the new connector and logic rules. Historical changes to the 0.3.x scale and Wi-Fi direction remain below.
 :::
 
 ## 1. Communication specification
@@ -24,7 +24,7 @@ The mod ignores anything that does not end with `\n`. Always use `Serial.println
 :::
 
 ::: tip Why the 40 messages/s cap exists
-Every received line becomes a packet to the server. An unthrottled `Serial.println()` inside `loop()` produces thousands per second and causes real lag on a multiplayer server. Excess packets are dropped silently — that is backpressure, not an error. Send only when the value **changes**.
+Valid IO samples enter a bounded queue per channel; up to two queued samples per tick become server packets. An unthrottled `Serial.println()` inside `loop()` produces thousands per second and causes real lag on a multiplayer server. Excess packets are dropped silently — that is backpressure, not an error. Send on changes, plus occasional snapshots (the examples resend sensors once per second to restore state after chunk reloads). This does not imply a connection heartbeat or a delivery acknowledgement.
 :::
 
 ---
@@ -63,8 +63,8 @@ The board sends the target block ID and a value:
 <TARGET_DATA>:<INTEGER>\n
 ```
 
-* **`<TARGET_DATA>`**: the string you typed in the IO Block's *Target Data* field (e.g. `btn_1`, `light_sensor`). 32 characters max. **If it is empty the block ignores everything** — there is no wildcard.
-* **`<INTEGER>`**: 0-255. Out-of-range values are clamped; non-numeric text is discarded without throwing.
+* **`<TARGET_DATA>`**: the *Channel* field (formerly Target Data), e.g. `btn_1` or `light_sensor`. Use 1–32 ASCII letters, digits, `_`, `.` or `-`; `mc_` is reserved and an empty channel is rejected.
+* **`<INTEGER>`**: 0-255. Out-of-range values are rejected; non-numeric text is discarded without throwing.
 
 ```cpp
 Serial.println("light_sensor:200");   // ~redstone 12 in analog mode
@@ -86,8 +86,8 @@ An IO Block in **OUTPUT** mode emits automatically whenever the redstone level i
 
 Two implementation details worth knowing:
 
-* **Deduplication**: the block never resends an identical value. Holding a lever on sends one message, not twenty per second.
-* **Interval**: the output check runs every 2 ticks (10 Hz) unless a change marks it urgent. That is the tradeoff between responsiveness and server cost.
+* **Deduplication**: an unchanged value is not resent continuously; connection/session changes force resynchronization. Holding a lever on sends one message, not twenty per second.
+* **Interval**: world changes are grouped once per tick; stable inputs are not polled periodically. This bounds server work while preserving ordinary redstone transitions.
 
 ---
 
@@ -129,13 +129,7 @@ The token prevents casual or accidental access, but it is **not encryption**. Su
 
 ## 6. Gate logic
 
-Each IO Block has a logic mode that decides when it counts as active if several sides configured as inputs are powered:
-
-* **OR** (default): active if *any* side is powered.
-* **AND**: active only if *every* input side is powered.
-* **XOR**: active if an *odd* number of sides is powered.
-
-If the condition is not met the block neither emits nor accepts data, and drops its redstone output to 0. The same happens when it is disabled from the Laptop.
+In Minecraft → Hardware, OR returns the maximum, AND the minimum (including zero), and XOR the maximum with an odd number of positive inputs, otherwise zero. No inputs sends zero. In Hardware → Minecraft, inputs enable the stored hardware sample; no inputs bypass the gate. A closed condition does not discard RX. See [module guide](/en/io-module).
 
 ---
 

@@ -1,6 +1,6 @@
 package com.serialcraft.board;
 
-import com.serialcraft.block.entity.ArduinoIOBlockEntity;
+import com.serialcraft.block.entity.HardwareIOBlockEntity;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerBlockEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.ResourceKey;
@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Indice de placas IO activas, por dimension y por dueno.
  *
  * Reemplaza a {@code SerialCraft.activeIOBlocks}, que era un
- * {@code Set<ArduinoIOBlockEntity>} estatico y global. Ese set tenia cuatro
+ * {@code Set<HardwareIOBlockEntity>} estatico y global. Ese set tenia cuatro
  * problemas, tres de ellos funcionales y no cosmeticos:
  *
  *  1. FUGA DE MEMORIA. Solo se anadia en setPlacedBy y solo se quitaba en
@@ -51,28 +51,28 @@ public final class BoardRegistry {
     private BoardRegistry() {}
 
     /** dimension -> dueno -> placas. */
-    private static final Map<ResourceKey<Level>, Map<UUID, List<ArduinoIOBlockEntity>>> INDEX =
+    private static final Map<ResourceKey<Level>, Map<UUID, List<HardwareIOBlockEntity>>> INDEX =
             new ConcurrentHashMap<>();
 
     /** Placas sin dueno asignado, por dimension. Se consultan para reclamar. */
-    private static final Map<ResourceKey<Level>, List<ArduinoIOBlockEntity>> UNOWNED =
+    private static final Map<ResourceKey<Level>, List<HardwareIOBlockEntity>> UNOWNED =
             new ConcurrentHashMap<>();
 
     // ── Registro de eventos ───────────────────────────────────────────────
 
     public static void initialize() {
         ServerBlockEntityEvents.BLOCK_ENTITY_LOAD.register((be, level) -> {
-            if (be instanceof ArduinoIOBlockEntity io) add(level, io);
+            if (be instanceof HardwareIOBlockEntity io) { remove(level, io); add(level, io); }
         });
         ServerBlockEntityEvents.BLOCK_ENTITY_UNLOAD.register((be, level) -> {
-            if (be instanceof ArduinoIOBlockEntity io) remove(level, io);
+            if (be instanceof HardwareIOBlockEntity io) { io.stopHardwareOutput(); remove(level, io); }
         });
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> clear());
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> { clear(); HardwareSessions.clear(); });
     }
 
     // ── Mutacion ──────────────────────────────────────────────────────────
 
-    private static void add(ServerLevel level, ArduinoIOBlockEntity io) {
+    private static void add(ServerLevel level, HardwareIOBlockEntity io) {
         UUID owner = io.getOwnerUUID();
         if (owner == null) {
             UNOWNED.computeIfAbsent(level.dimension(), k -> Collections.synchronizedList(new ArrayList<>()))
@@ -84,21 +84,22 @@ public final class BoardRegistry {
         }
     }
 
-    private static void remove(ServerLevel level, ArduinoIOBlockEntity io) {
+    private static void remove(ServerLevel level, HardwareIOBlockEntity io) {
         var byOwner = INDEX.get(level.dimension());
         if (byOwner != null) {
             byOwner.values().forEach(list -> list.remove(io));
             byOwner.entrySet().removeIf(e -> e.getValue().isEmpty());
+            if (byOwner.isEmpty()) INDEX.remove(level.dimension());
         }
         var unowned = UNOWNED.get(level.dimension());
-        if (unowned != null) unowned.remove(io);
+        if (unowned != null) { unowned.remove(io); if (unowned.isEmpty()) UNOWNED.remove(level.dimension()); }
     }
 
     /**
      * Reindexa una placa cuyo dueno acaba de cambiar (colocacion o reclamo).
      * Debe llamarse SIEMPRE que se toque ownerUUID, o el indice queda mentiroso.
      */
-    public static void reindex(ServerLevel level, ArduinoIOBlockEntity io) {
+    public static void reindex(ServerLevel level, HardwareIOBlockEntity io) {
         remove(level, io);
         add(level, io);
     }
@@ -108,6 +109,15 @@ public final class BoardRegistry {
         UNOWNED.clear();
     }
 
+    public static List<HardwareIOBlockEntity> allBoardsOf(UUID owner) {
+        List<HardwareIOBlockEntity> result = new ArrayList<>();
+        for (var byOwner : INDEX.values()) {
+            var list = byOwner.get(owner);
+            if (list != null) synchronized (list) { result.addAll(list); }
+        }
+        return result;
+    }
+
     // ── Consulta ──────────────────────────────────────────────────────────
 
     /**
@@ -115,7 +125,7 @@ public final class BoardRegistry {
      * Devuelve una copia: el llamador puede iterarla sin bloquear ni arriesgar
      * ConcurrentModificationException si un chunk se descarga a mitad.
      */
-    public static List<ArduinoIOBlockEntity> boardsOf(ServerPlayer player) {
+    public static List<HardwareIOBlockEntity> boardsOf(ServerPlayer player) {
         var byOwner = INDEX.get(player.level().dimension());
         if (byOwner == null) return List.of();
         var list = byOwner.get(player.getUUID());

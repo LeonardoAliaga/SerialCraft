@@ -1,6 +1,9 @@
 package com.serialcraft.block.entity;
 
 import com.serialcraft.block.ConnectorBlock;
+import com.serialcraft.board.HardwareSessions;
+import net.minecraft.world.entity.player.Player;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -24,7 +27,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class ConnectorBlockEntity extends BlockEntity {
 
-    public static final int DEFAULT_BAUD_RATE  = 9600;
+    public static final int DEFAULT_BAUD_RATE  = 115200;
     public static final int DEFAULT_SPEED_MODE = 2;
 
     private static final int UPDATE_FLAGS = 3;
@@ -32,6 +35,7 @@ public class ConnectorBlockEntity extends BlockEntity {
     private int     baudRate  = DEFAULT_BAUD_RATE;
     private int     speedMode = DEFAULT_SPEED_MODE;
     private boolean connected = false;
+    private UUID ownerUUID;
 
     public ConnectorBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CONNECTOR_BLOCK_ENTITY, pos, state);
@@ -40,6 +44,16 @@ public class ConnectorBlockEntity extends BlockEntity {
     public int     getBaudRate()  { return baudRate; }
     public int     getSpeedMode() { return speedMode; }
     public boolean isConnected()  { return connected; }
+    public UUID getOwnerUUID() { return ownerUUID; }
+    public void claim(Player player) { ownerUUID = player.getUUID(); setChanged(); }
+
+    public void tickServer() {
+        boolean actual = HardwareSessions.connected(ownerUUID);
+        if (connected != actual || getBlockState().getValue(ConnectorBlock.LIT) != actual) {
+            connected = !actual; // force normalization of a saved LIT state
+            setConnectionState(actual);
+        }
+    }
 
     /** Los valores llegan ya validados desde ModNetworking. */
     public void updateSettings(int newBaudRate, int newSpeedMode) {
@@ -73,6 +87,7 @@ public class ConnectorBlockEntity extends BlockEntity {
         super.saveAdditional(output);
         output.putInt("baudRate",  baudRate);
         output.putInt("speedMode", speedMode);
+        if (ownerUUID != null) output.putString("ownerUUID", ownerUUID.toString());
         // 'connected' es estado de sesion, no de mundo: al cargar siempre
         // arranca desconectado porque el hardware del jugador no esta abierto.
     }
@@ -82,7 +97,10 @@ public class ConnectorBlockEntity extends BlockEntity {
         super.loadAdditional(input);
         this.baudRate  = input.getIntOr("baudRate",  DEFAULT_BAUD_RATE);
         this.speedMode = input.getIntOr("speedMode", DEFAULT_SPEED_MODE);
-        this.connected = false;
+        this.connected = level != null && level.isClientSide() && input.getBooleanOr("connected", false);
+        ownerUUID = null;
+        try { ownerUUID = UUID.fromString(input.getString("ownerUUID").orElse("")); }
+        catch (IllegalArgumentException ignored) {}
     }
 
     @Override

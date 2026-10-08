@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "serialcraft-io-tests",
+  "version": "1.0.0",
+  "name": "SerialCraft IO tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": ["com.serialcraft.HardwareIOGameTest"]
+  }
+}

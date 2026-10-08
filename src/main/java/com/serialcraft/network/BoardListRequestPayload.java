@@ -19,7 +19,7 @@ public record BoardListRequestPayload() implements CustomPacketPayload {
     public static final BoardListRequestPayload INSTANCE = new BoardListRequestPayload();
 
     public static final Type<BoardListRequestPayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "board_list_req"));
+            new Type<>(Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "board_list_req_v2"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, BoardListRequestPayload> CODEC =
             StreamCodec.unit(INSTANCE);

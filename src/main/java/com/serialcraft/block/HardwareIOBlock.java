@@ -1,13 +1,14 @@
 package com.serialcraft.block;
 
 import com.mojang.serialization.MapCodec;
-import com.serialcraft.block.entity.ArduinoIOBlockEntity;
+import com.serialcraft.block.entity.HardwareIOBlockEntity;
 import com.serialcraft.block.entity.ModBlockEntities;
 import com.serialcraft.network.guard.NetGuard;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -37,27 +38,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 
-public class ArduinoIOBlock extends BaseEntityBlock {
+public class HardwareIOBlock extends BaseEntityBlock {
 
-    public static final MapCodec<ArduinoIOBlock> CODEC = simpleCodec(ArduinoIOBlock::new);
+    public static final MapCodec<HardwareIOBlock> CODEC = simpleCodec(HardwareIOBlock::new);
 
-    // ── Propiedades ───────────────────────────────────────────────────────
-    //
-    // EXPLOSION DE BLOCKSTATES (problema real de rendimiento del original):
-    // se declaraban POWERED, ENABLED, BLINKING, MODE(0-2) y SEIS lados con
-    // tres valores cada uno. Eso son 2*2*2*3*3^6 = 17.496 estados distintos,
-    // todos instanciados y cacheados al arrancar el juego.
-    //
-    // De esos, POWERED no se usaba en ninguna parte (ni en codigo ni en el
-    // blockstate JSON), y el lado UP tampoco: getHitButton() nunca podia
-    // devolver Direction.UP porque no habia AABB para el, y el JSON no tiene
-    // modelo io_connector_u. Eran estados imposibles de alcanzar.
-    //
-    // Quitando ambos: 2*2*3*3^5 = 2.916 estados. Una reduccion de 6x sin
-    // perder una sola funcion.
-
+    // Five configurable connectors. MODE=2 remains readable for legacy worlds;
+    // the server normalizes it to the durable IoMode on first tick. 1,458 states.
     public static final BooleanProperty ENABLED  = BooleanProperty.create("enabled");
-    public static final BooleanProperty BLINKING = BooleanProperty.create("blinking");
     public static final IntegerProperty MODE     = IntegerProperty.create("mode", 0, 2);
 
     public static final EnumProperty<IOSide> NORTH = EnumProperty.create("north", IOSide.class);
@@ -102,7 +89,8 @@ public class ArduinoIOBlock extends BaseEntityBlock {
             Block.box(7, 2, 0, 9, 6, 2.5),
             Block.box(7, 2, 13.5, 9, 6, 16),
             Block.box(13.6, 2, 7, 16, 6, 9),
-            Block.box(0, 2, 7, 2.5, 6, 9)
+            Block.box(0, 2, 7, 2.5, 6, 9),
+            Block.box(6.6, 2, 11, 9.45, 4, 13)
     );
 
     private static final double S = 1.0D / 16.0D;
@@ -116,11 +104,10 @@ public class ArduinoIOBlock extends BaseEntityBlock {
 
     private static final double HIT_MARGIN = 0.03D;
 
-    public ArduinoIOBlock(Properties settings) {
+    public HardwareIOBlock(Properties settings) {
         super(settings);
         this.registerDefaultState(this.stateDefinition.any()
-                .setValue(ENABLED, false)
-                .setValue(BLINKING, false)
+                .setValue(ENABLED, true)
                 .setValue(MODE, 0)
                 .setValue(NORTH, IOSide.NONE)
                 .setValue(SOUTH, IOSide.NONE)
@@ -147,7 +134,7 @@ public class ArduinoIOBlock extends BaseEntityBlock {
         // La comprobacion de dueno del cliente es solo cosmetica (el cliente
         // puede mentir). La decision real se toma aqui, en el servidor.
         if (level.isClientSide()) return InteractionResult.SUCCESS;
-        if (!(level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)) {
+        if (!(level.getBlockEntity(pos) instanceof HardwareIOBlockEntity io)) {
             return InteractionResult.FAIL;
         }
 
@@ -174,7 +161,7 @@ public class ArduinoIOBlock extends BaseEntityBlock {
      * Clic normal: NONE <-> INPUT. Clic agachado: NONE <-> OUTPUT.
      */
     private void cycleSide(BlockState state, Level level, BlockPos pos,
-                           Player player, ArduinoIOBlockEntity io, Direction side) {
+                           Player player, HardwareIOBlockEntity io, Direction side) {
         EnumProperty<IOSide> property = propertyFor(side);
         IOSide current = state.getValue(property);
         IOSide next;
@@ -191,10 +178,7 @@ public class ArduinoIOBlock extends BaseEntityBlock {
         }
 
         player.sendSystemMessage(Component.translatable(messageKey));
-        level.setBlockAndUpdate(pos, state.setValue(property, next));
-        io.recomputeLogic();
-        io.markOutputDirty();
-        level.updateNeighborsAt(pos, this);
+        io.setSides(IOSide.pack(state.setValue(property, next)));
     }
 
     @Override
@@ -202,7 +186,7 @@ public class ArduinoIOBlock extends BaseEntityBlock {
                             @Nullable LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
         if (level.isClientSide() || !(placer instanceof Player player)) return;
-        if (!(level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)) return;
+        if (!(level.getBlockEntity(pos) instanceof HardwareIOBlockEntity io)) return;
 
         io.claim(player);
 
@@ -229,22 +213,28 @@ public class ArduinoIOBlock extends BaseEntityBlock {
     // ══════════════════════════════════════════════════════════════════════
 
     @Override
-    public boolean isSignalSource(BlockState state) { return true; }
+    public boolean isSignalSource(BlockState state) {
+        // Redstone dust also uses this predicate to connect to receiving terminals.
+        if (!state.getValue(ENABLED)) return false;
+        for (Direction side : CONFIGURABLE_SIDES) {
+            IOSide role = state.getValue(propertyFor(side));
+            if (role == IOSide.INPUT || role == IOSide.OUTPUT && state.getValue(MODE) == 1) return true;
+        }
+        return false;
+    }
 
     @Override
     public int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
         EnumProperty<IOSide> property = propertyForOrNull(direction.getOpposite());
         if (property == null || state.getValue(property) != IOSide.OUTPUT) return 0;
 
-        return (level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)
+        return (level.getBlockEntity(pos) instanceof HardwareIOBlockEntity io)
                 ? io.getRedstoneSignal() : 0;
     }
 
     /**
-     * Potencia fuerte, para que la placa pueda alimentar un bloque solido que a
-     * su vez alimente polvo de redstone. El original no lo sobrescribia, asi
-     * que un conector OUTPUT contra un bloque de piedra no encendia nada al
-     * otro lado: era un fallo de comportamiento que parecia un bug de modelo.
+     * Potencia fuerte: una salida puede alimentar un conductor solido y su circuito.
+     * Usa las mismas restricciones por cara, direccion y habilitacion que la potencia debil.
      */
     @Override
     public int getDirectSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
@@ -254,8 +244,7 @@ public class ArduinoIOBlock extends BaseEntityBlock {
     @Override
     public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block,
                                 @Nullable Orientation orientation, boolean isMoving) {
-        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
-            io.recomputeLogic();
+        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof HardwareIOBlockEntity io) {
             // Marcar sucio en vez de recalcular ya: si veinte vecinos cambian
             // en el mismo tick, se recalcula una sola vez en el siguiente tick.
             io.markOutputDirty();
@@ -263,17 +252,28 @@ public class ArduinoIOBlock extends BaseEntityBlock {
         super.neighborChanged(state, level, pos, block, orientation, isMoving);
     }
 
+    @Override
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean moving) {
+        super.affectNeighborsAfterRemoval(state, level, pos, moving);
+        level.updateNeighborsAt(pos, this);
+        for (Direction side : CONFIGURABLE_SIDES) {
+            if (state.getValue(propertyFor(side)) == IOSide.OUTPUT && level.isLoaded(pos.relative(side))) {
+                level.updateNeighborsAt(pos.relative(side), this);
+            }
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════════════
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(ENABLED, BLINKING, MODE, NORTH, SOUTH, EAST, WEST, DOWN);
+        builder.add(ENABLED, MODE, NORTH, SOUTH, EAST, WEST, DOWN);
     }
 
     @Override public @NotNull MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return new ArduinoIOBlockEntity(pos, state);
+        return new HardwareIOBlockEntity(pos, state);
     }
 
     @Override public @NotNull RenderShape getRenderShape(BlockState state) { return RenderShape.MODEL; }
@@ -290,7 +290,7 @@ public class ArduinoIOBlock extends BaseEntityBlock {
         // igualmente comprobaba isClientSide dentro del lambda cada tick.
         if (level.isClientSide() || type != ModBlockEntities.IO_BLOCK_ENTITY) return null;
         return (lvl, p, st, be) -> {
-            if (be instanceof ArduinoIOBlockEntity io) io.tickServer();
+            if (be instanceof HardwareIOBlockEntity io) io.tickServer();
         };
     }
 }

@@ -2,6 +2,8 @@ package com.serialcraft.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import com.serialcraft.SerialCraft;
 import net.fabricmc.loader.api.FabricLoader;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -16,15 +18,15 @@ public class SerialConfig {
 
     // --- OPCIONES GUARDADAS ---
     public BoardProfile boardProfile = BoardProfile.ARDUINO_UNO;
-    public int baudRate = 9600;
-    public int analogUpdateRate = 1; // Ticks entre actualizaciones (2 ticks = 100ms)
+    public int baudRate = 115200;
+    public int analogUpdateRate = 1; // Legacy setting retained; IO now processes dirty inputs once per tick.
 
     // --- ENUM DE PERFILES ---
     public enum BoardProfile {
-        ARDUINO_UNO("Arduino UNO/Nano", 9600, true),
+        ARDUINO_UNO("Arduino UNO/Nano", 115200, true),
         ESP32("ESP32 / ESP8266", 115200, false),
         GENERIC_HIGH("Genérica (Rápida)", 115200, true),
-        CUSTOM("Personalizada", 9600, true);
+        CUSTOM("Personalizada", 115200, true);
 
         public final String label;
         public final int defaultBaud;
@@ -42,21 +44,23 @@ public class SerialConfig {
         if (CONFIG_PATH.toFile().exists()) {
             try (FileReader reader = new FileReader(CONFIG_PATH.toFile())) {
                 instance = GSON.fromJson(reader, SerialConfig.class);
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (IOException | JsonParseException e) {
+                SerialCraft.LOGGER.warn("No se pudo leer serialcraft.json; usando valores predeterminados", e);
                 instance = new SerialConfig();
             }
         } else {
             instance = new SerialConfig();
             save();
         }
+        if (instance == null) instance = new SerialConfig();
+        if (instance.boardProfile == null) instance.boardProfile = BoardProfile.ARDUINO_UNO;
     }
 
     public static void save() {
         try (FileWriter writer = new FileWriter(CONFIG_PATH.toFile())) {
             GSON.toJson(instance, writer);
         } catch (IOException e) {
-            e.printStackTrace();
+            SerialCraft.LOGGER.warn("No se pudo guardar serialcraft.json", e);
         }
     }
 

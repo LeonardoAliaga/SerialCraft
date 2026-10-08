@@ -25,7 +25,7 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 * **Migration to Minecraft 26.2 & Java 25**:
   The mod runs on Fabric Loader for Minecraft 26.2 and requires **Java 25** as its runtime environment.
 * **Visualizer tab (test bench)**:
-  The Laptop now has a **Visualizer** tab with three tools: a **timeline** that shows several signals at once (sensors, values the game sends, and `mc_*` telemetry), a **Sensor** view that compares the raw value with the redstone it produces and suggests a deadband, and a wave **generator** to check that your board responds without building a redstone circuit. Every message carries its real timestamp, and only real points are joined (never an invented curve). See [Test bench](#test-bench-visualizer-tab).
+  The Laptop now has a **Visualizer** tab with three tools: a **timeline** that shows several signals at once (sensors, values the game sends, and `mc_*` telemetry), a **Sensor** view that compares the raw value with its analog redstone conversion and suggests a deadband, and a wave **generator** to check that your board responds without building a redstone circuit. Every message carries its real timestamp, and only real points are joined (never an invented curve). See [Test bench](#test-bench-visualizer-tab).
 * **Board identification**:
   A USB-serial bridge chip (CH340, CP2102) does not say which board is behind it, so the mod no longer labels every CH340 board "Arduino". It recognises the Arduino UNO Q, UNO R3/R4, Mega, Nano ESP32 and native-USB ESP32s over USB; for the rest it shows "Board with CH340 (model not identified)" until the board announces itself with `mc_id`. See [protocol, section 12](/en/protocol#_12-board-identification-and-token-free-reconnection).
 * **Remembered boards (Wi-Fi without a token)**:
@@ -46,7 +46,7 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 * **Dedicated-server ready.** Boards are now indexed when loaded from disk. In earlier versions, boards became invisible after a server restart until placed again by hand.
 * **Rate limiting.** 40 messages/s per player with a burst of 80, protecting the world from a badly written sketch.
 * **Reorganised interface** into independent pages, with correct text clipping in every language.
-* **Five real locales:** English, plus Spanish for Spain, Mexico, Peru and Argentina (with *voseo*).
+* **Four shipped locales:** English, plus Spanish for Spain, Mexico and Argentina (with *voseo*).
 
 ::: warning Compatibility
 0.3.x sketches **will not work unchanged**. See [Changes from 0.3.x](/en/protocol#_8-changes-from-0-3-x).
@@ -102,11 +102,13 @@ The Wi-Fi channel is **plaintext**. The token prevents casual access within your
 
 ## Your first bidirectional circuit
 
+See the [Hardware I/O Module guide](/en/io-module) for terminal roles, logic, diagnostics and migration notes.
+
 1. Place an **IO Block** and right-click it.
-2. In **Target Data**, enter a unique identifier, for instance `green_led`.
+2. In **Channel**, enter a unique identifier, for instance `green_led`.
 3. Pick the mode:
-   * **OUTPUT** — Minecraft sends to the board (turn on an LED, move a motor).
-   * **INPUT** — the board sends to Minecraft (a button, a sensor).
+   * **Minecraft → Hardware** (legacy OUTPUT) — Minecraft sends to the board (turn on an LED, move a motor).
+   * **Hardware → Minecraft** (legacy INPUT) — the board sends to Minecraft (a button, a sensor).
 4. Pick the signal type:
    * **Digital** — on or off (0 or 255 on the wire).
    * **Analog** — proportional to redstone (0-255 on the wire).
@@ -159,7 +161,7 @@ Shows several signals in lanes that share one time axis, to answer "where does t
 
 ### Sensor view
 
-Shows **one** signal in detail: the raw wire value (green) and the **redstone** it produces (orange), drawn on the same scale. The `RS 0-15` axis is on the right.
+Shows **one** signal in detail: the raw wire value (green) and its **analog redstone conversion** (orange), drawn on the same scale. The `RS 0-15` axis is on the right.
 
 | Row | Meaning |
 | :--- | :--- |
@@ -178,7 +180,7 @@ Shows **one** signal in detail: the raw wire value (green) and the **redstone** 
 5. If **Redstone** changes several times while the sensor is still, the value sits on the edge between two redstone levels (each level is 17 wire units) and flickers. The deadband fixes it.
 
 ::: warning The redstone conversion is the one for an Analog signal
-A **Digital** block turns any value above 0 into 15. The view only shows the conversion when the scale is 0-255 and the key does not start with `mc_`.
+A **Digital** block turns any value above 0 into 15. The view only shows the conversion when the scale is 0-255 and the key does not start with `mc_`. It does not evaluate each module's connectors, gate or enabled state: use the module diagnostics to inspect its actual redstone output.
 :::
 
 ### Generator
@@ -208,7 +210,7 @@ If a servo or motor is connected, start with the amplitude at 25 %.
 
 Worth knowing before you build something large:
 
-* The Laptop's board list **does not scroll**. Beyond roughly 8 boards, the rest fall off the bottom of the screen.
+* The board list supports wheel and scrollbar scrolling. Rendering at very small GUI sizes still needs manual verification.
 * The interface is designed for standard resolutions; at maximum GUI scale on 854×480 the cards overflow the visible area.
 * There is no mode where **the server** owns the hardware. The serial port lives on each player's computer, so the model is "every player controls their own boards from their PC". This is an architectural choice, not an oversight.
 * The Wi-Fi channel is unencrypted.

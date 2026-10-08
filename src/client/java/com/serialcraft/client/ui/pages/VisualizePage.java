@@ -90,6 +90,7 @@ public class VisualizePage implements Page {
     private boolean lineStyle = true;            // Linea (true) o Escalon (false)
 
     private final GeneratorController generator = new GeneratorController();
+    private int generatorEpoch;
     private Shape shape = Shape.RAMP;
     private int periodIndex = 1;                 // 2 s
     private int amplitudeIndex = 0;              // 100 %
@@ -272,6 +273,13 @@ public class VisualizePage implements Page {
 
     private void runGenerator(long now) {
         if (!generator.isRunning()) return;
+        if (generatorEpoch != ConnectionManager.sessionEpoch()) {
+            generator.stop();
+            ConnectionManager.discardPending(genKey.trim());
+            showMessage("gui.serialcraft.visualize.gen_lost");
+            refreshGenToggle();
+            return;
+        }
         GeneratorController.Action action = generator.tick(now, shape,
                 PERIODS_SEC[periodIndex], AMPLITUDES[amplitudeIndex]);
         applyAction(action);
@@ -280,7 +288,7 @@ public class VisualizePage implements Page {
 
     private void applyAction(GeneratorController.Action action) {
         if (!action.send()) return;
-        boolean delivered = ConnectionManager.sendSignal(genKey.trim() + ":" + action.value());
+        boolean delivered = ConnectionManager.sendSignal(genKey.trim() + ":" + action.value(), action.stopped());
         if (!delivered && !action.stopped()) {
             generator.stop();
             showMessage("gui.serialcraft.visualize.gen_lost");
@@ -299,9 +307,10 @@ public class VisualizePage implements Page {
             applyAction(generator.stop());
         } else {
             String key = genKey.trim();
-            if (!SignalRecorder.isValidKey(key)) { showMessage("gui.serialcraft.visualize.gen_bad_key"); return; }
+            if (!com.serialcraft.network.SignalProtocol.isValidChannel(key)) { showMessage("gui.serialcraft.visualize.gen_bad_key"); return; }
             if (!ConnectionManager.isAnyConnected()) { showMessage("gui.serialcraft.visualize.gen_no_board"); return; }
             generator.start(System.nanoTime());
+            generatorEpoch = ConnectionManager.sessionEpoch();
         }
         refreshGenToggle();
     }

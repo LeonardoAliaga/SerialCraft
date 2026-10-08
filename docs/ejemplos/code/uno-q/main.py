@@ -51,6 +51,7 @@ BLOCK_ID_LED = "led_verde"        # Bloque IO en modo OUTPUT
 
 POT_POLL_INTERVAL = 0.05          # 20 lecturas/s (limite del mod: 40 msg/s)
 POT_HYSTERESIS    = 2             # ignora el ruido del ADC
+POT_RESEND_SECONDS = 1.0          # instantanea para RX tras recargar chunks
 RECONNECT_DELAY   = 3.0
 MAX_LINE_LENGTH   = 256           # el mod corta la sesion si se excede
 RX_BUFFER_LIMIT   = 4096
@@ -142,6 +143,7 @@ def process_mod_message(line: str) -> None:
 # ── Potenciometro ──────────────────────────────────────────────
 def potentiometer_loop() -> None:
     global _last_pot_value
+    last_sent_at = 0.0
 
     while not _stop.is_set():
         try:
@@ -151,12 +153,14 @@ def potentiometer_loop() -> None:
             time.sleep(POT_POLL_INTERVAL)
             continue
 
-        # Enviar solo cambios reales: sin esto el ruido del ADC agota el
-        # limitador de red del mod (40 paquetes/s sostenidos).
-        if abs(pot_level - _last_pot_value) >= POT_HYSTERESIS:
+        # Primera muestra, cambios y resincronizacion periodica; no es un latido obligatorio.
+        now = time.monotonic()
+        if (_last_pot_value < 0 or abs(pot_level - _last_pot_value) >= POT_HYSTERESIS
+                or now - last_sent_at >= POT_RESEND_SECONDS):
             if send_to_mod(f"{BLOCK_ID_POT}:{pot_level}"):
                 print(f"[Bridge->Mod] {BLOCK_ID_POT}:{pot_level}")
                 _last_pot_value = pot_level
+                last_sent_at = now
             else:
                 _stop.set()                            # forzar reconexion
                 return

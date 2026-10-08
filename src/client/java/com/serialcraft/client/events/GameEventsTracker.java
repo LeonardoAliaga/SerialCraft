@@ -62,6 +62,7 @@ public final class GameEventsTracker {
     private static float lastHealth    = -1f;
     private static float lastMaxHealth = -1f;
     private static boolean wasConnected = false;
+    private static int lastEpoch = -1;
 
     /** Ultimo valor puesto en cola de cada estado, y en que tick. */
     private static final Map<GameEvent, Integer> lastValue = new EnumMap<>(GameEvent.class);
@@ -102,10 +103,11 @@ public final class GameEventsTracker {
 
         // Al conectar, muestrear de inmediato en vez de esperar al siguiente
         // intervalo, y olvidar lo enviado: la placa nueva no sabe nada todavia.
-        if (!wasConnected) {
+        if (!wasConnected || lastEpoch != ConnectionManager.sessionEpoch()) {
             clearLinkState();
             sampleNow = true;
         }
+        lastEpoch = ConnectionManager.sessionEpoch();
         wasConnected = true;
         clockTicks++;
 
@@ -194,6 +196,7 @@ public final class GameEventsTracker {
         lastValueAt.remove(event);
         lastEdgeValue.remove(event);
         OUTBOX.discard(event.wireKey());
+        ConnectionManager.discardPending(event.wireKey());
         sampleNow = true;
     }
 

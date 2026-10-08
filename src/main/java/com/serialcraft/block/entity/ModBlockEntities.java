@@ -18,7 +18,7 @@ public final class ModBlockEntities {
 
     private ModBlockEntities() {}
 
-    public static BlockEntityType<ArduinoIOBlockEntity>  IO_BLOCK_ENTITY;
+    public static BlockEntityType<HardwareIOBlockEntity>  IO_BLOCK_ENTITY;
     public static BlockEntityType<ConnectorBlockEntity>  CONNECTOR_BLOCK_ENTITY;
 
     /** Helper para no repetir el bloque de cinco lineas por cada tipo. */
@@ -39,7 +39,7 @@ public final class ModBlockEntities {
     }
 
     public static void initialize() {
-        IO_BLOCK_ENTITY        = register("io_block",        ArduinoIOBlockEntity::new, ModBlocks.IO_BLOCK);
+        IO_BLOCK_ENTITY        = register("io_block",        HardwareIOBlockEntity::new, ModBlocks.IO_BLOCK);
         CONNECTOR_BLOCK_ENTITY = register("connector_block", ConnectorBlockEntity::new, ModBlocks.CONNECTOR_BLOCK);
     }
 }

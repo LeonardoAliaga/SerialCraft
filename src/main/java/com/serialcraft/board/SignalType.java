@@ -26,7 +26,8 @@ public enum SignalType implements StringRepresentable {
     SignalType(String name) { this.name = name; }
 
     public static SignalType byId(int id) {
-        return (id >= 0 && id < VALUES.length) ? VALUES[id] : DIGITAL;
+        if (id < 0 || id >= VALUES.length) throw new io.netty.handler.codec.DecoderException("invalid signal type");
+        return VALUES[id];
     }
 
     /**

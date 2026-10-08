@@ -1,6 +1,6 @@
 package com.serialcraft.client;
 
-import com.serialcraft.block.entity.ArduinoIOBlockEntity;
+import com.serialcraft.block.entity.HardwareIOBlockEntity;
 import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.connection.WifiHandler;
@@ -81,12 +81,15 @@ public class SerialDebugHud {
 
         List<String> logs = snapshot();
         int x = 5, y = 5;
-        int panelH = logs.size() * LINE_H + 20;
+        int panelH = logs.size() * LINE_H + 32;
 
         gui.fill(x - 2, y - 2, x + PANEL_W, y + panelH, UiTheme.OVERLAY);
         gui.text(font, "[SerialCraft] " + transport + " | " + detail,
                 x, y, ConnectionManager.isAnyConnected() ? UiTheme.OK : UiTheme.ERROR, true);
 
+        y += 12;
+        gui.text(font, "Queue drops RX " + ConnectionManager.droppedInputs() + " / TX " + ConnectionManager.droppedOutputs(),
+                x, y, UiTheme.TEXT_INVERSE, true);
         y += 12;
         for (String entry : logs) {
             gui.text(font, "> " + font.plainSubstrByWidth(entry, PANEL_W - 16),
@@ -100,7 +103,7 @@ public class SerialDebugHud {
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
 
         BlockPos pos = ((BlockHitResult) hit).getBlockPos();
-        if (!(client.level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io)) return;
+        if (!(client.level.getBlockEntity(pos) instanceof HardwareIOBlockEntity io)) return;
 
         int x = (client.getWindow().getGuiScaledWidth()  / 2) + 15;
         int y = (client.getWindow().getGuiScaledHeight() / 2) - 15;

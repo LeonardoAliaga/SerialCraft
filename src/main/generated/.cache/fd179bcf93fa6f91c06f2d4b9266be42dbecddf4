@@ -1,5 +1,5 @@
-// 1.21.11	-999999999-01-01T00:00:00	SerialCraft/SerialCraft Recipes
+// 26.2	-999999999-01-01T00:00:00	SerialCraft/SerialCraft Recipes
 89b258d9218b3a2a43c600ce95d529fcbba571df data/serialcraft/advancement/recipes/redstone/connector_block.json
 86fd145d4b7a3f5bbddd815cd61627fe09fd99b6 data/serialcraft/advancement/recipes/redstone/io_block.json
-97cbaa7aa77813aba28019e83f4809fbd126d941 data/serialcraft/recipe/connector_block.json
-9150ea6376bea9e01c700698d522e33561443bcf data/serialcraft/recipe/io_block.json
+8714a1f77ffaf59d97ad94ec4de4bec3b27e73a7 data/serialcraft/recipe/connector_block.json
+6e003130d4ccbf994bda9509c81e6b58e18ed345 data/serialcraft/recipe/io_block.json

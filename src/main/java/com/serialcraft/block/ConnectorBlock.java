@@ -6,6 +6,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerPlayer;
+import com.serialcraft.network.guard.NetGuard;
+import com.serialcraft.block.entity.ModBlockEntities;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -89,6 +96,24 @@ public class ConnectorBlock extends HorizontalDirectionalBlock implements Entity
     @Override
     protected @NotNull InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                         Player player, BlockHitResult hit) {
+        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof ConnectorBlockEntity connector) {
+            if (player instanceof ServerPlayer serverPlayer && !NetGuard.canOperate(serverPlayer, connector.getOwnerUUID())) {
+                NetGuard.denyOwnership(serverPlayer);
+                return InteractionResult.FAIL;
+            }
+            if (connector.getOwnerUUID() == null) connector.claim(player);
+        }
         return InteractionResult.SUCCESS;
+    }
+
+    @Override public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (!level.isClientSide() && placer instanceof Player player
+                && level.getBlockEntity(pos) instanceof ConnectorBlockEntity connector) connector.claim(player);
+    }
+
+    @Override public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        if (level.isClientSide() || type != ModBlockEntities.CONNECTOR_BLOCK_ENTITY) return null;
+        return (world, pos, blockState, entity) -> { if (entity instanceof ConnectorBlockEntity connector) connector.tickServer(); };
     }
 }

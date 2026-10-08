@@ -90,6 +90,7 @@ export default defineConfig({
               items: [
                 { text: 'Instalación', link: '/guide#instalacion' },
                 { text: 'Configuración de la conexión', link: '/guide#configuracion-de-la-conexion' },
+                { text: 'Módulo de E/S', link: '/io-module' },
                 { text: 'Tu primer circuito', link: '/guide#tu-primer-circuito-bidireccional' },
                 { text: 'Banco de pruebas', link: '/guide#banco-de-pruebas-pestana-visualizar' },
                 { text: 'Límites conocidos', link: '/guide#limites-conocidos-de-esta-version' }
@@ -181,6 +182,7 @@ export default defineConfig({
               items: [
                 { text: 'Installation', link: '/en/guide#installation' },
                 { text: 'Connection setup', link: '/en/guide#connection-setup' },
+                { text: 'Hardware I/O Module', link: '/en/io-module' },
                 { text: 'Your first circuit', link: '/en/guide#your-first-bidirectional-circuit' },
                 { text: 'Test bench', link: '/en/guide#test-bench-visualizer-tab' },
                 { text: 'Known limits', link: '/en/guide#known-limits-in-this-version' }

@@ -25,7 +25,7 @@ El uso de herramientas de inteligencia artificial es estratégico. **El proyecto
 * **Migración a Minecraft 26.2 y Java 25**:
   El mod corre sobre Fabric Loader para Minecraft 26.2 y requiere **Java 25** como entorno de ejecución estándar.
 * **Pestaña Visualizar (banco de pruebas)**:
-  La Laptop incorpora una pestaña **Visualizar** con tres herramientas: una **línea de tiempo** que muestra varias señales a la vez (sensores, valores que envía el juego y telemetría `mc_*`), una vista **Sensor** que compara el valor crudo con la redstone que produce y sugiere una zona muerta, y un **generador** de ondas para comprobar que la placa responde sin construir un circuito de redstone. Todo con la hora real de cada mensaje, uniendo solo puntos reales (nunca una curva inventada). Ver [Banco de pruebas](#banco-de-pruebas-pestana-visualizar).
+  La Laptop incorpora una pestaña **Visualizar** con tres herramientas: una **línea de tiempo** que muestra varias señales a la vez (sensores, valores que envía el juego y telemetría `mc_*`), una vista **Sensor** que compara el valor crudo con su conversión analógica a redstone y sugiere una zona muerta, y un **generador** de ondas para comprobar que la placa responde sin construir un circuito de redstone. Todo con la hora real de cada mensaje, uniendo solo puntos reales (nunca una curva inventada). Ver [Banco de pruebas](#banco-de-pruebas-pestana-visualizar).
 * **Identificación de la placa**:
   Un chip puente (CH340, CP2102) no dice qué placa hay detrás, así que el mod ya no llama «Arduino» a cualquier placa con CH340. Reconoce por USB el Arduino UNO Q, UNO R3/R4, Mega, Nano ESP32 y los ESP32 con USB nativo; para el resto muestra «Placa con CH340 (modelo sin identificar)» hasta que la propia placa se anuncia con `mc_id`. Ver [protocolo, sección 12](/protocol#_12-identificacion-de-la-placa-y-reconexion-sin-token).
 * **Placas recordadas (Wi-Fi sin token)**:
@@ -46,7 +46,7 @@ El uso de herramientas de inteligencia artificial es estratégico. **El proyecto
 * **Preparado para servidor dedicado.** Las placas se indexan al cargarse del disco.
 * **Límite de ritmo.** 40 mensajes/s por jugador, con ráfaga de 80.
 * **Interfaz reorganizada** en páginas independientes, con recorte de texto correcto en cualquier idioma.
-* **Cinco idiomas reales:** inglés, español de España, de México, de Perú y de Argentina (con voseo).
+* **Cuatro localizaciones incluidas:** inglés, español de España, de México y de Argentina (con voseo).
 
 ::: warning Compatibilidad
 Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cambios respecto a 0.3.x](/protocol#_8-cambios-respecto-a-0-3-x) del protocolo.
@@ -79,7 +79,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 
 1. Conecta la placa al puerto USB del ordenador.
 2. Coloca un **Bloque Conector** y haz clic derecho.
-3. En la pestaña **Conexión**, el escaneo lista los puertos disponibles.
+3. En la pantalla de bienvenida de conexión, el escaneo lista los puertos disponibles.
 4. Selecciona la placa y pulsa **Conectar**.
 
 ::: tip Los baudios deben coincidir
@@ -102,11 +102,13 @@ El canal Wi-Fi va **en texto claro**. El token evita el acceso casual dentro de 
 
 ## Tu primer circuito bidireccional
 
+Consulta la [guía del Módulo de E/S](/io-module) para conectores, lógica, diagnóstico y cambios de compatibilidad.
+
 1. Coloca un **Bloque IO** y haz clic derecho.
-2. En **Target Data**, escribe un identificador único, por ejemplo `led_verde`.
+2. En **Canal**, escribe un identificador único, por ejemplo `led_verde`.
 3. Elige el modo:
-   * **OUTPUT** — Minecraft envía a la placa (encender un LED, mover un motor).
-   * **INPUT** — la placa envía a Minecraft (un botón, un sensor).
+   * **Minecraft → Hardware** (antiguo OUTPUT) — Minecraft envía a la placa (encender un LED, mover un motor).
+   * **Hardware → Minecraft** (antiguo INPUT) — la placa envía a Minecraft (un botón, un sensor).
 4. Elige el tipo de señal:
    * **Digital** — encendido o apagado (0 o 255 en el cable).
    * **Analógica** — proporcional a la redstone (0-255 en el cable).
@@ -159,7 +161,7 @@ Muestra varias señales en pistas que comparten el mismo eje de tiempo, para res
 
 ### Vista Sensor
 
-Muestra **una** señal con detalle: el valor crudo del cable (verde) y la **redstone** que produce (naranja), dibujados en la misma escala. A la derecha, el eje `RS 0-15`.
+Muestra **una** señal con detalle: el valor crudo del cable (verde) y su **conversión analógica a redstone** (naranja), dibujados en la misma escala. A la derecha, el eje `RS 0-15`.
 
 | Fila | Qué significa |
 | :--- | :--- |
@@ -178,7 +180,7 @@ Muestra **una** señal con detalle: el valor crudo del cable (verde) y la **reds
 5. Si **Redstone** cambia varias veces con el sensor quieto, el valor está sobre el borde entre dos niveles de redstone (cada nivel son 17 unidades del cable) y parpadea. La zona muerta lo corrige.
 
 ::: warning La conversión a redstone es la de una señal Analógica
-Un bloque **Digital** convierte cualquier valor mayor que 0 en 15. La vista solo muestra la conversión cuando la escala es 0-255 y la clave no empieza por `mc_`.
+Un bloque **Digital** convierte cualquier valor mayor que 0 en 15. La vista solo muestra la conversión cuando la escala es 0-255 y la clave no empieza por `mc_`. No evalúa los conectores, la compuerta ni la habilitación de cada módulo: consulta su diagnóstico para conocer la redstone realmente emitida.
 :::
 
 ### Generador
@@ -208,7 +210,7 @@ Si hay un servo o un motor conectado, empieza con la amplitud al 25 %.
 
 Vale la pena conocerlos antes de montar algo grande:
 
-* La lista de placas de la Laptop **no tiene scroll**. A partir de unas 8 placas, las siguientes quedan fuera de la pantalla.
+* La lista de placas admite rueda y barra de desplazamiento. Falta verificar visualmente todas las escalas de GUI pequeñas.
 * La interfaz está pensada para resoluciones normales; con la escala de GUI al máximo en 854×480 las tarjetas se salen del área visible.
 * No existe un modo en el que **el servidor** sea dueño del hardware. El puerto serie vive en el ordenador de cada jugador, así que el modelo es "cada jugador controla sus propias placas desde su PC". Esto es una decisión de arquitectura, no un olvido.
 * El canal Wi-Fi no está cifrado.

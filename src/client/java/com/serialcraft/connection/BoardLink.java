@@ -18,7 +18,10 @@ public interface BoardLink {
     boolean isConnected();
 
     /** Envia una linea. Debe ser seguro llamarlo desde el hilo del cliente. */
-    void send(String message);
+    boolean send(String message);
+
+    /** Atomically rejects output belonging to a superseded transport session. */
+    boolean send(String message, int sessionEpoch);
 
     /** Cierra el transporte. Debe ser idempotente. */
     void disconnect();

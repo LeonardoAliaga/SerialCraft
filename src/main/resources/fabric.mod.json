@@ -12,7 +12,7 @@
     "sources": "https://github.com/LeonardoAliaga/serialcraft",
     "issues": "https://github.com/LeonardoAliaga/serialcraft/issues"
   },
-  "license": "CC0-1.0",
+  "license": "MIT",
   "icon": "assets/serialcraft/textures/block/arduino_redstone_block.png",
   "environment": "*",
   "entrypoints": {

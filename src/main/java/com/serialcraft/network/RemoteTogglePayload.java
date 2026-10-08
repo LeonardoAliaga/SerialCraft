@@ -4,6 +4,7 @@ import com.serialcraft.SerialCraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
@@ -16,14 +17,15 @@ import org.jetbrains.annotations.NotNull;
  * en cualquier punto del mundo. La comprobacion se anade ahora en
  * ModNetworking; el payload en si queda igual de simple a proposito.
  */
-public record RemoteTogglePayload(BlockPos targetPos) implements CustomPacketPayload {
+public record RemoteTogglePayload(BlockPos targetPos, String dimension) implements CustomPacketPayload {
 
     public static final Type<RemoteTogglePayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "remote_toggle"));
+            new Type<>(Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "remote_toggle_v2"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, RemoteTogglePayload> CODEC =
             StreamCodec.composite(
                     BlockPos.STREAM_CODEC, RemoteTogglePayload::targetPos,
+                    ByteBufCodecs.stringUtf8(128), RemoteTogglePayload::dimension,
                     RemoteTogglePayload::new
             );
 

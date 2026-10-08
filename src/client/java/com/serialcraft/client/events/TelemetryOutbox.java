@@ -34,6 +34,7 @@ import java.util.Map;
 public final class TelemetryOutbox {
 
     public static final int MAX_PENDING_EDGES = 16;
+    public static final int MAX_PENDING_STATES = 32;
 
     /** Linea lista para enviar. {@code quiet} = no registrarla en la consola. */
     public record Line(String text, boolean quiet) {}
@@ -45,6 +46,7 @@ public final class TelemetryOutbox {
     private final Deque<Entry> edges = new ArrayDeque<>();
     private final Map<String, Entry> states = new LinkedHashMap<>();
     private int droppedEdges = 0;
+    private int droppedStates = 0;
 
     /**
      * Encola el estado de un canal, sustituyendo el que hubiera pendiente.
@@ -55,6 +57,8 @@ public final class TelemetryOutbox {
      *              la misma clave, este se mantiene visible en el registro.
      */
     public void offerState(String key, int value, boolean quiet) {
+        TelemetryProtocol.requireValidKey(key);
+        if (!states.containsKey(key) && states.size() >= MAX_PENDING_STATES) { droppedStates++; return; }
         Entry previous = states.get(key);
         boolean effectiveQuiet = quiet && (previous == null || previous.quiet());
         states.put(key, new Entry(key, value, effectiveQuiet));
@@ -62,6 +66,7 @@ public final class TelemetryOutbox {
 
     /** Encola un suceso puntual. Siempre visible en el registro. */
     public void offerEdge(String key, int value) {
+        TelemetryProtocol.requireValidKey(key);
         if (edges.size() >= MAX_PENDING_EDGES) {
             edges.removeFirst();
             droppedEdges++;
@@ -95,4 +100,5 @@ public final class TelemetryOutbox {
     public int size()         { return states.size() + edges.size(); }
     public boolean isEmpty()  { return size() == 0; }
     public int droppedEdges() { return droppedEdges; }
+    public int droppedStates() { return droppedStates; }
 }

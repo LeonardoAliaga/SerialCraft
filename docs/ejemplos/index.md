@@ -47,7 +47,7 @@ Antes de conectar nada, activa el HUD de depuración (tecla asignada en *Opcione
 
 ### Configuración en el juego
 
-Bloque Conector → pestaña Conexión → selecciona el puerto del Uno → **115200 baudios**.
+Laptop → bienvenida de conexión → selecciona el puerto del Uno → **115200 baudios**.
 
 ::: warning
 El sketch usa `Serial.begin(115200)`. Si cambias uno de los dos valores, cambia el otro. Con baudios distintos no aparece ningún error: simplemente no llega nada.

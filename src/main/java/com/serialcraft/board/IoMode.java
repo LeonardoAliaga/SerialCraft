@@ -10,8 +10,8 @@ import org.jetbrains.annotations.NotNull;
  * Direccion del flujo de datos de una placa IO.
  *
  * Reemplaza los antiguos "int ioMode" magicos (0/1) dispersos por el codigo.
- * Cualquier valor fuera de rango que llegue por red se degrada a OUTPUT en
- * vez de corromper el estado del bloque.
+ * Los nombres y ordinales originales permanecen para NBT/protocolo; la UI
+ * muestra la direccion completa. Los valores de red invalidos se rechazan.
  */
 public enum IoMode implements StringRepresentable {
     /** Minecraft -> placa fisica. La redstone entrante se envia por serial. */
@@ -28,9 +28,10 @@ public enum IoMode implements StringRepresentable {
 
     IoMode(String name) { this.name = name; }
 
-    /** Nunca lanza: cualquier id invalido (paquete manipulado) cae en OUTPUT. */
+    /** Network decoding must not turn an invalid direction into a hardware command. */
     public static IoMode byId(int id) {
-        return (id >= 0 && id < VALUES.length) ? VALUES[id] : OUTPUT;
+        if (id < 0 || id >= VALUES.length) throw new io.netty.handler.codec.DecoderException("invalid IO mode");
+        return VALUES[id];
     }
 
     public boolean isInput()  { return this == INPUT; }

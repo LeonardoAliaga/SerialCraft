@@ -1,7 +1,7 @@
 package com.serialcraft;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.serialcraft.block.ArduinoIOBlock;
+import com.serialcraft.block.HardwareIOBlock;
 import com.serialcraft.block.ModBlocks;
 import com.serialcraft.client.SerialDebugHud;
 import com.serialcraft.client.events.GameEventsTracker;
@@ -9,6 +9,7 @@ import com.serialcraft.connection.BoardTrust;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.network.BoardListResponsePayload;
 import com.serialcraft.network.SerialOutputPayload;
+import com.serialcraft.network.ConfigResultPayload;
 import com.serialcraft.screen.PanelUI;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -76,6 +77,7 @@ public class SerialCraftClient implements ClientModInitializer {
         // donde termina todo (ver el comentario de clase de ConnectionManager
         // sobre que paso con los tres duenos del estado de conexion).
         ClientTickEvents.END_CLIENT_TICK.register(GameEventsTracker::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(ConnectionManager::tick);
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -95,18 +97,25 @@ public class SerialCraftClient implements ClientModInitializer {
             ConnectionManager.clearHistory();
             PanelUI.clearSelectedDevice();
             GameEventsTracker.reset();
+            com.serialcraft.signal.SignalRecorder.INSTANCE.clear();
             SerialDebugHud.addLog("Desconectado del mundo. Estado limpiado.");
         });
     }
 
     private void registerNetworkHandlers() {
+        ClientPlayNetworking.registerGlobalReceiver(ConfigResultPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> {
+                    if (context.client().gui.screen() instanceof PanelUI panel) panel.updateConfigResult(payload);
+                }));
         ClientPlayNetworking.registerGlobalReceiver(SerialOutputPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
-                    ConnectionManager.sendMessageToBoard(payload.message());
+                    ConnectionManager.sendHardwareOutput(payload.message(), payload.safetyStop());
                 }));
 
         ClientPlayNetworking.registerGlobalReceiver(BoardListResponsePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
+                    var level = context.client().level;
+                    if (level == null || !level.dimension().identifier().toString().equals(payload.dimension())) return;
                     if (context.client().gui.screen() instanceof PanelUI panel) {
                         panel.updateBoardList(payload.boards());
                     }
@@ -131,9 +140,9 @@ public class SerialCraftClient implements ClientModInitializer {
             if (state.is(ModBlocks.IO_BLOCK)) {
                 // Si el clic cayo sobre un conector lateral, dejar pasar la
                 // interaccion: ese caso lo gestiona el servidor en
-                // ArduinoIOBlock.useWithoutItem, que es donde vive la logica
+                // HardwareIOBlock.useWithoutItem, que es donde vive la logica
                 // de alternar el lado.
-                if (state.getBlock() instanceof ArduinoIOBlock block) {
+                if (state.getBlock() instanceof HardwareIOBlock block) {
                     Vec3 localHit = hit.getLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
                     if (block.getHitButton(localHit) != null) return InteractionResult.PASS;
                 }

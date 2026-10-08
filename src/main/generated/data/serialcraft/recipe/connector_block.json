@@ -14,7 +14,6 @@
     "SRS"
   ],
   "result": {
-    "count": 1,
     "id": "serialcraft:connector_block"
   }
 }

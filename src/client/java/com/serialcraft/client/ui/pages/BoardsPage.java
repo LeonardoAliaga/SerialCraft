@@ -1,6 +1,7 @@
 package com.serialcraft.client.ui.pages;
 
-import com.serialcraft.block.entity.ArduinoIOBlockEntity;
+import com.serialcraft.block.entity.HardwareIOBlockEntity;
+import com.serialcraft.block.IOSide;
 import com.serialcraft.board.IoMode;
 import com.serialcraft.board.LogicMode;
 import com.serialcraft.board.SignalType;
@@ -14,12 +15,16 @@ import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.BoardListRequestPayload;
 import com.serialcraft.network.ConfigPayload;
 import com.serialcraft.network.RemoteTogglePayload;
+import com.serialcraft.network.IoSnapshot;
+import com.serialcraft.network.SignalProtocol;
+import com.serialcraft.network.ConfigResultPayload;
 import com.serialcraft.screen.PanelUI;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -51,6 +56,9 @@ public class BoardsPage implements Page {
     private int screenWidth;
     private int screenHeight;
     private boolean awaitingResponse = false;
+    private long listRequestedAt;
+    private String listMessage = "";
+    private String listDimension = "";
     private @Nullable List<BoardInfo> incomingBoards = null;
     private @Nullable BlockPos directEditRequestPos = null;
 
@@ -61,6 +69,16 @@ public class BoardsPage implements Page {
     private SignalType editSignal  = SignalType.DIGITAL;
     private LogicMode  editLogic   = LogicMode.OR;
     private boolean    editEnabled = true;
+    private String editId = "";
+    private String editData = "";
+    private String editDimension = "";
+    private int editSides;
+    private boolean diagnostics;
+    private boolean saving;
+    private long saveStarted;
+    private String editorMessage = "";
+    private static int nextRequestId;
+    private int pendingRequestId;
 
     private @Nullable EditBox     idBox;
     private @Nullable EditBox     dataBox;
@@ -74,12 +92,14 @@ public class BoardsPage implements Page {
         this.screenWidth  = screenWidth;
         this.screenHeight = screenHeight;
         this.cardWidgets.clear();
+        updateDimension();
 
         if (directEditRequestPos != null) {
             BlockPos target = directEditRequestPos;
             directEditRequestPos = null;
             openEditorForPos(target, false);
-            buildEditor(panelUi, screenWidth, screenHeight);
+            if (editing) buildEditor(panelUi, screenWidth, screenHeight);
+            else buildList(panelUi, screenWidth);
             return;
         }
 
@@ -98,7 +118,7 @@ public class BoardsPage implements Page {
 
     private void openEditorForPos(BlockPos pos, boolean refreshUI) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level != null && mc.level.getBlockEntity(pos) instanceof ArduinoIOBlockEntity io) {
+        if (mc.level != null && mc.level.getBlockEntity(pos) instanceof HardwareIOBlockEntity io) {
             openEditor(io.toBoardInfo(), refreshUI);
             return;
         }
@@ -108,16 +128,7 @@ public class BoardsPage implements Page {
                 return;
             }
         }
-        BoardInfo synthetic = new BoardInfo(
-                pos,
-                "Board_" + pos.getX() + "_" + pos.getY() + "_" + pos.getZ(),
-                ArduinoIOBlockEntity.DEFAULT_TARGET_DATA,
-                IoMode.OUTPUT,
-                SignalType.DIGITAL,
-                LogicMode.OR,
-                true
-        );
-        openEditor(synthetic, refreshUI);
+        listMessage = "gui.serialcraft.editor.unavailable";
     }
 
     private void openEditor(BoardInfo board) {
@@ -131,6 +142,14 @@ public class BoardsPage implements Page {
         this.editSignal  = board.signalType();
         this.editLogic   = board.logicMode();
         this.editEnabled = board.enabled();
+        this.editId = board.id();
+        this.editData = board.data();
+        this.editSides = board.snapshot().sides();
+        this.diagnostics = false;
+        this.saving = false;
+        this.editorMessage = "";
+        var level = Minecraft.getInstance().level;
+        this.editDimension = level == null ? "" : level.dimension().identifier().toString();
 
         if (refreshUI && panel != null && panel.getCurrentTab() != PanelUI.Tab.BOARDS) {
             panel.setTab(PanelUI.Tab.BOARDS);
@@ -141,16 +160,39 @@ public class BoardsPage implements Page {
 
     @Override
     public void tick() {
+        if (updateDimension() && panel != null) panel.refresh();
+        if (awaitingResponse && System.nanoTime() - listRequestedAt > 5_000_000_000L) {
+            awaitingResponse = false;
+            listMessage = "gui.serialcraft.boards.timeout";
+        }
+        if (saving && System.nanoTime() - saveStarted > 5_000_000_000L) {
+            saving = false;
+            editorMessage = "gui.serialcraft.editor.timeout";
+            if (panel != null) panel.refresh();
+        }
         if (incomingBoards == null) return;
         List<BoardInfo> incoming = incomingBoards;
         incomingBoards = null;
         awaitingResponse = false;
+        listMessage = "";
 
         if (incoming.equals(boards)) return;
 
         boards.clear();
         boards.addAll(incoming);
         if (!editing && panel != null) panel.refresh();
+    }
+
+    private boolean updateDimension() {
+        var level = Minecraft.getInstance().level;
+        String dimension = level == null ? "" : level.dimension().identifier().toString();
+        if (listDimension.equals(dimension)) return false;
+        boolean wasInitialized = !listDimension.isEmpty();
+        listDimension = dimension;
+        boards.clear(); incomingBoards = null; awaitingResponse = false;
+        editing = saving = false; editTarget = null;
+        if (wasInitialized) directEditRequestPos = null;
+        return wasInitialized;
     }
 
     @Override
@@ -168,8 +210,13 @@ public class BoardsPage implements Page {
 
     private void requestBoardList() {
         if (awaitingResponse) return;
-        if (!ClientPlayNetworking.canSend(BoardListRequestPayload.TYPE)) return;
+        if (!ClientPlayNetworking.canSend(BoardListRequestPayload.TYPE)) {
+            listMessage = "gui.serialcraft.editor.incompatible";
+            return;
+        }
         awaitingResponse = true;
+        listRequestedAt = System.nanoTime();
+        listMessage = "";
         ClientPlayNetworking.send(BoardListRequestPayload.INSTANCE);
     }
 
@@ -217,19 +264,9 @@ public class BoardsPage implements Page {
 
     private void toggleBoard(BoardInfo board) {
         if (!ClientPlayNetworking.canSend(RemoteTogglePayload.TYPE)) return;
-
-        for (int i = 0; i < boards.size(); i++) {
-            if (boards.get(i).pos().equals(board.pos())) {
-                BoardInfo cur = boards.get(i);
-                boards.set(i, new BoardInfo(
-                        cur.pos(), cur.id(), cur.data(),
-                        cur.mode(), cur.signalType(), cur.logicMode(),
-                        !cur.enabled()));
-                break;
-            }
-        }
-
-        ClientPlayNetworking.send(new RemoteTogglePayload(board.pos()));
+        var level = Minecraft.getInstance().level;
+        if (level == null) return;
+        ClientPlayNetworking.send(new RemoteTogglePayload(board.pos(), level.dimension().identifier().toString()));
         awaitingResponse = false;
         requestBoardList();
         if (panel != null) panel.refresh();
@@ -278,78 +315,119 @@ public class BoardsPage implements Page {
         int availW = UiTheme.contentWidth(screenWidth);
         int width  = Math.min(EDITOR_W, availW);
         int x      = UiTheme.contentX(screenWidth) + Math.max(0, (availW - width) / 2);
-        int y      = Math.max(16, (screenHeight - EDITOR_H) / 2);
+        int y      = Math.max(4, (screenHeight - EDITOR_H) / 2);
 
-        idBox = new EditBox(font, x + 8, y + 44, width - 96, 20,
-                Component.translatable("gui.serialcraft.editor.board_id"));
-        idBox.setValue(editTarget.id());
-        idBox.setMaxLength(BoardInfo.MAX_ID_LENGTH);
-        panelUi.addWidget(idBox);
+        if (!diagnostics) {
+            idBox = new EditBox(font, x + 8, y + 38, width - 96, 20,
+                    Component.translatable("gui.serialcraft.editor.board_id"));
+            idBox.setMaxLength(BoardInfo.MAX_ID_LENGTH);
+            idBox.setValue(editId);
+            idBox.setResponder(value -> editId = value);
+            idBox.active = !saving;
+            panelUi.addWidget(idBox);
+            var power = SolidButton.of(x + width - 82, y + 38, 74, 20, powerLabel(), btn -> {
+                editEnabled = !editEnabled;
+                btn.setMessage(powerLabel());
+                btn.setVariant(editEnabled ? SolidButton.Variant.SUCCESS : SolidButton.Variant.DANGER);
+            }, editEnabled ? SolidButton.Variant.SUCCESS : SolidButton.Variant.DANGER);
+            power.active = !saving;
+            panelUi.addWidget(power);
 
-        panelUi.addWidget(SolidButton.of(x + width - 82, y + 44, 74, 20, powerLabel(), btn -> {
-            editEnabled = !editEnabled;
-            btn.setMessage(powerLabel());
-            btn.setVariant(editEnabled ? SolidButton.Variant.SUCCESS : SolidButton.Variant.DANGER);
-        }, editEnabled ? SolidButton.Variant.SUCCESS : SolidButton.Variant.DANGER));
+            dataBox = new EditBox(font, x + 8, y + 78, width - 16, 20,
+                    Component.translatable("gui.serialcraft.editor.command"));
+            dataBox.setMaxLength(BoardInfo.MAX_DATA_LENGTH);
+            dataBox.setValue(editData);
+            dataBox.setResponder(value -> editData = value);
+            dataBox.setTooltip(Tooltip.create(Component.translatable("gui.serialcraft.editor.channel_help")));
+            dataBox.active = !saving;
+            panelUi.addWidget(dataBox);
 
-        int colW = (width - 24) / 3;
-
-        panelUi.addWidget(SolidButton.primary(x + 8, y + 94, colW, 20, modeLabel(), btn -> {
-            editMode = (editMode == IoMode.OUTPUT) ? IoMode.INPUT : IoMode.OUTPUT;
-            btn.setMessage(modeLabel());
-            if (logicButton != null) logicButton.active = editMode.isInput();
-        }));
-
-        panelUi.addWidget(SolidButton.primary(x + 12 + colW, y + 94, colW, 20, signalLabel(), btn -> {
-            editSignal = (editSignal == SignalType.DIGITAL) ? SignalType.ANALOG : SignalType.DIGITAL;
-            btn.setMessage(signalLabel());
-        }));
-
-        logicButton = SolidButton.primary(x + 16 + colW * 2, y + 94, colW, 20, logicLabel(), btn -> {
-            editLogic = editLogic.next();
-            btn.setMessage(logicLabel());
-        });
-        logicButton.active = editMode.isInput();
-        panelUi.addWidget(logicButton);
-
-        dataBox = new EditBox(font, x + 8, y + 144, width - 16, 20,
-                Component.translatable("gui.serialcraft.editor.command"));
-        dataBox.setValue(editTarget.data());
-        dataBox.setMaxLength(BoardInfo.MAX_DATA_LENGTH);
-        panelUi.addWidget(dataBox);
-
+            var direction = SolidButton.primary(x + 8, y + 104, width - 16, 20, modeLabel(), btn -> {
+                editMode = editMode.isOutput() ? IoMode.INPUT : IoMode.OUTPUT;
+                btn.setMessage(modeLabel());
+            });
+            direction.active = !saving;
+            direction.setTooltip(Tooltip.create(Component.translatable("gui.serialcraft.editor.directions_help")));
+            panelUi.addWidget(direction);
+            int half = (width - 20) / 2;
+            var signal = SolidButton.primary(x + 8, y + 130, half, 20, signalLabel(), btn -> {
+                editSignal = editSignal == SignalType.DIGITAL ? SignalType.ANALOG : SignalType.DIGITAL;
+                btn.setMessage(signalLabel());
+            });
+            signal.active = !saving;
+            panelUi.addWidget(signal);
+            logicButton = SolidButton.primary(x + 12 + half, y + 130, half, 20, logicLabel(), btn -> {
+                editLogic = editLogic.next();
+                btn.setMessage(logicLabel());
+            });
+            logicButton.active = !saving;
+            logicButton.setTooltip(Tooltip.create(Component.translatable("gui.serialcraft.editor.logic_help")));
+            panelUi.addWidget(logicButton);
+        } else {
+            String[] faces = {"north", "south", "east", "west", "down"};
+            for (int i = 0; i < faces.length; i++) {
+                final int index = i;
+                var button = SolidButton.primary(x + 8, y + 34 + i * 22, width - 16, 20,
+                        sideLabel(faces[i], IOSide.at(editSides, i)), btn -> {
+                            editSides = IOSide.with(editSides, index, IOSide.at(editSides, index).next());
+                            btn.setMessage(sideLabel(faces[index], IOSide.at(editSides, index)));
+                        });
+                button.active = !saving;
+                button.setTooltip(Tooltip.create(Component.translatable("gui.serialcraft.editor.connectors_help")));
+                panelUi.addWidget(button);
+            }
+        }
+        var detail = SolidButton.soft(x + 8, y + 174, width - 16, 20,
+                Component.translatable(diagnostics ? "gui.serialcraft.editor.basic" : "gui.serialcraft.editor.diagnostics"), btn -> {
+                    diagnostics = !diagnostics;
+                    panelUi.refresh();
+                });
+        detail.active = !saving;
+        panelUi.addWidget(detail);
         int halfW = (width - 20) / 2;
-        panelUi.addWidget(SolidButton.success(x + 6, y + 200, halfW, 22,
-                Component.translatable("gui.serialcraft.editor.save"), btn -> save()));
+        var save = SolidButton.success(x + 6, y + 200, halfW, 22,
+                Component.translatable(saving ? "gui.serialcraft.editor.saving" : "gui.serialcraft.editor.save"), btn -> save());
+        save.active = !saving;
+        panelUi.addWidget(save);
         panelUi.addWidget(SolidButton.soft(x + halfW + 14, y + 200, halfW, 22,
                 Component.translatable("gui.serialcraft.editor.cancel"), btn -> cancel()));
     }
 
+    private Component sideLabel(String face, IOSide side) {
+        return Component.translatable("gui.serialcraft.editor.side",
+                Component.translatable("gui.serialcraft.face." + face),
+                Component.translatable(side == IOSide.OUTPUT && editMode.isOutput()
+                        ? "gui.serialcraft.side.output_inactive" : "gui.serialcraft.side." + side.getSerializedName()));
+    }
+
     private void save() {
-        if (editTarget == null || idBox == null || dataBox == null) return;
-        if (!ClientPlayNetworking.canSend(ConfigPayload.TYPE)) return;
-
-        String rawId = idBox.getValue().trim();
-        String rawData = dataBox.getValue().trim();
-        String newId = rawId.isEmpty() ? editTarget.id() : rawId;
-        String newData = rawData.isEmpty() ? editTarget.data() : rawData;
-
-        BoardInfo updated = new BoardInfo(
-                editTarget.pos(), newId, newData,
-                editMode, editSignal, editLogic, editEnabled);
-
-        for (int i = 0; i < boards.size(); i++) {
-            if (boards.get(i).pos().equals(updated.pos())) {
-                boards.set(i, updated);
-                break;
-            }
+        if (editTarget == null || saving) return;
+        if (!ClientPlayNetworking.canSend(ConfigPayload.TYPE)) {
+            editorMessage = "gui.serialcraft.editor.incompatible";
+            return;
         }
+        String channel = editData.trim();
+        if (!SignalProtocol.isValidChannel(channel)) {
+            editorMessage = "gui.serialcraft.editor.invalid_channel";
+            return;
+        }
+        saving = true;
+        saveStarted = System.nanoTime();
+        pendingRequestId = ++nextRequestId;
+        editorMessage = "";
+        ClientPlayNetworking.send(new ConfigPayload(editTarget.pos(), editMode, channel, editSignal,
+                editEnabled, editId.trim(), editLogic, editSides, editDimension, pendingRequestId));
+        if (panel != null) panel.refresh();
+    }
 
-        ClientPlayNetworking.send(new ConfigPayload(
-                updated.pos(), updated.mode(), updated.data(),
-                updated.signalType(), updated.enabled(), updated.id(), updated.logicMode()));
-
-        closeEditor();
+    public void acceptConfigResult(ConfigResultPayload result) {
+        if (!saving || editTarget == null || !editTarget.pos().equals(result.pos()) || pendingRequestId != result.requestId()) return;
+        saving = false;
+        if (result.accepted()) closeEditor();
+        else {
+            editorMessage = result.reason();
+            if (panel != null) panel.refresh();
+        }
     }
 
     private void cancel() { closeEditor(); }
@@ -358,6 +436,7 @@ public class BoardsPage implements Page {
         editing          = false;
         editTarget       = null;
         logicButton      = null;
+        saving = false;
         awaitingResponse = false;
         if (panel != null) panel.refresh();
     }
@@ -394,6 +473,11 @@ public class BoardsPage implements Page {
         }
 
         if (boards.isEmpty()) {
+            if (!listMessage.isEmpty()) {
+                gui.text(font, font.plainSubstrByWidth(Component.translatable(listMessage).getString(), cardWidth),
+                        contentX, viewportTop + 10, UiTheme.ERROR_DARK, false);
+                return;
+            }
             gui.text(font, Component.translatable("gui.serialcraft.boards.empty"),
                     contentX, viewportTop + 10, UiTheme.TEXT_SECONDARY, false);
             gui.text(font, Component.translatable("gui.serialcraft.boards.empty_hint"),
@@ -412,8 +496,8 @@ public class BoardsPage implements Page {
             cw.toggleBtn().setY(currentBtnY);
             cw.editBtn().setY(currentBtnY);
 
-            boolean inView = (currentBtnY + cw.toggleBtn().getHeight() >= viewportTop
-                           && currentBtnY <= viewportBottom);
+            boolean inView = (currentBtnY >= viewportTop
+                           && currentBtnY + cw.toggleBtn().getHeight() <= viewportBottom);
             cw.toggleBtn().visible = inView;
             cw.toggleBtn().active  = inView;
             cw.editBtn().visible   = inView;
@@ -463,7 +547,7 @@ public class BoardsPage implements Page {
         int availW = UiTheme.contentWidth(screenWidth);
         int width  = Math.min(EDITOR_W, availW);
         int x      = UiTheme.contentX(screenWidth) + Math.max(0, (availW - width) / 2);
-        int y      = Math.max(16, (screenHeight - EDITOR_H) / 2);
+        int y      = Math.max(4, (screenHeight - EDITOR_H) / 2);
 
         gui.fill(x, y, x + width, y + EDITOR_H, UiTheme.BG_PANEL);
         gui.outline(x, y, width, EDITOR_H, UiTheme.LINE_STRONG);
@@ -472,26 +556,25 @@ public class BoardsPage implements Page {
                 Component.translatable("gui.serialcraft.editor.title", editTarget.id()),
                 x + width / 2, y + 10, UiTheme.TEXT_PRIMARY);
 
-        gui.text(font, Component.translatable("gui.serialcraft.editor.board_id"),
-                x + 8, y + 33, UiTheme.TEXT_SECONDARY, false);
-        UiDraw.inputWell(gui, x + 6, y + 42, width - 92, 24);
-
-        gui.text(font, Component.translatable("gui.serialcraft.editor.power"),
-                x + width - 82, y + 33, UiTheme.TEXT_SECONDARY, false);
-
-        gui.centeredText(font, Component.translatable(
-                        editMode.isInput() ? "gui.serialcraft.editor.section_mode_logic"
-                                           : "gui.serialcraft.editor.section_mode"),
-                x + width / 2, y + 78, UiTheme.ACCENT_PRIMARY);
-        gui.fill(x + 8, y + 88, x + width - 8, y + 89, UiTheme.LINE_SOFT);
-
-        gui.text(font, Component.translatable("gui.serialcraft.editor.command"),
-                x + 8, y + 130, UiTheme.TEXT_SECONDARY, false);
-        UiDraw.inputWell(gui, x + 6, y + 141, width - 12, 26);
-
-        String command = (dataBox != null) ? dataBox.getValue() : editTarget.data();
-        gui.centeredText(font, Component.translatable(helpKey(), command, command),
-                x + width / 2, y + 178, 0xFF666666);
+        if (!diagnostics) {
+            gui.text(font, Component.translatable("gui.serialcraft.editor.board_id"), x + 8, y + 26, UiTheme.TEXT_SECONDARY, false);
+            gui.text(font, Component.translatable("gui.serialcraft.editor.command"), x + 8, y + 66, UiTheme.TEXT_SECONDARY, false);
+            gui.text(font, font.plainSubstrByWidth(Component.translatable(helpKey(), editData, editData).getString(), width - 16),
+                    x + 8, y + 157, UiTheme.TEXT_SECONDARY, false);
+        } else {
+            IoSnapshot current = editTarget.snapshot();
+            var level = Minecraft.getInstance().level;
+            if (level != null && level.getBlockEntity(editTarget.pos()) instanceof HardwareIOBlockEntity io) current = io.snapshot();
+            String values = Component.translatable("gui.serialcraft.editor.values", current.received(), current.lastSent(),
+                    current.read(), current.emitted()).getString();
+            gui.text(font, font.plainSubstrByWidth(values, width - 16), x + 8, y + 147, UiTheme.TEXT_SECONDARY, false);
+            gui.text(font, Component.translatable(current.connected() ? "gui.serialcraft.editor.connected" : "gui.serialcraft.editor.disconnected"),
+                    x + 8, y + 159, UiTheme.TEXT_SECONDARY, false);
+        }
+        if (!editorMessage.isEmpty()) {
+            gui.text(font, font.plainSubstrByWidth(Component.translatable(editorMessage).getString(), width - 16),
+                    x + 8, y + 224, UiTheme.ERROR_DARK, false);
+        }
     }
 
     private String helpKey() {

@@ -18,17 +18,19 @@ import java.util.List;
  * duro evita que un mundo con miles de placas genere un paquete que supere el
  * maximo de Minecraft y desconecte al jugador al abrir el panel.
  */
-public record BoardListResponsePayload(List<BoardInfo> boards) implements CustomPacketPayload {
+public record BoardListResponsePayload(List<BoardInfo> boards, String dimension) implements CustomPacketPayload {
 
     public static final int MAX_BOARDS = 256;
 
     public static final Type<BoardListResponsePayload> TYPE =
-            new Type<>(Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "board_list_res"));
+            new Type<>(Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "board_list_res_v2"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, BoardListResponsePayload> CODEC =
             StreamCodec.composite(
                     BoardInfo.CODEC.apply(ByteBufCodecs.list(MAX_BOARDS)),
                     BoardListResponsePayload::boards,
+                    ByteBufCodecs.stringUtf8(128),
+                    BoardListResponsePayload::dimension,
                     BoardListResponsePayload::new
             );
 

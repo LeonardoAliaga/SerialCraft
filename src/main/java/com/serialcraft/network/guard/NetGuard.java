@@ -73,7 +73,7 @@ public final class NetGuard {
         // Alcance. Se compara al cuadrado para evitar la raiz cuadrada.
         double distanceSq = player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
         if (distanceSq > maxDistance * maxDistance) {
-            SerialCraft.LOGGER.debug("Posicion {} fuera de alcance ({:.2f}m > {:.2f}m) para {}",
+            SerialCraft.LOGGER.debug("Posicion {} fuera de alcance ({}m > {}m) para {}",
                     pos, Math.sqrt(distanceSq), maxDistance, player.getGameProfile().name());
             return null;
         }

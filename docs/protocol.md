@@ -24,7 +24,7 @@ El mod ignora todo lo que no termine en `\n`. Usa siempre `Serial.println()` o `
 :::
 
 ::: tip Por qué existe el límite de 40 mensajes/s
-Cada línea recibida se convierte en un paquete al servidor. Un `Serial.println()` dentro de `loop()` sin control genera miles por segundo y provoca lag real en partidas multijugador. El mod descarta en silencio lo que exceda el límite: no es un error, es contención. Envía solo cuando el valor **cambie**.
+Las muestras IO válidas entran en una cola acotada por canal; hasta dos muestras por tick se convierten en paquetes al servidor. Un `Serial.println()` dentro de `loop()` sin control genera miles por segundo y provoca lag real en partidas multijugador. El mod descarta en silencio lo que exceda el límite: no es un error, es contención. Envía cambios e instantáneas ocasionales (los ejemplos reenvían sensores una vez por segundo para restaurar el estado tras recargar chunks). Esto no implica latidos de conexión ni confirmación de entrega.
 :::
 
 ---
@@ -63,8 +63,8 @@ La placa envía el ID del bloque destino y el valor:
 <TARGET_DATA>:<VALOR_ENTERO>\n
 ```
 
-* **`<TARGET_DATA>`**: la cadena que escribiste en el campo *Target Data* del Bloque IO (ej. `btn_1`, `sensor_luz`). Máximo 32 caracteres. **Si está vacío, el bloque ignora todo**: no existe el comodín.
-* **`<VALOR_ENTERO>`**: 0-255. Los valores fuera de rango se recortan; el texto no numérico se descarta sin lanzar error.
+* **`<TARGET_DATA>`**: el campo *Canal* (antes Target Data), ej. `btn_1` o `sensor_luz`. Usa 1–32 letras ASCII, dígitos, `_`, `.` o `-`; `mc_` está reservado y un canal vacío se rechaza.
+* **`<VALOR_ENTERO>`**: 0-255. Los valores fuera de rango se rechazan; el texto no numérico se descarta sin lanzar error.
 
 ```cpp
 Serial.println("sensor_luz:200");   // ~redstone 12 en modo analógico
@@ -86,8 +86,8 @@ Un Bloque IO en modo **OUTPUT** emite automáticamente cuando cambia el nivel de
 
 Dos detalles de implementación que conviene conocer:
 
-* **Deduplicación**: el bloque no reenvía un valor idéntico al anterior. Si mantienes una palanca encendida, el mensaje se manda una vez, no veinte veces por segundo.
-* **Intervalo**: la comprobación de salida corre cada 2 ticks (10 Hz), salvo que un cambio la marque como urgente. Es el compromiso entre respuesta y coste en el servidor.
+* **Deduplicación**: un valor estable no se reenvía continuamente; los cambios de sesión/conexión fuerzan la resincronización. Si mantienes una palanca encendida, el mensaje se manda una vez, no veinte veces por segundo.
+* **Intervalo**: los cambios del mundo se agrupan una vez por tick; no se releen entradas estables periódicamente. Es el compromiso entre respuesta y coste en el servidor.
 
 ---
 
@@ -129,13 +129,7 @@ El token evita el acceso accidental o casual, pero **no es cifrado**. Es adecuad
 
 ## 6. Lógica de compuertas
 
-Cada Bloque IO tiene un modo lógico que decide cuándo se considera activo si recibe energía por varios lados configurados como entrada:
-
-* **OR** (por defecto): se activa si *cualquier* lado recibe energía.
-* **AND**: se activa solo si *todos* los lados de entrada reciben energía.
-* **XOR**: se activa si un número *impar* de lados recibe energía.
-
-Si la condición no se cumple, el bloque no emite ni acepta datos y deja su salida de redstone a 0. Lo mismo ocurre si está desactivado desde la Laptop.
+En Minecraft → Hardware, OR devuelve el máximo, AND el mínimo (incluidos ceros), y XOR el máximo si hay un número impar de entradas positivas; en otro caso devuelve cero. Sin entradas se envía cero. En Hardware → Minecraft las entradas habilitan la muestra conservada; sin entradas se omite la condición. Cerrar la condición no descarta RX. Consulta la [guía del módulo](/io-module).
 
 ---
 

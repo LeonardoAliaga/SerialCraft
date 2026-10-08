@@ -40,6 +40,7 @@ public class WifiHandler implements BoardLink {
 
     private volatile @Nullable ServerSocket serverSocket;
     private volatile @Nullable Socket       clientSocket;
+    private volatile @Nullable Socket       pendingSocket;
     private volatile @Nullable PrintWriter  writer;
     private volatile @Nullable Thread       acceptThread;
     private volatile State state = State.STOPPED;
@@ -63,6 +64,7 @@ public class WifiHandler implements BoardLink {
     private volatile WifiHandshake.Method authMethod = WifiHandshake.Method.NONE;
     /** Identidad anunciada por la placa de esta sesion (con uid), pendiente de recordar. */
     private volatile BoardIdentity announcedIdentity = BoardIdentity.unknown();
+    private volatile String authenticatedUid = "";
 
     private static final SecureRandom TOKEN_RNG = new SecureRandom();
 
@@ -109,8 +111,9 @@ public class WifiHandler implements BoardLink {
             return Component.translatable("message.serialcraft.wifi_bad_port", port);
         }
 
+        ServerSocket socket = null;
         try {
-            ServerSocket socket = new ServerSocket();
+            socket = new ServerSocket();
             socket.setReuseAddress(true);
             socket.bind(new InetSocketAddress(port), ACCEPT_BACKLOG);
             socket.setSoTimeout(SOCKET_TIMEOUT_MS); // permite comprobar running periodicamente
@@ -120,7 +123,8 @@ public class WifiHandler implements BoardLink {
             running.set(true);
             state = State.LISTENING;
 
-            Thread thread = new Thread(this::acceptLoop, THREAD_NAME);
+            ServerSocket sessionServer = socket;
+            Thread thread = new Thread(() -> acceptLoop(sessionServer), THREAD_NAME);
             thread.setDaemon(true);
             this.acceptThread = thread;
             thread.start();
@@ -129,6 +133,7 @@ public class WifiHandler implements BoardLink {
             return Component.translatable("message.serialcraft.wifi_started", port);
 
         } catch (Exception e) {
+            closeQuietly(socket);
             state = State.STOPPED;
             running.set(false);
             SerialCraft.LOGGER.warn("No se pudo iniciar el servidor Wi-Fi en el puerto {}", port, e);
@@ -138,34 +143,46 @@ public class WifiHandler implements BoardLink {
     }
 
     @Override
-    public synchronized void disconnect() {
-        running.set(false);
-        state = State.STOPPED;
-
-        closeQuietly(writer);
-        closeQuietly(clientSocket);
-        closeQuietly(serverSocket);
-
-        Thread thread = acceptThread;
+    public void disconnect() {
+        Thread thread;
+        synchronized (this) {
+            running.set(false);
+            state = State.STOPPED;
+            // Close sockets first to release a reader/writer before joining its thread.
+            closeQuietly(clientSocket);
+            closeQuietly(pendingSocket);
+            closeQuietly(serverSocket);
+            closeQuietly(writer);
+            thread = acceptThread;
+            writer = null;
+            clientSocket = pendingSocket = null;
+            serverSocket = null;
+            acceptThread = null;
+            remoteIp = pairingToken = authenticatedUid = "";
+            authMethod = WifiHandshake.Method.NONE;
+            announcedIdentity = BoardIdentity.unknown();
+            ConnectionManager.onLinkClosed();
+        }
         if (thread != null && thread != Thread.currentThread() && thread.isAlive()) {
             try { thread.join(JOIN_TIMEOUT_MS); }
             catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
-
-        writer       = null;
-        clientSocket = null;
-        serverSocket = null;
-        acceptThread = null;
-        remoteIp     = "";
-        pairingToken = "";
     }
 
     @Override
-    public void send(String message) {
+    public synchronized boolean send(String message, int sessionEpoch) {
+        return ConnectionManager.sessionEpoch() == sessionEpoch && send(message);
+    }
+
+    @Override
+    public synchronized boolean send(String message) {
         PrintWriter out = writer;
-        if (out == null || !isConnected()) return;
+        if (out == null || !isConnected()) return false;
         out.println(message);
         out.flush();
+        if (!out.checkError()) return true;
+        closeQuietly(clientSocket);
+        return false;
     }
 
     // ════════════════════════════════════════════════════════════════════════════
@@ -173,18 +190,20 @@ public class WifiHandler implements BoardLink {
     // ════════════════════════════════════════════════════════════════════════════
 
     /** La placa conectada anuncio su identidad (mc_id). Lo llama ConnectionManager. */
-    void onBoardHello(BoardIdentity id) {
-        if (!isConnected() || !id.hasUid()) return;
-        TrustedBoardStore store = BoardTrust.store();
+    boolean onBoardHello(BoardIdentity id) {
+        if (!isConnected()) return false;
 
         if (authMethod == WifiHandshake.Method.TRUSTED) {
-            store.touch(id.uid(), id.model(), remoteIp);      // ya recordada: solo refrescar
-            return;
+            if (!authenticatedUid.equals(id.uid())) return false;
+            BoardTrust.store().touch(id.uid(), id.model(), remoteIp); // already authenticated
+            return true;
         }
+        if (!id.hasUid()) return true; // Legacy model-only hello still identifies token sessions.
         // Entro con token: queda a la espera de "Recordar placa" (o se recuerda
         // sola si el jugador activo autoRemember).
         announcedIdentity = id;
-        if (store.autoRemember()) rememberCurrentBoard();
+        if (BoardTrust.store().autoRemember()) rememberCurrentBoard();
+        return true;
     }
 
     /** Hay una placa conectada con token que se puede recordar ahora mismo. */
@@ -202,8 +221,7 @@ public class WifiHandler implements BoardLink {
     }
 
     private String sessionUid() {
-        BoardIdentity id = ConnectionManager.activeIdentity();
-        return id.hasUid() ? id.uid() : "";
+        return authenticatedUid;
     }
 
     /**
@@ -220,7 +238,10 @@ public class WifiHandler implements BoardLink {
             SerialDebugHud.addLog("No se pudo guardar la placa recordada (fichero no escribible).");
             return false;
         }
-        send(BoardHello.KEY_PREFIX + secret);     // directo, sin pasar por el registro de la consola
+        if (!send(BoardHello.KEY_PREFIX + secret)) {
+            BoardTrust.store().forget(id.uid());
+            return false;
+        }
         SerialDebugHud.addLog("Placa recordada: " + id.model() + " [" + id.uid() + "]");
         return true;
     }
@@ -230,33 +251,43 @@ public class WifiHandler implements BoardLink {
         String uid = announcedIdentity.hasUid() ? announcedIdentity.uid() : sessionUid();
         if (uid.isEmpty()) return false;
         boolean removed = BoardTrust.store().forget(uid);
-        if (removed) SerialDebugHud.addLog("Placa olvidada: " + uid);
+        if (removed) {
+            closeQuietly(clientSocket);
+            SerialDebugHud.addLog("Placa olvidada: " + uid);
+        }
         return removed;
     }
 
     // ════════════════════════════════════════════════════════════════════════════
 
-    private void acceptLoop() {
-        while (running.get()) {
-            ServerSocket server = serverSocket;
-            if (server == null || server.isClosed()) break;
+    private boolean isCurrentServer(ServerSocket server) {
+        return running.get() && serverSocket == server && !server.isClosed();
+    }
+
+    private void acceptLoop(ServerSocket server) {
+        while (isCurrentServer(server)) {
 
             try {
                 Socket incoming = server.accept();
-                handleClient(incoming);
+                synchronized (this) {
+                    if (!isCurrentServer(server)) { closeQuietly(incoming); break; }
+                    pendingSocket = incoming;
+                }
+                handleClient(incoming, server);
+                if (pendingSocket == incoming) pendingSocket = null;
             } catch (java.net.SocketTimeoutException ignored) {
                 // Normal: el timeout existe para poder comprobar running.
             } catch (Exception e) {
-                if (running.get()) {
+                if (isCurrentServer(server)) {
                     SerialCraft.LOGGER.debug("Error en el socket Wi-Fi", e);
                     state = State.LISTENING;
                 }
             }
         }
-        state = State.STOPPED;
+        if (serverSocket == server) state = State.STOPPED;
     }
 
-    private void handleClient(Socket incoming) {
+    private void handleClient(Socket incoming, ServerSocket sessionServer) {
         String ip = incoming.getInetAddress().getHostAddress();
 
         // Filtro de origen: por defecto solo LAN y rangos privados / locales
@@ -287,27 +318,19 @@ public class WifiHandler implements BoardLink {
             // ── Handshake ────────────────────────────────────────────────
             // Dos caminos: el token de sesion de siempre, o "TRUST <uid>" con
             // reto-respuesta para una placa recordada (ver WifiHandshake).
+            long deadline = System.nanoTime() + HANDSHAKE_TIMEOUT_MS * 1_000_000L;
             WifiHandshake.Result auth = WifiHandshake.perform(
-                    () -> readBoundedLine(reader), out::println, pairingToken, BoardTrust.store());
+                    () -> readBoundedLine(reader, socket, deadline), out::println, pairingToken, BoardTrust.store());
             if (!auth.ok()) {
                 // No se registra el token esperado ni el recibido: son credenciales.
                 SerialDebugHud.addLog("Conexion rechazada desde " + ip + ": " + auth.reason());
                 SerialCraft.LOGGER.warn("Handshake Wi-Fi rechazado desde {}: {}", ip, auth.reason());
                 return;
             }
+            if (!isCurrentServer(sessionServer)) return;
 
             // Desactivar timeout tras autenticacion exitosa para recepcion de datos
             socket.setSoTimeout(0);
-
-            this.clientSocket = socket;
-            this.writer       = out;
-            this.remoteIp     = ip;
-            this.authMethod   = auth.method();
-            this.announcedIdentity = BoardIdentity.unknown();
-            this.state        = State.CONNECTED;
-            SerialDebugHud.addLog("Placa Wi-Fi conectada: " + ip
-                    + (auth.method() == WifiHandshake.Method.TRUSTED ? " (recordada, sin token)" : ""));
-            SerialCraft.LOGGER.info("Placa Wi-Fi conectada desde {} ({})", ip, auth.method());
 
             BoardIdentity known = BoardIdentity.unknown();
             if (auth.method() == WifiHandshake.Method.TRUSTED) {
@@ -317,42 +340,72 @@ public class WifiHandler implements BoardLink {
                     BoardTrust.store().touch(auth.uid(), null, ip);
                 }
             }
-            ConnectionManager.onLinkConnected(this, known);
+            synchronized (this) {
+                if (!isCurrentServer(sessionServer)) return;
+                this.clientSocket = socket;
+                this.writer       = out;
+                this.remoteIp     = ip;
+                this.authMethod   = auth.method();
+                this.authenticatedUid = auth.uid();
+                this.announcedIdentity = BoardIdentity.unknown();
+                ConnectionManager.onLinkConnected(this, known);
+                this.state        = State.CONNECTED;
+            }
+            SerialDebugHud.addLog("Placa Wi-Fi conectada: " + ip
+                    + (auth.method() == WifiHandshake.Method.TRUSTED ? " (recordada, sin token)" : ""));
+            SerialCraft.LOGGER.info("Placa Wi-Fi conectada desde {} ({})", ip, auth.method());
 
             // ── Bucle de lectura ─────────────────────────────────────────
             String line;
-            while (running.get() && (line = readBoundedLine(reader)) != null) {
+            while (isCurrentServer(sessionServer) && clientSocket == incoming && (line = readBoundedLine(reader)) != null) {
+                if (!isCurrentServer(sessionServer) || clientSocket != incoming) break;
                 String trimmed = line.trim();
-                if (!trimmed.isEmpty()) ConnectionManager.onMessageReceived(trimmed);
+                if (!trimmed.isEmpty()) ConnectionManager.onMessageReceived(this, trimmed);
             }
 
         } catch (Exception e) {
             SerialCraft.LOGGER.debug("Sesion Wi-Fi terminada", e);
         } finally {
-            this.writer       = null;
-            this.clientSocket = null;
-            this.remoteIp     = "";
-            this.authMethod   = WifiHandshake.Method.NONE;
-            this.announcedIdentity = BoardIdentity.unknown();
-            if (running.get()) this.state = State.LISTENING;
-            ConnectionManager.onLinkClosed();
-            SerialDebugHud.addLog("Placa Wi-Fi desconectada.");
+            synchronized (this) {
+                // A rejected handshake or an old server thread cannot close a newer session.
+                if (this.clientSocket == incoming) {
+                    this.writer = null;
+                    this.clientSocket = null;
+                    this.remoteIp = this.authenticatedUid = "";
+                    this.authMethod = WifiHandshake.Method.NONE;
+                    this.announcedIdentity = BoardIdentity.unknown();
+                    if (isCurrentServer(sessionServer)) this.state = State.LISTENING;
+                    ConnectionManager.onLinkClosed();
+                    SerialDebugHud.addLog("Placa Wi-Fi desconectada.");
+                }
+            }
         }
     }
 
     /**
      * Lee una linea con longitud acotada.
      */
-    private static @Nullable String readBoundedLine(BufferedReader reader) throws java.io.IOException {
+    static @Nullable String readBoundedLine(BufferedReader reader) throws java.io.IOException {
+        return readBoundedLine(reader, null, Long.MAX_VALUE);
+    }
+
+    private static @Nullable String readBoundedLine(BufferedReader reader, @Nullable Socket socket, long deadline) throws java.io.IOException {
         StringBuilder line = new StringBuilder(64);
         int c;
-        while ((c = reader.read()) != -1) {
+        while (true) {
+            if (socket != null) {
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) throw new java.net.SocketTimeoutException("Handshake timeout");
+                socket.setSoTimeout((int) Math.max(1, remaining / 1_000_000L));
+            }
+            c = reader.read();
+            if (c == -1) break;
             if (c == '\n') return line.toString();
             if (c == '\r') continue;
             if (line.length() >= MAX_LINE_LENGTH) return null;
             line.append((char) c);
         }
-        return line.isEmpty() ? null : line.toString();
+        return null; // EOF without a newline is an incomplete protocol frame.
     }
 
     private static void closeQuietly(@Nullable AutoCloseable closeable) {

@@ -37,7 +37,7 @@ public final class ModBlocks {
 
     public static final Block IO_BLOCK = register(
             "io_block",
-            props -> new ArduinoIOBlock(props
+            props -> new HardwareIOBlock(props
                     .mapColor(MapColor.METAL)
                     .strength(3.0f)
                     .noOcclusion()),

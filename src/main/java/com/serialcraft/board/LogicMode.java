@@ -6,7 +6,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.StringRepresentable;
 import org.jetbrains.annotations.NotNull;
 
-/** Condicion de habilitacion de una placa segun sus pines de entrada. */
+/** Input aggregation for transmit mode; hardware enable condition for receive mode. */
 public enum LogicMode implements StringRepresentable {
     OR("or"),
     AND("and"),
@@ -22,7 +22,8 @@ public enum LogicMode implements StringRepresentable {
     LogicMode(String name) { this.name = name; }
 
     public static LogicMode byId(int id) {
-        return (id >= 0 && id < VALUES.length) ? VALUES[id] : OR;
+        if (id < 0 || id >= VALUES.length) throw new io.netty.handler.codec.DecoderException("invalid logic mode");
+        return VALUES[id];
     }
 
     public LogicMode next() {

@@ -7,6 +7,9 @@ import com.serialcraft.identity.BoardIdentity;
 import com.serialcraft.signal.SignalRecorder;
 import com.serialcraft.signal.SignalRecorder.Direction;
 import com.serialcraft.network.SerialInputPayload;
+import com.serialcraft.network.HardwareLinkPayload;
+import com.serialcraft.network.ChannelInbox;
+import com.serialcraft.network.SignalProtocol;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -51,9 +54,11 @@ public final class ConnectionManager {
     // El servidor ya limita la tasa de entrada, pero limitar tambien aqui evita
     // que el cliente se auto-desconecte por spam de paquetes (Minecraft expulsa
     // a los clientes que exceden su presupuesto) y ahorra ancho de banda.
-    private static final long   MIN_SEND_INTERVAL_NANOS = 25_000_000L; // 40 Hz
-    private static long   lastSentNanos  = 0L;
-    private static String lastSentMessage = null;
+    private static final ChannelInbox INBOX = new ChannelInbox();
+    private static int reportedEpoch = -1;
+    private static boolean reportedConnected;
+    private static String reportedDimension = "";
+    private static long bootResyncAt;
 
     // ── Identidad de la placa conectada ────────────────────────────────
     //
@@ -71,6 +76,8 @@ public final class ConnectionManager {
             });
     private static volatile BoardIdentity announced = BoardIdentity.unknown();
     private static volatile int linkEpoch = 0;
+    private static final HardwareOutbox OUTBOX = new HardwareOutbox();
+    static { PROBES.scheduleWithFixedDelay(ConnectionManager::drainOutput, 25, 25, TimeUnit.MILLISECONDS); }
 
     /** Mejor identidad conocida de la placa conectada (desconocida si no hay ninguna). */
     public static BoardIdentity activeIdentity() {
@@ -86,6 +93,8 @@ public final class ConnectionManager {
         final int epoch;
         synchronized (ConnectionManager.class) {
             announced = known;
+            INBOX.clear();
+            OUTBOX.clear();
             epoch = ++linkEpoch;
         }
         if (!BoardTrust.store().probeBoards()) return;
@@ -108,12 +117,12 @@ public final class ConnectionManager {
         deliver(BoardHello.PROBE);             // placas antiguas: la ignoran
     }
 
-    private static void onHello(String line) {
+    private static void onHello(BoardLink source, String line) {
         BoardHello.parse(line).ifPresent(id -> {
+            if (source == WIFI && !WIFI.onBoardHello(id)) return;
             announced = BoardIdentity.best(announced, id);
             SerialDebugHud.addLog("Placa identificada: " + id.model()
                     + (id.hasUid() ? " [" + id.uid() + "]" : ""));
-            if (WIFI.isConnected()) WIFI.onBoardHello(id);
         });
     }
 
@@ -130,15 +139,20 @@ public final class ConnectionManager {
     // ══════════════════════════════════════════════════════════════════════
 
     public static void sendMessageToBoard(String message) {
-        boolean delivered = deliver(message);
+        enqueueOutput(message, HardwareOutbox.Kind.MANUAL, false);
+    }
 
-        if (delivered) {
-            SignalRecorder.INSTANCE.record(Direction.TX, message, System.nanoTime());
-            SerialDebugHud.addLog("TX: " + message);
-            addHistory("TX: " + message);
-        } else {
+    public static void sendHardwareOutput(String message, boolean safetyStop) {
+        enqueueOutput(message, HardwareOutbox.Kind.IO, safetyStop);
+    }
+
+    private static void enqueueOutput(String message, HardwareOutbox.Kind kind, boolean safetyStop) {
+        if (!isAnyConnected()) {
             SerialDebugHud.addLog("Sin placa conectada (USB/Wi-Fi).");
             addHistory("ERR: sin conexion");
+        } else if (!OUTBOX.offer(message, kind, false, safetyStop)) {
+            SerialDebugHud.addLog("Salida rechazada: cola llena o linea invalida.");
+            addHistory("ERR: salida rechazada");
         }
     }
 
@@ -153,16 +167,10 @@ public final class ConnectionManager {
      *    genera la pestana Eventos de lo que generan los Bloques IO (TX:).
      *    {@code quiet} suprime el registro de los reenvios periodicos.
      *
-     * @return true si al menos un enlace lo entrego
+     * @return true si la cola acepto la linea; no es una confirmacion del hardware
      */
     public static boolean sendTelemetry(String line, boolean quiet) {
-        boolean delivered = deliver(line);
-        if (delivered) SignalRecorder.INSTANCE.record(Direction.TX, line, System.nanoTime());
-        if (delivered && !quiet) {
-            SerialDebugHud.addLog("TM: " + line);
-            addHistory("TM: " + line);
-        }
-        return delivered;
+        return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.TELEMETRY, quiet, false);
     }
 
     /**
@@ -171,18 +179,44 @@ public final class ConnectionManager {
      * con diez lineas por segundo, pero SI queda anotada en el registro de
      * senales para poder verla en pantalla junto a la respuesta de la placa.
      *
-     * @return true si algun enlace lo entrego
+     * @return true si la cola acepto la linea; el visualizador registra la escritura posterior
      */
     public static boolean sendSignal(String line) {
-        boolean delivered = deliver(line);
-        if (delivered) SignalRecorder.INSTANCE.record(Direction.TX, line, System.nanoTime());
-        return delivered;
+        return sendSignal(line, false);
+    }
+
+    public static boolean sendSignal(String line, boolean safetyStop) {
+        return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.SIGNAL, true, safetyStop);
+    }
+
+    public static void discardPending(String key) { OUTBOX.discard(key); }
+
+    private static void drainOutput() {
+        try {
+            if (!isAnyConnected()) { OUTBOX.clear(); return; }
+            int epoch = linkEpoch;
+            HardwareOutbox.Line line = OUTBOX.poll();
+            if (line == null || !deliver(line.text(), epoch)) return;
+            SignalRecorder.INSTANCE.record(Direction.TX, line.text(), System.nanoTime());
+            if (!line.quiet()) {
+                String prefix = line.kind() == HardwareOutbox.Kind.TELEMETRY ? "TM: " : "TX: ";
+                SerialDebugHud.addLog(prefix + line.text());
+                addHistory(prefix + line.text());
+            }
+        } catch (RuntimeException e) {
+            com.serialcraft.SerialCraft.LOGGER.warn("Error en la cola de salida", e);
+        }
     }
 
     private static boolean deliver(String message) {
+        return deliver(message, linkEpoch);
+    }
+
+    private static boolean deliver(String message, int epoch) {
+        if (message == null || message.length() > 256 || message.indexOf('\n') >= 0 || message.indexOf('\r') >= 0) return false;
         boolean delivered = false;
         for (BoardLink link : LINKS) {
-            if (link.isConnected()) { link.send(message); delivered = true; }
+            if (link.isConnected()) delivered |= link.send(message, epoch);
         }
         return delivered;
     }
@@ -191,26 +225,14 @@ public final class ConnectionManager {
     //  ENTRADA: placa -> Minecraft
     // ══════════════════════════════════════════════════════════════════════
 
-    /**
-     * Se invoca desde los hilos lectores de SerialHandler y WifiHandler.
-     *
-     * Dos filtros antes de gastar un paquete de red:
-     *
-     *  1. DEDUPLICACION. Una placa que reporta un sensor estable manda el mismo
-     *     valor cientos de veces por segundo. Reenviar todas es puro
-     *     desperdicio: el servidor las procesaria y descubriria que nada
-     *     cambio. El original no filtraba nada.
-     *
-     *  2. INTERVALO MINIMO. Un tick de Minecraft dura 50 ms; enviar mas de una
-     *     actualizacion por tick no puede producir ningun efecto observable,
-     *     solo carga.
-     */
-    public static void onMessageReceived(String message) {
+    /** Reader threads record every sample; only valid IO is queued for the client tick. */
+    static void onMessageReceived(BoardLink source, String message) {
+        if (message == null || message.length() > 256 || message.startsWith(BoardHello.KEY_PREFIX)) return;
         SerialDebugHud.addLog("RX: " + message);
         addHistory("RX: " + message);
 
         // Identificacion: se queda en el cliente, nunca llega al servidor.
-        if (BoardHello.isHello(message)) { onHello(message); return; }
+        if (BoardHello.isHello(message)) { onHello(source, message); return; }
         if (announced.confidence() != BoardIdentity.Confidence.DECLARED) {
             BannerSniffer.identify(message).ifPresent(id -> announced = BoardIdentity.best(announced, id));
         }
@@ -220,26 +242,7 @@ public final class ConnectionManager {
         // realmente envio, no lo que sobrevivio al filtro.
         SignalRecorder.INSTANCE.record(Direction.RX, message, System.nanoTime());
 
-        long now = System.nanoTime();
-        synchronized (ConnectionManager.class) {
-            if (message.equals(lastSentMessage) && now - lastSentNanos < MIN_SEND_INTERVAL_NANOS) {
-                return;
-            }
-            if (now - lastSentNanos < MIN_SEND_INTERVAL_NANOS) return;
-            lastSentNanos   = now;
-            lastSentMessage = message;
-        }
-
-        Minecraft client = Minecraft.getInstance();
-        if (client.level == null) return;
-
-        // El envio DEBE ocurrir en el hilo del cliente: ClientPlayNetworking
-        // no es seguro desde un hilo lector arbitrario.
-        client.execute(() -> {
-            if (ClientPlayNetworking.canSend(SerialInputPayload.TYPE)) {
-                ClientPlayNetworking.send(new SerialInputPayload(message));
-            }
-        });
+        SignalProtocol.parse(message).ifPresent(sample -> INBOX.offer(sample, System.nanoTime()));
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -247,8 +250,12 @@ public final class ConnectionManager {
     public static void disconnectAll() {
         for (BoardLink link : LINKS) link.disconnect();
         synchronized (ConnectionManager.class) {
-            lastSentMessage = null;
-            lastSentNanos   = 0L;
+            INBOX.clear();
+            OUTBOX.clear();
+            reportedEpoch = -1;
+            reportedConnected = false;
+            reportedDimension = "";
+            bootResyncAt = 0;
             announced = BoardIdentity.unknown();
             linkEpoch++;
         }
@@ -282,4 +289,35 @@ public final class ConnectionManager {
     public static void clearHistory() {
         synchronized (HISTORY) { HISTORY.clear(); }
     }
+
+    /** Hardware session changes precede IO data. 2 lines/tick respects the server's 40/s budget. */
+    public static void tick(Minecraft client) {
+        if (client.level == null || !ClientPlayNetworking.canSend(HardwareLinkPayload.TYPE)) return;
+        boolean connected = isAnyConnected();
+        String dimension = client.level.dimension().identifier().toString();
+        boolean dimensionChanged = !dimension.equals(reportedDimension);
+        boolean previousDimension = !reportedDimension.isEmpty();
+        if (reportedEpoch != linkEpoch || reportedConnected != connected || dimensionChanged) {
+            ClientPlayNetworking.send(new HardwareLinkPayload(connected, false));
+            reportedEpoch = linkEpoch;
+            reportedConnected = connected;
+            reportedDimension = dimension;
+            bootResyncAt = connected && SERIAL.isConnected() ? System.nanoTime() + 2_000_000_000L : 0;
+            if (!connected || dimensionChanged && previousDimension) INBOX.clear();
+        }
+        if (connected && bootResyncAt != 0 && System.nanoTime() >= bootResyncAt) {
+            ClientPlayNetworking.send(new HardwareLinkPayload(true, true));
+            bootResyncAt = 0;
+        }
+        if (!connected || !ClientPlayNetworking.canSend(SerialInputPayload.TYPE)) return;
+        for (int i = 0; i < 2; i++) {
+            var sample = INBOX.poll();
+            if (sample == null) break;
+            ClientPlayNetworking.send(new SerialInputPayload(sample.channel() + ':' + sample.value()));
+        }
+    }
+
+    public static int sessionEpoch() { return linkEpoch; }
+    public static long droppedInputs() { return INBOX.dropped(); }
+    public static long droppedOutputs() { return OUTBOX.dropped(); }
 }

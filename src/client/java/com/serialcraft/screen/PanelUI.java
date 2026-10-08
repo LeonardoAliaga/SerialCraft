@@ -9,6 +9,8 @@ import com.serialcraft.client.ui.pages.Page;
 import com.serialcraft.client.ui.pages.VisualizePage;
 import com.serialcraft.client.ui.pages.WelcomePage;
 import com.serialcraft.connection.ConnectionManager;
+import com.serialcraft.connection.ConnectionResult;
+import com.serialcraft.network.ConfigResultPayload;
 import com.serialcraft.connection.WifiHandler;
 import com.serialcraft.network.BoardInfo;
 import com.serialcraft.network.ConnectorPayload;
@@ -25,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Pantalla principal de la Laptop.
@@ -37,7 +40,7 @@ public class PanelUI extends Screen {
 
     /** Descripcion del dispositivo que el jugador eligio conectar. */
     public record DeviceInfo(String name, String address, String type,
-                             String platform, Runnable connectAction) {
+                             String platform, Supplier<ConnectionResult> connectAction) {
         public boolean isWifi() { return "WIFI".equals(type); }
     }
 
@@ -52,12 +55,12 @@ public class PanelUI extends Screen {
                         Component.translatable("gui.serialcraft.welcome.wifi_board", ip).getString(),
                         ip + ":" + WifiHandler.DEFAULT_PORT,
                         "WIFI", "Wi-Fi",
-                        () -> {});
+                        () -> new ConnectionResult(ConnectionManager.getWifi().isConnected(), Component.empty()));
             } else if (ConnectionManager.getSerial().isConnected()) {
                 String port = ConnectionManager.getSerial().getPortName();
                 selectedDevice = new DeviceInfo(
                         port, port, "USB", "Serial",
-                        () -> {});
+                        () -> new ConnectionResult(ConnectionManager.getSerial().isConnected(), Component.empty()));
             }
         }
         return selectedDevice;
@@ -243,7 +246,9 @@ public class PanelUI extends Screen {
     }
 
     public void connectDevice(DeviceInfo device) {
-        device.connectAction().run();
+        ConnectionResult result = device.connectAction().get();
+        if (minecraft.player != null) minecraft.player.sendSystemMessage(result.message());
+        if (!result.connected() || !ConnectionManager.isAnyConnected()) return;
         selectedDevice  = device;
         this.appState   = AppState.DASHBOARD;
         this.currentTab = Tab.HOME;
@@ -278,4 +283,6 @@ public class PanelUI extends Screen {
     public void updateBoardList(List<BoardInfo> boards) {
         boardsPage.acceptBoardList(boards);
     }
+
+    public void updateConfigResult(ConfigResultPayload result) { boardsPage.acceptConfigResult(result); }
 }

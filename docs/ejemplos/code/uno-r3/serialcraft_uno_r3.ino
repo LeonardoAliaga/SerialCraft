@@ -40,9 +40,11 @@ const int   PWM_MAX       = 255;
 const int   POT_HYSTERESIS = 2;      // ignora ruido electrico del pot
 const int   BUFFER_LIMIT  = 48;      // el mod corta lineas de mas de 256
 const unsigned long LOOP_DELAY_MS = 30;  // ~33 msg/s < limite de 40/s del mod
+const unsigned long POT_RESEND_MS = 1000; // recuperar RX tras recargar chunks
 
 // ── Estado ───────────────────────────────────────────────────────────
 int    lastPotValue = -1;
+unsigned long lastPotSent = 0;
 String inputBuffer  = "";
 
 void setup() {
@@ -69,13 +71,14 @@ void readPotentiometer() {
   int raw      = analogRead(POT_PIN);
   int potValue = map(raw, 0, ADC_MAX, 0, PWM_MAX);
 
-  // Enviar solo si cambio de verdad. Sin esta comprobacion el ruido del
-  // potenciometro genera un paquete por vuelta de loop().
-  if (abs(potValue - lastPotValue) >= POT_HYSTERESIS) {
+  // Primera muestra (tambien cero), cambios reales y una instantanea por segundo.
+  if (lastPotValue < 0 || abs(potValue - lastPotValue) >= POT_HYSTERESIS
+      || millis() - lastPotSent >= POT_RESEND_MS) {
     Serial.print(BLOCK_ID_POT);
     Serial.print(':');
     Serial.println(potValue);   // println: el mod ignora lineas sin '\n'
     lastPotValue = potValue;
+    lastPotSent = millis();
   }
 }
 

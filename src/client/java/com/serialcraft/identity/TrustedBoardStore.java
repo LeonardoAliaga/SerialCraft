@@ -38,7 +38,9 @@ import java.util.Properties;
  */
 public final class TrustedBoardStore {
 
-    public record Entry(String uid, String name, String secret, String lastIp, long lastSeen) {}
+    public record Entry(String uid, String name, String secret, String lastIp, long lastSeen) {
+        @Override public String toString() { return "Entry[uid=" + uid + ", name=" + name + ", secret=<redacted>]"; }
+    }
 
     private final Path file;
     private final Map<String, Entry> boards = new LinkedHashMap<>();
@@ -80,15 +82,19 @@ public final class TrustedBoardStore {
         if (!BoardHello.isValidUid(uid)) throw new IllegalArgumentException("uid invalido: " + uid);
         if (secret == null || secret.length() < 16) throw new IllegalArgumentException("secreto demasiado corto");
         String cleanName = BoardHello.sanitizeModel(name);
-        boards.put(uid, new Entry(uid, cleanName.isEmpty() ? uid : cleanName, secret,
+        Entry previous = boards.put(uid, new Entry(uid, cleanName.isEmpty() ? uid : cleanName, secret,
                 ip == null ? "" : ip, nowSeconds()));
-        return save();
+        if (save()) return true;
+        if (previous == null) boards.remove(uid); else boards.put(uid, previous);
+        return false;
     }
 
     public synchronized boolean forget(String uid) {
-        boolean removed = boards.remove(uid) != null;
-        if (removed) save();
-        return removed;
+        Entry previous = boards.remove(uid);
+        if (previous == null) return false;
+        if (save()) return true;
+        boards.put(uid, previous);
+        return false;
     }
 
     /** Actualiza IP y fecha de la ultima conexion (y el nombre, si cambio). */
@@ -153,13 +159,17 @@ public final class TrustedBoardStore {
             Path parent = file.getParent();
             if (parent != null) Files.createDirectories(parent);
 
+            // Apply permissions before the first secret byte is written.
+            if (!Files.exists(tmp)) {
+                try { Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"))); }
+                catch (UnsupportedOperationException e) { Files.createFile(tmp); }
+            }
+            try { Files.setPosixFilePermissions(tmp, PosixFilePermissions.fromString("rw-------")); }
+            catch (UnsupportedOperationException ignored) { /* Windows inherits the config directory ACL. */ }
+
             try (Writer w = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8)) {
                 p.store(w, "SerialCraft - placas recordadas. NO compartas este fichero: contiene claves.");
             }
-            try {   // solo el dueno; en Windows no hay POSIX y se ignora
-                Files.setPosixFilePermissions(tmp, PosixFilePermissions.fromString("rw-------"));
-            } catch (UnsupportedOperationException | IOException ignored) {}
-
             try {
                 Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             } catch (AtomicMoveNotSupportedException e) {

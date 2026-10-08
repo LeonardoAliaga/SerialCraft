@@ -52,6 +52,25 @@ dependencies {
 	include 'org.jmdns:jmdns:3.5.8'
 
 	implementation include("me.lucko:fabric-permissions-api:0.7.0")
+	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+}
+
+sourceSets.test.compileClasspath += sourceSets.client.output
+sourceSets.test.runtimeClasspath += sourceSets.client.output
+
+test {
+	useJUnitPlatform()
+}
+
+// Optional world tests. EULA acceptance belongs to whoever runs the test server.
+if (project.hasProperty('ioGameTests')) {
+	fabricApi.configureTests {
+		createSourceSet = true
+		modId = 'serialcraft-io-tests'
+		enableGameTests = true
+		enableClientGameTests = false
+		eula = false
+	}
 }
 
 processResources {
@@ -71,6 +90,11 @@ java {
 
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
+}
+
+// Only orders explicitly requested datagen; a normal build does not start Minecraft.
+tasks.named('sourcesJar') {
+	mustRunAfter tasks.named('runDatagen')
 }
 
 jar {

@@ -23,7 +23,8 @@ public record BoardInfo(
         IoMode     mode,
         SignalType signalType,
         LogicMode  logicMode,
-        boolean    enabled
+        boolean    enabled,
+        IoSnapshot snapshot
 ) {
     public static final int MAX_ID_LENGTH   = 32;
     public static final int MAX_DATA_LENGTH = 32;
@@ -36,6 +37,7 @@ public record BoardInfo(
             SignalType.STREAM_CODEC,                  BoardInfo::signalType,
             LogicMode.STREAM_CODEC,                   BoardInfo::logicMode,
             ByteBufCodecs.BOOL,                       BoardInfo::enabled,
+            IoSnapshot.CODEC,                        BoardInfo::snapshot,
             BoardInfo::new
     );
 }
