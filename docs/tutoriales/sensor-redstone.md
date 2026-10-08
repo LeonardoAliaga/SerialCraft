@@ -10,6 +10,8 @@ La cadena de datos es **A0 de Arduino → USB → canal pot_val → Módulo de E
 
 ## Materiales y circuito
 
+<!-- SC046_MEDIA:H02 -->
+
 Necesitas Arduino Uno R3, potenciómetro (por ejemplo, de 10 kΩ), cable USB y cables de conexión.
 
 Conecta los extremos del potenciómetro a **5 V** y **GND**, y la patilla central al pin **A0**. La posición del mando modifica la tensión en A0.
@@ -47,6 +49,8 @@ La diferencia de 3 unidades reduce pequeñas oscilaciones. También hay una inst
 
 ## Configurar el Módulo de E/S
 
+<!-- SC046_MEDIA:G02 -->
+
 1. Conecta Arduino por USB a **115200 baudios**.
 2. Coloca el Módulo de E/S y define el canal `pot_val`.
 3. Selecciona dirección **Hardware → Minecraft**: los datos entran desde el hardware a Minecraft.
@@ -57,6 +61,8 @@ La diferencia de 3 unidades reduce pequeñas oscilaciones. También hay una inst
 En versiones antiguas, el modo global se llamaba INPUT. En el editor actual, **Hardware → Minecraft** describe ese mismo flujo. La cara roja OUTPUT indica una salida de redstone, no la dirección del mensaje.
 
 ## ¿Qué valor esperar?
+
+<!-- SC046_MEDIA:G07 -->
 
 La conversión teórica aproxima `valorRedstone = valorCable × 15 / 255` y se ajusta a la discretización del mod.
 
@@ -70,6 +76,10 @@ La conversión teórica aproxima `valorRedstone = valorCable × 15 / 255` y se a
 No necesitas que el potenciómetro marque exactamente la mitad: importan las lecturas reales y su conversión.
 
 ## Cómo comprobarlo
+
+<!-- SC046_MEDIA:H05 -->
+
+<!-- SC046_MEDIA:V02 -->
 
 Gira lentamente el potenciómetro. Deberías observar que la intensidad cambia por escalones en el juego: Arduino tiene mucha más resolución en la lectura que Minecraft en la redstone.
 

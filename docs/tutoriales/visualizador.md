@@ -10,6 +10,8 @@ No es un osciloscopio electrónico de alta velocidad: registra muestras del prot
 
 ## Tres herramientas
 
+<!-- SC046_MEDIA:G15 -->
+
 | Herramienta | Para qué sirve | Un ejemplo |
 | --- | --- | --- |
 | Línea de tiempo | Comparar varios canales en un mismo intervalo | Potenciómetro y hambre del jugador |
@@ -24,6 +26,8 @@ No es un osciloscopio electrónico de alta velocidad: registra muestras del prot
 
 ## Un primer experimento
 
+<!-- SC046_MEDIA:G16 -->
+
 1. Conecta Arduino y carga el ejemplo del potenciómetro.
 2. Configura el canal `pot_val` como Hardware → Minecraft.
 3. Abre **Visualizar** y selecciona el canal.
@@ -33,6 +37,10 @@ No es un osciloscopio electrónico de alta velocidad: registra muestras del prot
 Las gráficas no deberían inventar puntos intermedios como si fueran muestras reales. Una línea entre muestras sirve para lectura visual, no para afirmar qué ocurrió entre ambos tiempos.
 
 ## Probar una salida con el generador
+
+<!-- SC046_MEDIA:G17 -->
+
+<!-- SC046_MEDIA:V05 -->
 
 El generador puede enviar patrones como rampa, triángulo, cuadrada, seno o escalón. Resulta útil para probar un LED de PWM sin crear una redstone variable dentro de Minecraft.
 

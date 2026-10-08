@@ -10,6 +10,8 @@ Esta guía corresponde al protocolo de la versión en desarrollo **0.4.6-beta**.
 
 ## El método de cinco capas
 
+<!-- SC046_MEDIA:I02 -->
+
 | Capa | Pregunta que debes responder | Prueba sencilla |
 | --- | --- | --- |
 | Hardware | ¿La placa ejecuta el programa? | LED de inicio, salida serial de diagnóstico |
@@ -42,6 +44,8 @@ Un bloque en dirección **Hardware → Minecraft** consume datos del hardware. U
 
 ## Problema 3: el valor llega, pero no se enciende la redstone
 
+<!-- SC046_MEDIA:G06 -->
+
 Comprueba que una cara del Módulo de E/S esté configurada como **salida roja de redstone**, orientada hacia el circuito. El modo global INPUT no configura automáticamente todas las caras.
 
 Para probar niveles intermedios, selecciona ANALOG. Para un interruptor simple, DIGITAL.
@@ -53,6 +57,8 @@ Comprueba que el ESP32 llegue realmente al servidor en la IP del ordenador y el 
 No publiques el token en una captura para pedir ayuda. Evita exponer ese puerto fuera de la red local.
 
 ## Problema 5: algunas muestras desaparecen
+
+<!-- SC046_MEDIA:G18 -->
 
 No envíes un `Serial.println` en cada iteración sin control. Agrupa cambios de estado, aplica un umbral pequeño a los sensores ruidosos y limita la frecuencia del firmware. La red y el servidor tienen mecanismos de protección que pueden descartar tráfico excesivo.
 

@@ -8,6 +8,8 @@ A partir del commit de estabilización de **SerialCraft 0.4.6-beta**, la rama `t
 
 ## Antes de ejecutar
 
+<!-- SC046_MEDIA:D01 -->
+
 Necesitas un clon local del repositorio, la rama `test`, un **JDK 25** y acceso a Internet para descargar dependencias la primera vez.
 
 Comprueba la versión activa:
@@ -47,6 +49,8 @@ El resultado se guarda normalmente en `build/reports/tests/test/index.html`. Si 
 
 ### 2. Compilar y empaquetar
 
+<!-- SC046_MEDIA:D02 -->
+
 ~~~powershell
 .\gradlew.bat build
 ~~~
@@ -56,6 +60,8 @@ Este comando ejecuta las tareas necesarias para construir el mod, incluidas las 
 Si se rompe una clase o un recurso, puede fallar **antes** de crear el JAR. Que pase el build no demuestra por sí solo que Arduino, ESP32 o la interfaz gráfica funcionen correctamente.
 
 ### 3. GameTests: comportamiento dentro de Minecraft
+
+<!-- SC046_MEDIA:D03 -->
 
 ~~~powershell
 .\gradlew.bat -PioGameTests runGameTest
@@ -82,6 +88,10 @@ Este es el patrón combinado usado en el informe técnico de 0.4.6.
 :::
 
 ## ¿Qué es GitHub Actions «Build and test»?
+
+<!-- SC046_MEDIA:D04 -->
+
+<!-- SC046_MEDIA:V07 -->
 
 El archivo `.github/workflows/build.yml` configura un ordenador temporal de GitHub con **Java 25** y Gradle. Se ejecuta automáticamente cuando haces un push a `test` o abres un Pull Request hacia `test`.
 

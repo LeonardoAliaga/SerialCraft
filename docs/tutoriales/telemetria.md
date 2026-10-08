@@ -10,6 +10,8 @@ La diferencia clave con el Módulo de E/S es que la telemetría usa **canales re
 
 ## Un ejemplo de mensaje
 
+<!-- SC046_MEDIA:G14 -->
+
 ~~~text
 mc_health:18
 mc_hunger:14
@@ -31,6 +33,10 @@ Cada línea representa un entero. Estos ejemplos ilustran el formato, no son lec
 La [referencia completa de telemetría](/protocol#_11-telemetria-del-juego-minecraft-➔-hardware) incluye otros canales, como nivel de experiencia, aire y saturación.
 
 ## Cómo activarla
+
+<!-- SC046_MEDIA:G13 -->
+
+<!-- SC046_MEDIA:V06 -->
 
 1. Conecta la placa mediante USB o TCP local.
 2. Abre la Laptop y entra en **Eventos**.

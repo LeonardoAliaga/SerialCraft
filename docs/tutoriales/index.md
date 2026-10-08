@@ -12,6 +12,8 @@ Los tutoriales están escritos para la versión en desarrollo **0.4.6-beta (rama
 
 ## Ruta recomendada para principiantes
 
+<!-- SC046_MEDIA:H01 -->
+
 | Orden | Tutorial | Lo que aprendes |
 | --- | --- | --- |
 | 1 | [Entender el Módulo de E/S](/tutoriales/bloque-io) | Direcciones, canales y lados de redstone |

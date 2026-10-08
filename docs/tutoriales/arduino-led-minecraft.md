@@ -19,6 +19,8 @@ Utiliza una resistencia con el LED: conectarlo directamente a un pin puede daña
 
 ## 1. Cableado
 
+<!-- SC046_MEDIA:H02 -->
+
 Conecta el pin **D9** a la resistencia; el otro extremo de la resistencia al ánodo (patilla larga) del LED y el cátodo (patilla corta) a **GND**.
 
 D9 permite PWM en Arduino Uno R3, útil si luego deseas variar el brillo. No conectes cargas de alta corriente o una lámpara doméstica directamente.
@@ -63,6 +65,8 @@ Este es un ejemplo didáctico. El sketch completo de referencia, con más contro
 
 ## 3. Configuración en Minecraft
 
+<!-- SC046_MEDIA:G03 -->
+
 1. Instala la versión del mod compatible y abre un mundo.
 2. Coloca el Bloque Conector, prepara la conexión USB y selecciona el puerto de Arduino.
 3. Asegúrate de usar **115200 baudios**, igual que `Serial.begin(115200)`.
@@ -76,6 +80,12 @@ La configuración del bloque y de la conexión puede distribuirse entre el Bloqu
 :::
 
 ## 4. Resultado esperado
+
+<!-- SC046_MEDIA:H03 -->
+
+<!-- SC046_MEDIA:H04 -->
+
+<!-- SC046_MEDIA:V01 -->
 
 | Redstone recibida | Digital, mensaje USB | Analógico, mensaje USB |
 | ---: | --- | --- |

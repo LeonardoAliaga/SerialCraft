@@ -10,6 +10,10 @@ El módulo tiene un nombre para identificarlo y un **canal** como `pot_val` o `l
 
 ## Dos tipos de dirección
 
+<!-- SC046_MEDIA:G01 -->
+
+<!-- SC046_MEDIA:G02 -->
+
 | Dirección del módulo | Entrada verde | Salida roja |
 | --- | --- | --- |
 | **Hardware → Minecraft** | Condición lógica opcional | Emite redstone al mundo |
@@ -20,6 +24,10 @@ Una señal física que entra al juego requiere una **cara roja** hacia el circui
 El editor se abre con clic derecho sobre la base y funciona sin hardware conectado. Configura dirección, canal, señal digital o analógica, compuerta y terminales desde **Conectores y diagnóstico**.
 
 ## Conectores
+
+<!-- SC046_MEDIA:G04 -->
+
+<!-- SC046_MEDIA:G05 -->
 
 Existen cinco: norte, sur, este, oeste y **abajo**. No hay conector superior. El terminal de abajo se selecciona desde la superficie de la placa, cerca del borde sur, pero transmite hacia el vecino inferior.
 
@@ -40,6 +48,8 @@ Con cero entradas verdes, el dato recibido se emite directamente.
 
 ## Minecraft → Hardware: LED
 
+<!-- SC046_MEDIA:G03 -->
+
 1. Canal `led_verde`, dirección **Minecraft → Hardware**.
 2. Configura una cara de entrada verde frente a una palanca.
 3. En Digital, encendido envía `led_verde:255\n` y apagado envía `led_verde:0\n`.
@@ -48,6 +58,12 @@ Con cero entradas verdes, el dato recibido se emite directamente.
 En este modo el módulo no energiza ninguna cara roja. Sin entradas verdes transmite cero.
 
 ## OR, AND y XOR
+
+<!-- SC046_MEDIA:G08 -->
+
+<!-- SC046_MEDIA:G09 -->
+
+<!-- SC046_MEDIA:G10 -->
 
 | Compuerta | Cómo combina entradas verdes | Con 2, 7 y 12 |
 | --- | --- | --- |
@@ -58,6 +74,10 @@ En este modo el módulo no energiza ninguna cara roja. Sin entradas verdes trans
 Con dos entradas activas, 2 y 7, XOR produce 0. **No son operaciones bit a bit.** Al transmitir al hardware las compuertas calculan el valor. Al recibir desde hardware funcionan como condición sin cambiar la magnitud del último valor recibido.
 
 ## Diagnóstico y sesiones
+
+<!-- SC046_MEDIA:G06 -->
+
+<!-- SC046_MEDIA:V03 -->
 
 La pantalla distingue **RX** (último dato recibido), **TX** (último valor remitido al cliente), **Lectura** (redstone combinada) y **Salida** (redstone emitida). TX **no es una confirmación física del actuador**. `-1` indica ausencia de muestra o envío.
 

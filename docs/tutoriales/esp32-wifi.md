@@ -10,6 +10,8 @@ En SerialCraft **0.4.6-beta (rama test)**, Minecraft actúa como **servidor TCP*
 
 ## Requisitos
 
+<!-- SC046_MEDIA:H06 -->
+
 - ESP32 con soporte de Wi-Fi.
 - PC que ejecuta Minecraft y ESP32 en una red local compatible.
 - SerialCraft y Fabric API de la versión en desarrollo.
@@ -18,6 +20,8 @@ En SerialCraft **0.4.6-beta (rama test)**, Minecraft actúa como **servidor TCP*
 Primero confirma que ambos dispositivos pueden comunicarse dentro de la red local. Las redes de invitados o redes escolares con aislamiento de clientes pueden impedirlo.
 
 ## 1. Preparar Minecraft
+
+<!-- SC046_MEDIA:G12 -->
 
 Abre la Laptop del mod y localiza la función de servidor Wi-Fi. Anota:
 
@@ -49,6 +53,8 @@ No copies credenciales reales al repositorio. El archivo de ejemplo debe permane
 En Minecraft, prepara un Módulo de E/S INPUT para el canal `pot_val` con una cara OUTPUT de redstone y, si deseas el camino inverso, otro Módulo de E/S OUTPUT para `led_verde` con una cara INPUT.
 
 ## 4. Diferenciar cuatro problemas posibles
+
+<!-- SC046_MEDIA:V04 -->
 
 | Síntoma | Qué revisar |
 | --- | --- |

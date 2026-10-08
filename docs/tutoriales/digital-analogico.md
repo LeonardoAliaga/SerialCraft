@@ -28,6 +28,8 @@ En el sentido contrario, cualquier valor positivo recibido en modo DIGITAL se in
 
 ## Qué significa analógico aquí
 
+<!-- SC046_MEDIA:I01 -->
+
 El modo ANALOG conserva niveles intermedios mediante una **representación numérica**. No significa que Minecraft transmita una tensión analógica por USB: sigue enviando texto digital.
 
 Para convertir redstone a valores del cable:
@@ -55,6 +57,10 @@ El redondeo exacto debe consultarse en la implementación de la versión usada.
 
 ## PWM no es lo mismo que una salida analógica continua
 
+<!-- SC046_MEDIA:H03 -->
+
+<!-- SC046_MEDIA:H04 -->
+
 En un Arduino Uno, `analogWrite(D9, 128)` normalmente genera **PWM**: una serie rápida de pulsos cuyo ciclo de trabajo aproxima un brillo del 50 %. No produce necesariamente una tensión continua estable de media escala.
 
 Por eso PWM sirve para regular la intensidad aparente de muchos LEDs, pero no debe confundirse con un DAC ni conectarse directamente a actuadores de potencia.
@@ -69,6 +75,8 @@ Serial.println(wireValue);
 ~~~
 
 ## Una experiencia sencilla
+
+<!-- SC046_MEDIA:G07 -->
 
 1. Configura un Módulo de E/S INPUT con canal `pot_val`.
 2. Usa el sketch del [potenciómetro](/tutoriales/sensor-redstone).
