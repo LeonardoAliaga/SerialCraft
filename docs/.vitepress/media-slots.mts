@@ -1,5 +1,4 @@
 import { existsSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
 // Un solo contrato para las capturas planeadas en Notion y en los tutoriales.
@@ -45,7 +44,11 @@ export const MEDIA_SLOTS: Record<string, MediaEntry> = {
   V06: { kind: 'video', file: "sc046-v06-telemetria.mp4", alt: "Telemetría mc_ del juego recibida por un microcontrolador", caption: "Demo de estado de Minecraft transmitido al hardware." },
   V07: { kind: 'video', file: "sc046-v07-pruebas.mp4", alt: "Comandos Gradle y pruebas automatizadas de SerialCraft", caption: "Compilación, JUnit, GameTests y GitHub Actions de un commit específico." },
 }
-const mediaRoot = fileURLToPath(new URL('../public/media/0.4.6/', import.meta.url))
+// VitePress puede empaquetar el config en una ruta temporal: no depender de import.meta.url.
+const mediaRoots = [
+  join(process.cwd(), 'public', 'media', '0.4.6'),
+  join(process.cwd(), 'docs', 'public', 'media', '0.4.6')
+]
 const safe = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export function registerMediaSlots(md: any) {
@@ -56,7 +59,7 @@ export function registerMediaSlots(md: any) {
       if (!match) continue
       const entry = MEDIA_SLOTS[match[1]]
       if (!entry) throw new Error('Unknown SerialCraft media slot: ' + match[1])
-      if (!existsSync(join(mediaRoot, entry.file))) {
+      if (!mediaRoots.some(root => existsSync(join(root, entry.file)))) {
         token.content = ''
         continue
       }

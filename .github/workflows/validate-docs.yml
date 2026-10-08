@@ -28,6 +28,19 @@ jobs:
       - name: Install VitePress dependencies
         working-directory: docs
         run: npm ci
-      - name: Build static website (no deployment)
+      - name: Verify media slots with a temporary fixture (never deployed)
         working-directory: docs
-        run: npm run docs:build
+        run: |
+          # Upload-only contract: H02 must appear in Spanish and English when present.
+          touch public/media/0.4.6/sc046-h02-arduino-cableado.webp
+          npm run docs:build
+          grep -q 'sc046-h02-arduino-cableado.webp' .vitepress/dist/tutoriales/arduino-led-minecraft.html
+          grep -q 'sc046-h02-arduino-cableado.webp' .vitepress/dist/en/tutorials/arduino-led.html
+          rm public/media/0.4.6/sc046-h02-arduino-cableado.webp
+          # After removal, a fresh production build should have no broken image references.
+          npm run docs:build
+          if grep -q 'sc046-h02-arduino-cableado.webp' .vitepress/dist/tutoriales/arduino-led-minecraft.html; then
+            echo 'ERROR: missing media remains in generated page' >&2
+            exit 1
+          fi
+
