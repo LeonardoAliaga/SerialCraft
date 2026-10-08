@@ -66,7 +66,7 @@ Este es un ejemplo didáctico. El sketch completo de referencia, con más contro
 1. Instala la versión del mod compatible y abre un mundo.
 2. Coloca el Bloque Conector, prepara la conexión USB y selecciona el puerto de Arduino.
 3. Asegúrate de usar **115200 baudios**, igual que `Serial.begin(115200)`.
-4. Coloca un Módulo de E/S, abre el editor de la base y asigna `Target Data = led_verde`.
+4. Coloca un Módulo de E/S, abre el editor de la base y asigna el canal `led_verde`.
 5. Selecciona **Minecraft → Hardware** como dirección del módulo (Minecraft envía al hardware).
 6. Selecciona Digital o Analógico y configura una **cara verde de entrada de redstone**.
 7. Conecta una palanca mediante el circuito de redstone a esa cara.
@@ -89,7 +89,7 @@ En DIGITAL el LED se comporta como interruptor. En ANALOG, una fuente de redston
 
 **No hay conexión USB:** comprueba que el cable transmita datos, el puerto sea correcto y Arduino IDE no mantenga abierto el monitor serial al mismo tiempo.
 
-**Hay conexión, pero no llega el comando:** compara `led_verde` letra por letra, el modo OUTPUT y la cara de entrada verde.
+**Hay conexión, pero no llega el comando:** compara `led_verde` letra por letra, la dirección Minecraft → Hardware y la cara de entrada verde.
 
 **Llega el comando, pero no se ilumina:** comprueba polaridad del LED, GND, resistencia y uso del pin D9. Un ejemplo que espera `1` en vez de `255` también fallará.
 

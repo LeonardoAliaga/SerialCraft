@@ -153,6 +153,10 @@ export default defineConfig({
       title: 'SerialCraft Guide',
       description: 'Connect Arduino with Minecraft',
       themeConfig: {
+        footer: {
+          message: '<a href="/en/about">About</a> · <a href="/en/contact">Contact</a> · <a href="/en/privacy">Privacy</a>',
+          copyright: 'SerialCraft · Independent educational project'
+        },
         nav: [
           { text: 'Home', link: '/en/' },
           { text: 'Guide', link: '/en/guide' },

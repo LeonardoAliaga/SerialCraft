@@ -4,13 +4,13 @@ description: Learn Minecraft redstone and physical electronics with Arduino and 
 ---
 # Tutorials: Minecraft meets electronics
 
-SerialCraft connects real-world microcontrollers to Minecraft Java. These guides explain what each side of that connection does, with concrete examples for the development **0.4.6-beta (test branch)** release.
+SerialCraft connects real-world microcontrollers to Minecraft Java. These guides explain what each side of that connection does, with concrete examples for the **0.4.6-beta (test branch)** development version.
 
 ## Start here
 
 | Topic | Learn |
 | --- | --- |
-| [I/O Module: directions and channels](/en/tutorials/io-block) | INPUT/OUTPUT between hardware and game versus redstone connector directions |
+| [I/O Module: directions and channels](/en/tutorials/io-block) | Distinguish hardware-to-game direction from redstone input and output faces |
 | [Arduino LED tutorial](/en/tutorials/arduino-led) | Drive an LED from a Minecraft redstone lever |
 | [Potentiometer tutorial](/en/tutorials/potentiometer) | Send an analog reading to Minecraft |
 | [Visualizer and signal generator](/en/tutorials/visualizer) | Inspect RX/TX and waveforms |

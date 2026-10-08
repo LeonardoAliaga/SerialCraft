@@ -48,13 +48,13 @@ La diferencia de 3 unidades reduce pequeñas oscilaciones. También hay una inst
 ## Configurar el Módulo de E/S
 
 1. Conecta Arduino por USB a **115200 baudios**.
-2. Coloca el Módulo de E/S y define `Target Data = pot_val`.
+2. Coloca el Módulo de E/S y define el canal `pot_val`.
 3. Selecciona dirección **Hardware → Minecraft**: los datos entran desde el hardware a Minecraft.
 4. Selecciona tipo de señal **ANALOG**.
 5. Configura una **cara roja de salida de redstone**, conectada al circuito que deseas alimentar.
 6. Para observar el resultado, utiliza una línea de polvo de redstone o elementos que respondan a distinta intensidad.
 
-La palabra INPUT del modo global no significa que la cara que emite redstone también tenga que ser INPUT. Son direcciones diferentes.
+En versiones antiguas, el modo global se llamaba INPUT. En el editor actual, **Hardware → Minecraft** describe ese mismo flujo. La cara roja OUTPUT indica una salida de redstone, no la dirección del mensaje.
 
 ## ¿Qué valor esperar?
 
@@ -73,7 +73,7 @@ No necesitas que el potenciómetro marque exactamente la mitad: importan las lec
 
 Gira lentamente el potenciómetro. Deberías observar que la intensidad cambia por escalones en el juego: Arduino tiene mucha más resolución en la lectura que Minecraft en la redstone.
 
-Si solo tienes encendido/apagado, revisa que el bloque esté en **ANALOG** y no DIGITAL. Si el canal no reacciona, comprueba el nombre `pot_val`, el terminador de línea (`Serial.println`) y la cara OUTPUT.
+Si solo tienes encendido/apagado, revisa que el bloque esté en **ANALOG** y no DIGITAL. Si el canal no reacciona, comprueba el nombre `pot_val`, el terminador de línea (`Serial.println`) y la cara roja de salida.
 
 ## Extensiones educativas
 
