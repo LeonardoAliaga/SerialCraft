@@ -58,3 +58,20 @@ Eres libre de estudiar el código, modificarlo o usarlo en tus modpacks.
 
 * **Idiomas Soportados:** English (US), Español (España, Argentina, México).
 * **¿Encontraste un error?** [Repórtalo en GitHub](https://github.com/leonardoaliaga/serialcraft/issues).
+---
+
+## Empieza aprendiendo: tutoriales prácticos
+
+La documentación técnica explica el protocolo, pero los [tutoriales de SerialCraft](/tutoriales/) lo convierten en experimentos que puedes estudiar paso a paso. Esta sección corresponde a **0.4.6-beta (rama de desarrollo)**, Minecraft **26.2** y Java **25**.
+
+- [Módulo de E/S: dirección y conectores](/tutoriales/bloque-io)
+- [Encender un LED físico desde Minecraft](/tutoriales/arduino-led-minecraft)
+- [Controlar redstone con un potenciómetro](/tutoriales/sensor-redstone)
+- [Comprender las señales digitales y analógicas](/tutoriales/digital-analogico)
+- [Conectar ESP32 por Wi-Fi](/tutoriales/esp32-wifi)
+- [Visualizar y generar señales de prueba](/tutoriales/visualizador)
+- [Enviar telemetría y eventos del juego](/tutoriales/telemetria)
+- [Diagnosticar errores](/tutoriales/solucionar-errores)
+- [Aprender a ejecutar las pruebas del mod](/tutoriales/pruebas-automatizadas)
+
+**Más información:** [Acerca de SerialCraft](/acerca-de), [Contacto](/contacto) y [Política de privacidad](/privacidad). Las guías describen resultados esperados y el protocolo documentado, no pruebas físicas realizadas para cada configuración.

@@ -58,3 +58,17 @@ You are free to study the code, modify it, or use it in your modpacks.
 
 * **Supported Languages:** English (US), Spanish (Spain, Argentina, Mexico).
 * **Found a bug?** [Report it on GitHub](https://github.com/leonardoaliaga/serialcraft/issues).
+---
+
+## Learn electronics with Minecraft
+
+The [SerialCraft tutorials](/en/tutorials/) take you from reading a signal to driving a physical circuit. This content follows **0.4.6-beta (development branch)**, Minecraft **26.2** and Java **25**.
+
+- [Understand the I/O Module](/en/tutorials/io-block)
+- [Drive an Arduino LED from Minecraft](/en/tutorials/arduino-led)
+- [Use an Arduino potentiometer to control redstone](/en/tutorials/potentiometer)
+- [Visualize signal traces and generate test patterns](/en/tutorials/visualizer)
+- [Use game telemetry](/en/tutorials/telemetry)
+- [Run automated tests](/en/tutorials/testing)
+
+**Project information:** [About](/en/about) · [Contact](/en/contact) · [Privacy](/en/privacy). Tutorials describe expected behavior; actual physical-hardware checks still matter.

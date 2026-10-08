@@ -2,6 +2,8 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   // Configuración compartida
+  sitemap: { hostname: 'https://serialcraft.xyz' },
+  lastUpdated: true,
   title: "SerialCraft",
   description: "Arduino to Minecraft Bridge",
   base: "/",
@@ -38,11 +40,17 @@ export default defineConfig({
       title: 'Guía SerialCraft',
       description: 'Conecta Arduino con Minecraft',
       themeConfig: {
+        footer: {
+          message: '<a href="/acerca-de">Acerca de</a> · <a href="/contacto">Contacto</a> · <a href="/privacidad">Privacidad</a>',
+          copyright: 'SerialCraft · Proyecto educativo independiente'
+        },
         nav: [
           { text: 'Inicio', link: '/' },
           { text: 'Guía', link: '/guide' },
           { text: 'Referencia', link: '/protocol' },
           { text: 'Ejemplos', link: '/ejemplos/' },
+          { text: 'Tutoriales', link: '/tutoriales/' },
+          { text: 'Acerca de', link: '/acerca-de' },
           // Menú Versiones (Español)
           {
             text: 'v0.4.6 (Beta)',
@@ -85,6 +93,21 @@ export default defineConfig({
             }
           ],
           '/': [
+            {
+              text: 'Aprende con SerialCraft',
+              items: [
+                { text: 'Todos los tutoriales', link: '/tutoriales/' },
+                { text: 'Módulo de E/S', link: '/tutoriales/bloque-io' },
+                { text: 'LED con Arduino', link: '/tutoriales/arduino-led-minecraft' },
+                { text: 'Potenciómetro y redstone', link: '/tutoriales/sensor-redstone' },
+                { text: 'Digital y analógico', link: '/tutoriales/digital-analogico' },
+                { text: 'ESP32 y Wi-Fi', link: '/tutoriales/esp32-wifi' },
+                { text: 'Visualizador', link: '/tutoriales/visualizador' },
+                { text: 'Telemetría', link: '/tutoriales/telemetria' },
+                { text: 'Solución de problemas', link: '/tutoriales/solucionar-errores' },
+                { text: 'Pruebas automatizadas', link: '/tutoriales/pruebas-automatizadas' }
+              ]
+            },
             {
               text: 'Introducción',
               items: [
@@ -135,6 +158,8 @@ export default defineConfig({
           { text: 'Guide', link: '/en/guide' },
           { text: 'Reference', link: '/en/protocol' },
           { text: 'Examples', link: '/en/examples/' },
+          { text: 'Tutorials', link: '/en/tutorials/' },
+          { text: 'About', link: '/en/about' },
           // Version Menu (English)
           {
             text: 'v0.4.6 (Beta)',
@@ -177,6 +202,18 @@ export default defineConfig({
             }
           ],
           '/en/': [
+            {
+              text: 'Learn with SerialCraft',
+              items: [
+                { text: 'All tutorials', link: '/en/tutorials/' },
+                { text: 'I/O Module', link: '/en/tutorials/io-block' },
+                { text: 'Arduino LED', link: '/en/tutorials/arduino-led' },
+                { text: 'Potentiometer', link: '/en/tutorials/potentiometer' },
+                { text: 'Visualizer', link: '/en/tutorials/visualizer' },
+                { text: 'Telemetry', link: '/en/tutorials/telemetry' },
+                { text: 'Automated tests', link: '/en/tutorials/testing' }
+              ]
+            },
             {
               text: 'Getting Started',
               items: [
