@@ -44,3 +44,12 @@ jobs:
             exit 1
           fi
 
+          # La documentación privada de producción no debe aparecer en el sitio.
+          if find .vitepress/dist -type f -iname '*media*readme*.html' | grep -q .; then
+            echo 'ERROR: a production guide was published' >&2
+            exit 1
+          fi
+          if grep -R -l -E 'SC046_MEDIA:|Cómo agregar una foto, captura o video|contrato de medios' .vitepress/dist --include='*.html' | grep -q .; then
+            echo 'ERROR: internal media production instructions leaked to website HTML' >&2
+            exit 1
+          fi
