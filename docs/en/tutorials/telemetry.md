@@ -27,6 +27,12 @@ The [protocol reference](/en/protocol) lists every supported channel, including 
 
 ## Try it
 
+<!-- SC046_MEDIA:G13 -->
+
+<!-- SC046_MEDIA:G14 -->
+
+<!-- SC046_MEDIA:V06 -->
+
 1. Connect Arduino or ESP32 using USB or trusted local TCP.
 2. Open the Laptop and enable a channel under **Events**.
 3. Observe `mc_` messages in the console or Visualize tab.

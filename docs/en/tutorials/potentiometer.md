@@ -4,6 +4,16 @@ description: Read an Arduino analog input and translate it into Minecraft redsto
 ---
 # Use a potentiometer to control redstone
 
+<!-- SC046_MEDIA:H02 -->
+
+<!-- SC046_MEDIA:G02 -->
+
+<!-- SC046_MEDIA:G07 -->
+
+<!-- SC046_MEDIA:H05 -->
+
+<!-- SC046_MEDIA:V02 -->
+
 This is the reverse of the LED experiment: **Arduino A0 → USB serial → SerialCraft → redstone**.
 
 Wire a low-voltage potentiometer with its outer terminals to **5 V** and **GND** of an Arduino Uno R3 and its wiper to **A0**. The Uno's ADC normally reads 0–1023; map it to the SerialCraft protocol's 0–255 range.

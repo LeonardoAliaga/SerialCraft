@@ -10,6 +10,8 @@ It is **not a high-frequency electronic oscilloscope**. It records application-l
 
 ## The three views
 
+<!-- SC046_MEDIA:G15 -->
+
 - **Timeline:** compare the history of multiple channels.
 - **Sensor:** inspect raw values and their relation to redstone levels.
 - **Generator:** send a ramp, triangle, square, sine or step test pattern to a channel.
@@ -22,6 +24,8 @@ A **TX** point represents a write to the transport, not physical acknowledgement
 
 ## Practical exercise
 
+<!-- SC046_MEDIA:G16 -->
+
 1. Load the [Uno R3 potentiometer example](/en/tutorials/potentiometer).
 2. Connect the board, configure the channel `pot_val` and open **Visualize**.
 3. Turn the potentiometer and compare values on the 0–255 cable scale with redstone's 0–15 steps.
@@ -30,6 +34,10 @@ A **TX** point represents a write to the transport, not physical acknowledgement
 The plot should not be interpreted as direct knowledge of what happened between actual received samples.
 
 ## Generate with care
+
+<!-- SC046_MEDIA:G17 -->
+
+<!-- SC046_MEDIA:V05 -->
 
 Use a unique test channel. Never run a generator and a separate I/O Module against the **same physical actuator channel** at once.
 

@@ -8,6 +8,8 @@ SerialCraft connects real-world microcontrollers to Minecraft Java. These guides
 
 ## Start here
 
+<!-- SC046_MEDIA:H01 -->
+
 | Topic | Learn |
 | --- | --- |
 | [I/O Module: directions and channels](/en/tutorials/io-block) | Distinguish hardware-to-game direction from redstone input and output faces |

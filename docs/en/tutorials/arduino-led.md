@@ -8,11 +8,21 @@ This beginner experiment demonstrates the route **redstone → SerialCraft I/O M
 
 ## Hardware
 
+<!-- SC046_MEDIA:H02 -->
+
 You need an Uno R3, one ordinary LED, a 220–330 Ω resistor, breadboard, jumper wires and a USB data cable.
 
 Connect Uno **D9 → resistor → LED anode**, then the LED cathode to **GND**. Do not connect mains-powered devices or motor loads directly to D9.
 
 ## Configure the game
+
+<!-- SC046_MEDIA:G03 -->
+
+<!-- SC046_MEDIA:H03 -->
+
+<!-- SC046_MEDIA:H04 -->
+
+<!-- SC046_MEDIA:V01 -->
 
 1. Install the version-compatible Minecraft **26.2**, **Java 25**, Fabric Loader, Fabric API and SerialCraft.
 2. Connect the Uno at **115200 baud**.

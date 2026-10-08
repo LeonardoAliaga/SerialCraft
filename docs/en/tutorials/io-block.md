@@ -10,6 +10,12 @@ A module has a display name and a Channel such as `pot_val` or `led_verde`. The 
 
 ## Two different kinds of direction
 
+<!-- SC046_MEDIA:G01 -->
+
+<!-- SC046_MEDIA:G02 -->
+
+<!-- SC046_MEDIA:G04 -->
+
 | Data direction | Green input face | Red output face |
 | --- | --- | --- |
 | **Hardware → Minecraft** | Optional gate condition | Emits redstone |
@@ -23,15 +29,25 @@ Right-click a terminal to toggle green input/off; Shift + right-click toggles re
 
 ## Hardware → Minecraft example
 
+<!-- SC046_MEDIA:G07 -->
+
 Configure channel `pot_val`, Analog, and a red output face. The received message `pot_val:128\n` corresponds to redstone **8**. Zero produces 0; 255 produces 15.
 
 With no green inputs, the sample passes directly. With green inputs, the gate decides whether the sample is allowed to power the output; closing a gate does not erase the last RX value within the same session.
 
 ## Minecraft → Hardware example
 
+<!-- SC046_MEDIA:G03 -->
+
 Configure channel `led_verde`, digital and a green input face. An active lever sends `led_verde:255\n`, whereas off sends `led_verde:0\n`. In Analog mode, strength 7 sends 119. Without inputs, the value is zero. The transmitting module does **not** energize its red faces.
 
 ## Gate behavior
+
+<!-- SC046_MEDIA:G08 -->
+
+<!-- SC046_MEDIA:G09 -->
+
+<!-- SC046_MEDIA:G10 -->
 
 - **OR:** maximum input strength.
 - **AND:** minimum, including zeros.
@@ -40,6 +56,12 @@ Configure channel `led_verde`, digital and a green input face. An active lever s
 For strengths 2, 7, 12: OR=12, AND=2, XOR=12. These are not bitwise operations on analog values.
 
 ## Diagnostics and reconnection
+
+<!-- SC046_MEDIA:G05 -->
+
+<!-- SC046_MEDIA:G06 -->
+
+<!-- SC046_MEDIA:V03 -->
 
 **RX** is last hardware sample. **TX** is the latest value forwarded to the owner's client, **not proof that hardware received or acted on it**. Read denotes combined inputs; Out denotes world redstone output. A missing value may display `-1`.
 

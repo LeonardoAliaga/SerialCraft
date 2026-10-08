@@ -8,6 +8,8 @@ Starting with **0.4.6-beta**, the `test` branch includes Java unit tests, Minecr
 
 ## Prepare the environment
 
+<!-- SC046_MEDIA:D01 -->
+
 Use the `test` branch, a **Java 25 JDK**, and Gradle Wrapper from the repository. In a terminal run `java -version` and `git branch --show-current`.
 
 | Goal | Windows | Linux / macOS |
@@ -20,6 +22,10 @@ The optional `-PioGameTests` switch is a Gradle project property. `build.gradle`
 
 ## What does each test cover?
 
+<!-- SC046_MEDIA:D02 -->
+
+<!-- SC046_MEDIA:D03 -->
+
 **JUnit** checks algorithms and code behavior without requiring a physical device: signal conversion, gates, bounded queues, telemetry, codec parsing, authentication, persistence and waveform helpers.
 
 **GameTest** runs scenarios inside a temporary Minecraft testing world. The suite covers the five I/O faces, redstone input and output, gates, levers, buttons, comparators, repeaters, neighboring blocks, ownership rules, chunks and a functional scenario with 64 modules.
@@ -27,6 +33,10 @@ The optional `-PioGameTests` switch is a Gradle project property. `build.gradle`
 **Build** compiles and packages the mod in addition to configured unit tests. A passing build is not proof that every physical board or GUI layout has been checked.
 
 ## GitHub Actions
+
+<!-- SC046_MEDIA:D04 -->
+
+<!-- SC046_MEDIA:V07 -->
 
 When you push to `test` or open a PR targeting `test`, [GitHub Actions](https://github.com/LeonardoAliaga/SerialCraft/actions) runs `./gradlew build --console=plain` followed by `./gradlew -PioGameTests runGameTest --console=plain`. Reports and logs are uploaded as workflow artifacts.
 
