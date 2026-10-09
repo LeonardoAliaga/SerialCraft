@@ -165,19 +165,16 @@ public class HardwareIOBlock extends BaseEntityBlock {
         EnumProperty<IOSide> property = propertyFor(side);
         IOSide current = state.getValue(property);
         IOSide next;
-        String messageKey;
-
         if (player.isShiftKeyDown()) {
             next = (current == IOSide.OUTPUT) ? IOSide.NONE : IOSide.OUTPUT;
-            messageKey = next == IOSide.OUTPUT
-                    ? "message.serialcraft.io_output" : "message.serialcraft.io_disconnected";
         } else {
             next = (current == IOSide.INPUT) ? IOSide.NONE : IOSide.INPUT;
-            messageKey = next == IOSide.INPUT
-                    ? "message.serialcraft.io_input" : "message.serialcraft.io_disconnected";
         }
 
-        player.sendSystemMessage(Component.translatable(messageKey));
+        player.sendSystemMessage(Component.translatable("message.serialcraft.io_connector",
+                Component.translatable("gui.serialcraft.face." + side.getSerializedName()),
+                Component.translatable(next == IOSide.OUTPUT && io.getIoMode().isOutput()
+                        ? "gui.serialcraft.side.output_inactive" : "gui.serialcraft.side." + next.getSerializedName())));
         io.setSides(IOSide.pack(state.setValue(property, next)));
     }
 

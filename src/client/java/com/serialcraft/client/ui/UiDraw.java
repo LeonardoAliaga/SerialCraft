@@ -11,6 +11,15 @@ public final class UiDraw {
 
     private UiDraw() {}
 
+    /** Wrapped paragraphs preserve complete explanations at larger GUI scales. */
+    public static void wrappedText(GuiGraphicsExtractor gui, Font font, Component text,
+                                   int x, int y, int width, int color) {
+        for (var line : font.split(text, Math.max(1, width))) {
+            gui.text(font, line, x, y, color, false);
+            y += font.lineHeight;
+        }
+    }
+
     /**
      * Tarjeta blanca con sombra y linea inferior.
      * @return la Y donde termina la tarjeta, sombra incluida.

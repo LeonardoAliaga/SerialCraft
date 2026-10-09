@@ -6,6 +6,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
@@ -52,6 +54,16 @@ public class SolidButton extends AbstractWidget {
     @Override
     public void onClick(@NotNull MouseButtonEvent event, boolean focused) {
         if (this.onPress != null) this.onPress.onPress(this);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (active && visible && isFocused() && (event.key() == GLFW.GLFW_KEY_ENTER
+                || event.key() == GLFW.GLFW_KEY_KP_ENTER || event.key() == GLFW.GLFW_KEY_SPACE)) {
+            if (onPress != null) onPress.onPress(this);
+            return true;
+        }
+        return super.keyPressed(event);
     }
 
     @Override

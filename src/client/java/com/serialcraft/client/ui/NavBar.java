@@ -4,6 +4,7 @@ import com.serialcraft.SerialCraft;
 import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -80,7 +81,7 @@ public class NavBar {
 
             int buttonY = y + spacing + i * (buttonHeight + spacing);
 
-            panel.addWidget(new IconTextButton(
+            var button = new IconTextButton(
                     buttonX, buttonY, buttonWidth, buttonHeight,
                     style.icon(),
                     Component.translatable(style.translationKey()),
@@ -88,7 +89,10 @@ public class NavBar {
                     active ? style.activeBg()     : UiTheme.TAB_INACTIVE_BG,
                     active ? style.activeBorder() : UiTheme.TAB_INACTIVE_BORDER,
                     UiTheme.TEXT_INVERSE
-            ));
+            );
+            // At larger GUI scales the sidebar keeps icons; its full labels remain readable.
+            button.setTooltip(Tooltip.create(Component.translatable(style.translationKey())));
+            panel.addWidget(button);
         }
     }
 

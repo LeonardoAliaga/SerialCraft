@@ -10,6 +10,8 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
@@ -63,12 +65,23 @@ public class IconTextButton extends AbstractWidget {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (active && visible && isFocused() && (event.key() == GLFW.GLFW_KEY_ENTER
+                || event.key() == GLFW.GLFW_KEY_KP_ENTER || event.key() == GLFW.GLFW_KEY_SPACE)) {
+            if (onPress != null) onPress.onPress(this);
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
     protected void extractWidgetRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         int x = getX();
         int y = getY();
 
-        gui.fill(x, y, x + width, y + height, backgroundColor);
-        gui.outline(x, y, width,height, borderColor);
+        gui.fill(x, y, x + width, y + height, active ? backgroundColor : UiTheme.LINE);
+        gui.outline(x, y, width,height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
+        if (isFocused()) gui.outline(x + 1, y + 1, width - 2, height - 2, UiTheme.TEXT_PRIMARY);
 
         int textX = x + PADDING;
         if (icon != null) {
@@ -90,8 +103,10 @@ public class IconTextButton extends AbstractWidget {
         // vecino. El original dibujaba el texto completo pasara lo que pasara,
         // que es como se rompen las interfaces al traducirlas.
         int available = x + width - PADDING - textX;
-        String label = font.plainSubstrByWidth(getMessage().getString(), available);
-        gui.text(font, label, textX, textY, textColor, false);
+        if (available > 0) {
+            String label = font.plainSubstrByWidth(getMessage().getString(), available);
+            gui.text(font, label, textX, textY, active ? textColor : UiTheme.TEXT_SECONDARY, false);
+        }
     }
 
     @Override

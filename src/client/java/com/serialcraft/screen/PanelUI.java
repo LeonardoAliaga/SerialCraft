@@ -19,6 +19,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
@@ -126,6 +127,7 @@ public class PanelUI extends Screen {
     protected void init() {
         super.init();
         clearWidgets();
+        clearFocus();
 
         if (appState == AppState.WELCOME) {
             welcomePage.init(this, this.width, this.height);
@@ -142,6 +144,12 @@ public class PanelUI extends Screen {
             boardsPage.requestDirectEdit(editPos);
         }
         pages.get(currentTab).init(this, this.width, this.height);
+    }
+
+    @Override
+    protected void setInitialFocus() {
+        // Screen.init otherwise replaces the editor's intended focus with the first nav button.
+        if (getFocused() == null) super.setInitialFocus();
     }
 
     @Override
@@ -174,7 +182,9 @@ public class PanelUI extends Screen {
         if (page != null && page.mouseClicked(event, focused)) {
             return true;
         }
-        return super.mouseClicked(event, focused);
+        boolean handled = super.mouseClicked(event, focused);
+        if (page != null) page.afterKey();
+        return handled;
     }
 
     @Override
@@ -193,6 +203,22 @@ public class PanelUI extends Screen {
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        Page page = appState == AppState.WELCOME ? welcomePage : pages.get(currentTab);
+        if (page.keyPressed(event)) return true;
+        boolean handled = super.keyPressed(event);
+        page.afterKey();
+        return handled;
+    }
+
+    @Override
+    public void onClose() {
+        if (appState == AppState.DASHBOARD && currentTab == Tab.BOARDS)
+            boardsPage.requestClosePanel(() -> super.onClose());
+        else super.onClose();
     }
 
     /**
@@ -219,6 +245,8 @@ public class PanelUI extends Screen {
         }
 
         super.extractRenderState(gui, mouseX, mouseY, delta);
+        if (appState == AppState.DASHBOARD)
+            pages.get(currentTab).renderOverlay(gui, mouseX, mouseY, font, width, height);
     }
 
     @Override
@@ -278,6 +306,10 @@ public class PanelUI extends Screen {
     public <T extends AbstractWidget> void addWidget(T widget) {
         this.addRenderableWidget(widget);
     }
+
+    /** Widgets painted by a clipped page or a modal, while retaining native input/narration. */
+    public <T extends AbstractWidget> void addInputWidget(T widget) { super.addWidget(widget); }
+    public void clearUiWidgets() { clearWidgets(); }
 
     /** Entrega la lista de placas recibida del servidor. */
     public void updateBoardList(List<BoardInfo> boards) {

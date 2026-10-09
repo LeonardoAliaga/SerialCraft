@@ -4,6 +4,7 @@ import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
 
 /**
  * Contrato de una pagina del panel.
@@ -15,6 +16,11 @@ public interface Page {
 
     /** Dibuja el contenido no interactivo. Los widgets se dibujan solos. */
     void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int screenWidth, int screenHeight);
+
+    /** Modal layers render after the screen's ordinary widgets. */
+    default void renderOverlay(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {}
+    default boolean keyPressed(KeyEvent event) { return false; }
+    default void afterKey() {}
 
     /** Logica por tick. Vacio por defecto: la mayoria de paginas no lo necesita. */
     default void tick() {}
