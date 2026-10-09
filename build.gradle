@@ -63,16 +63,14 @@ test {
 }
 
 // Optional world tests. EULA acceptance belongs to whoever runs the test server.
-if (project.hasProperty('ioGameTests') || project.hasProperty('ioUiTests')) {
+if (project.hasProperty('ioGameTests')) {
 	fabricApi.configureTests {
 		createSourceSet = true
 		modId = 'serialcraft-io-tests'
 		enableGameTests = true
-		enableClientGameTests = project.hasProperty('ioUiTests')
+		enableClientGameTests = false
 		eula = false
 	}
-	sourceSets.gametest.compileClasspath += sourceSets.client.output
-	sourceSets.gametest.runtimeClasspath += sourceSets.client.output
 }
 
 processResources {

@@ -5,7 +5,6 @@
   "name": "SerialCraft IO tests",
   "environment": "*",
   "entrypoints": {
-    "fabric-gametest": ["com.serialcraft.HardwareIOGameTest"],
-    "fabric-client-gametest": ["com.serialcraft.HardwareIOClientGameTest"]
+    "fabric-gametest": ["com.serialcraft.HardwareIOGameTest"]
   }
 }
