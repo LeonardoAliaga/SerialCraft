@@ -4,6 +4,8 @@ import com.serialcraft.client.ui.ScrollState;
 import com.serialcraft.client.ui.SolidButton;
 import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.client.ui.UiDraw;
+import com.serialcraft.client.ui.SpriteIcon;
+import net.minecraft.ChatFormatting;
 import com.serialcraft.client.ui.io.IoEditorLayout.Rect;
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.Font;
@@ -39,35 +41,45 @@ public final class ContextHelpDialog {
         return new Rect((width - w) / 2, (height - h) / 2, w, h);
     }
     public void build(PanelUI panel, int width, int height, Font font) {
-        int textWidth = Math.min(420, width - 24) - 28;
-        int titleHeight = UiDraw.sectionHeaderHeight(font, title, textWidth);
-        bounds = bounds(width, height, Math.max(150, font.split(body, textWidth).size() * font.lineHeight + titleHeight + 64));
-        textBounds = new Rect(bounds.x() + 12, bounds.y() + 16 + titleHeight, bounds.width() - 24,
-                Math.max(1, bounds.height() - titleHeight - 56));
+        int textWidth = Math.max(32, Math.min(420, width - 24) - 44);
+        int titleHeight = font.split(title, Math.max(1, textWidth - 32)).size() * font.lineHeight;
+        int headerHeight = titleHeight + 26;
+        bounds = bounds(width, height, Math.max(148, font.split(body, textWidth).size() * font.lineHeight + headerHeight + 62));
+        textBounds = new Rect(bounds.x() + 18, bounds.y() + headerHeight + 12, bounds.width() - 36,
+                Math.max(1, bounds.height() - headerHeight - 58));
         scroll.update(textBounds.height(), font.split(body, textBounds.width() - 8).size() * font.lineHeight);
         buttons.clear();
-        int buttonWidth = confirm == null ? bounds.width() - 24 : (bounds.width() - 30) / 2;
-        var closeButton = new SolidButton(bounds.x() + 12, bounds.bottom() - 30, buttonWidth, 22,
+        int buttonWidth = confirm == null ? Math.min(140, bounds.width() - 36) : (bounds.width() - 42) / 2;
+        int closeX = confirm == null ? bounds.x() + (bounds.width() - buttonWidth) / 2 : bounds.x() + 18;
+        var closeButton = new SolidButton(closeX, bounds.bottom() - 34, buttonWidth, 22,
                 Component.translatable(confirm == null ? "gui.serialcraft.io.help.close" : "gui.serialcraft.io.discard.keep"),
-                b -> close.run(), SolidButton.Variant.SOFT) {
+                b -> close.run(), confirm == null ? SolidButton.Variant.PRIMARY : SolidButton.Variant.SOFT) {
             @Override protected void updateWidgetNarration(NarrationElementOutput output) {
                 super.updateWidgetNarration(output);
                 output.add(NarratedElementType.HINT, title.copy().append("\n").append(body));
             }
         };
         buttons.add(closeButton);
-        if (confirm != null) buttons.add(SolidButton.danger(bounds.x() + 18 + buttonWidth, bounds.bottom() - 30,
+        if (confirm != null) buttons.add(SolidButton.danger(bounds.x() + 24 + buttonWidth, bounds.bottom() - 34,
                 buttonWidth, 22, Component.translatable("gui.serialcraft.io.discard.confirm"), b -> confirm.run()));
         buttons.forEach(panel::addInputWidget);
         panel.setFocused(closeButton);
     }
     public void render(GuiGraphicsExtractor gui, Font font, int width, int height, int mouseX, int mouseY) {
         gui.nextStratum();
-        gui.fill(0, 0, width, height, UiTheme.OVERLAY);
-        gui.fill(bounds.x(), bounds.y(), bounds.right(), bounds.bottom(), UiTheme.BG_PANEL);
-        gui.outline(bounds.x(), bounds.y(), bounds.width(), bounds.height(), UiTheme.LINE_STRONG);
-        UiDraw.sectionHeader(gui, font, title, bounds.x() + 12, bounds.y() + 12,
-                bounds.width() - 28, UiTheme.ACCENT_PRIMARY);
+        gui.fill(0, 0, width, height, 0x70000000);
+        UiDraw.pixelRounded(gui, bounds.x() + 3, bounds.y() + 5, bounds.width(), bounds.height(), UiTheme.SHADOW);
+        UiDraw.pixelRounded(gui, bounds.x(), bounds.y(), bounds.width(), bounds.height(), UiTheme.LINE_STRONG);
+        UiDraw.pixelRounded(gui, bounds.x() + 1, bounds.y() + 1, bounds.width() - 2, bounds.height() - 2, UiTheme.BG_CARD);
+        int headerHeight = textBounds.y() - bounds.y() - 12;
+        gui.fill(bounds.x() + 4, bounds.y() + 4, bounds.right() - 4,
+                bounds.y() + headerHeight, UiTheme.INFO_BG);
+        gui.fill(bounds.x() + 4, bounds.y() + 4, bounds.x() + 7, bounds.y() + headerHeight, UiTheme.ACCENT_PRIMARY);
+        UiDraw.pixelRounded(gui, bounds.x() + 14, bounds.y() + 12, 20, 20, UiTheme.ACCENT_PRIMARY);
+        UiDraw.icon(gui, SpriteIcon.QUEST, bounds.x() + 16, bounds.y() + 14, 16);
+        UiDraw.wrappedText(gui, font, title.copy().withStyle(ChatFormatting.BOLD), bounds.x() + 42,
+                bounds.y() + 15, bounds.width() - 60, UiTheme.TEXT_PRIMARY);
+        gui.fill(bounds.x() + 18, bounds.bottom() - 44, bounds.right() - 18, bounds.bottom() - 43, UiTheme.LINE);
         gui.enableScissor(textBounds.x(), textBounds.y(), textBounds.right(), textBounds.bottom());
         int y = textBounds.y() - (int) scroll.getScrollAmount();
         for (var line : font.split(body, textBounds.width() - 8)) {
@@ -80,6 +92,10 @@ public final class ContextHelpDialog {
     }
     public boolean clicked(MouseButtonEvent event) {
         if (buttons.stream().anyMatch(b -> b.isMouseOver(event.x(), event.y()))) return false;
+        if (!bounds.contains(event.x(), event.y())) {
+            close.run(); // Outside click dismisses help or safely cancels confirmation.
+            return true;
+        }
         scroll.mouseClicked(event.x(), event.y(), event.button(), textBounds.right() - 6, textBounds.y(), 6, textBounds.height());
         return true;
     }

@@ -6,7 +6,6 @@ import com.serialcraft.client.ui.SpriteIcon;
 import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.client.ui.io.IoEditorLayout.Rect;
-import com.serialcraft.client.ui.widget.ContextHelpDialog;
 import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.client.ui.widget.OptionButton;
 import com.serialcraft.client.ui.widget.OutlineButton;
@@ -57,6 +56,7 @@ public class HomePage implements Page {
                              WifiHandler.State server, int serverPort, WifiHandshake.Method authentication, boolean remembered,
                              boolean rememberable, boolean usbRememberable, boolean hasToken) {}
     private record Surface(Rect bounds, int accent) {}
+    private record InlineHelp(Component title, Component body, int x, int y, int width) {}
     private record Text(Component value, int x, int y, int width, int color, int background) {}
     private record Property(Component label, Component value, int x, int y, int width, int height, int color) {}
     private record Stat(Component label, Component value, int color) {}
@@ -69,6 +69,7 @@ public class HomePage implements Page {
     private final List<Tile> tiles = new ArrayList<>();
     private final List<Badge> badges = new ArrayList<>();
     private final List<Heading> headings = new ArrayList<>();
+    private final List<InlineHelp> helpPanels = new ArrayList<>();
     private final Map<String, AbstractWidget> focusWidgets = new LinkedHashMap<>();
     private final ScrollState scroll = new ScrollState();
     private final ScrollState historyScroll = new ScrollState();
@@ -79,7 +80,7 @@ public class HomePage implements Page {
     private Rect view, summary, terminal, console, modelBadge;
     private LinkState state;
     private EditBox commandBox;
-    private ContextHelpDialog dialog;
+    private String expandedHelp = "";
     private String focusKey = "", navigationFocus = "", usbPort = "", hostAddress = "";
     private int contentX, contentWidth, summaryFooterY;
     private int pendingBaud;
@@ -101,8 +102,7 @@ public class HomePage implements Page {
         }
         if (pendingBaud == 0) pendingBaud = state.baud();
         if (state.wifi()) hostAddress = NetUtils.findLocalIpv4();
-        surfaces.clear(); texts.clear(); properties.clear(); tiles.clear(); badges.clear(); headings.clear(); focusWidgets.clear();
-        if (dialog != null) panel.clearUiWidgets();
+        surfaces.clear(); texts.clear(); properties.clear(); tiles.clear(); badges.clear(); headings.clear(); helpPanels.clear(); focusWidgets.clear();
 
         contentX = UiTheme.contentX(screenWidth);
         contentWidth = Math.max(80, screenWidth - contentX - UiTheme.contentMargin(screenWidth) - 10);
@@ -123,8 +123,7 @@ public class HomePage implements Page {
                 columns ? Math.clamp(leftBottom - zoneY, 260, 420) : 242, commandDraft);
         viewport.size(Math.max(leftBottom, terminalBottom) - view.y() + 8);
         updateHistory();
-        if (dialog != null) dialog.build(panel, screenWidth, screenHeight, font);
-        else {
+        {
             AbstractWidget focused = focusWidgets.get(focusKey);
             if (focused != null && !focused.active) focused = focusWidgets.get(
                     focusKey.equals("trust") ? "help.wifi" : focusKey.equals("apply") || focusKey.startsWith("baud.")
@@ -179,7 +178,7 @@ public class HomePage implements Page {
         int modelY = y;
         y = property(tr("model"), modelName(), left, y, inner - 36, UiTheme.TEXT_PRIMARY);
         help("model", left + inner - 28, modelY);
-        y = Math.max(y, modelY + 28);
+        y = inlineHelp("model", left, Math.max(y, modelY + 28), inner);
         modelBadge = new Rect(left, y, inner, 14);
         y += 22;
         y = property(tr("platform"), family(), left, y, inner, UiTheme.TEXT_PRIMARY);
@@ -333,7 +332,9 @@ public class HomePage implements Page {
         int titleWidth = width - PAD * 2 - 36;
         headings.add(new Heading(title, x + PAD, y + PAD, titleWidth, UiTheme.ACCENT_PRIMARY));
         help(help, x + width - PAD - 28, y + PAD - 3);
-        return y + PAD + Math.max(22, UiDraw.sectionHeaderHeight(font, title, titleWidth)) + 8;
+        return inlineHelp(help, x + PAD,
+                y + PAD + Math.max(22, UiDraw.sectionHeaderHeight(font, title, titleWidth)) + 8,
+                width - PAD * 2);
     }
     private int heading(Component title, int x, int y, int width, int accent) {
         headings.add(new Heading(title, x, y, width, accent));
@@ -368,17 +369,26 @@ public class HomePage implements Page {
     private int textHeight(Component text, int width) { return font.split(text, Math.max(1, width)).size() * font.lineHeight; }
     private void input(String key, AbstractWidget widget, int y) {
         focusWidgets.put(key, widget); viewport.add(widget, y - view.y());
-        if (dialog == null) panel.addInputWidget(widget);
+        panel.addInputWidget(widget);
     }
     private void help(String topic, int x, int y) {
         var button = IconTextButton.help(x, y, tr("help." + topic + ".title"), b -> {
+            expandedHelp = expandedHelp.equals(topic) ? "" : topic;
             focusKey = "help." + topic;
-            dialog = new ContextHelpDialog(tr("help." + topic + ".title"), tr("help." + topic + ".body"), () -> {
-                dialog = null; panel.refresh();
-            });
             panel.refresh();
         });
+        button.setColors(expandedHelp.equals(topic) ? UiTheme.ACCENT_HOME : UiTheme.ACCENT_PRIMARY,
+                expandedHelp.equals(topic) ? UiTheme.ACCENT_HOME_BORDER : UiTheme.ACCENT_PRIMARY_DARK,
+                UiTheme.TEXT_INVERSE);
         input("help." + topic, button, y);
+    }
+
+    private int inlineHelp(String topic, int x, int y, int width) {
+        if (!expandedHelp.equals(topic)) return y;
+        Component title = tr("help." + topic + ".title");
+        Component body = tr("help." + topic + ".body");
+        helpPanels.add(new InlineHelp(title, body, x, y, width));
+        return y + UiDraw.helpPanelHeight(font, title, body, width) + 9;
     }
 
     private boolean usbBusy() { return ConnectionManager.isUsbReconnecting() || reconnect != null; }
@@ -445,20 +455,22 @@ public class HomePage implements Page {
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
         UiDraw.pageTitle(gui, font, contentX, tr("title"), UiTheme.ACCENT_HOME, tr("subtitle"));
-        int mx = dialog == null && view.contains(mouseX, mouseY) ? mouseX : -1;
+        int mx = view.contains(mouseX, mouseY) ? mouseX : -1;
         int my = mx == -1 ? -1 : mouseY;
         gui.enableScissor(view.x(), view.y(), view.right() - 8, view.bottom());
         for (Surface surface : surfaces) {
             Rect r = surface.bounds();
-            UiDraw.card(gui, r.x(), drawY(r.y()), r.width(), r.height(), surface.accent(),
+            UiDraw.dashboardCard(gui, r.x(), drawY(r.y()), r.width(), r.height(), surface.accent(),
                     mx >= r.x() && mx < r.right() && my >= drawY(r.y()) && my < drawY(r.bottom()));
         }
         renderSummary(gui, mx, my);
-        for (Heading h : headings) UiDraw.sectionHeader(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), h.accent());
+        for (Heading h : headings) UiDraw.dashboardSectionHeader(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), h.accent());
         for (Text t : texts) {
             if (t.background() == 0) UiDraw.wrappedText(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.color());
             else UiDraw.notice(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.background(), t.color());
         }
+        for (InlineHelp h : helpPanels)
+            UiDraw.helpPanel(gui, font, h.title(), h.body(), h.x(), drawY(h.y()), h.width());
         for (int i = 0; i < properties.size(); i++) {
             Property p = properties.get(i);
             UiDraw.labelledRow(gui, font, p.x(), drawY(p.y()), p.width(), p.label(), p.value(), p.color(), mx, my);
@@ -486,14 +498,14 @@ public class HomePage implements Page {
 
     private void renderSummary(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = summary.x(), y = drawY(summary.y()), width = summary.width();
-        UiDraw.card(gui, x, y, width, summary.height(), statusColor(), false);
-        gui.fill(x + 1, y + 4, x + width - 1, y + 25, statusBackground());
+        UiDraw.dashboardCard(gui, x, y, width, summary.height(), statusColor(), false);
+        gui.fill(x + 7, y + 5, x + width - 7, y + 29, statusBackground());
         int statusWidth = Math.min(width / 2, font.width(connectionState()) + 8);
         UiDraw.clippedText(gui, font, tr("active_device"), x + PAD, y + 10,
                 width - PAD * 2 - statusWidth - 8, statusColor(), mouseX, mouseY);
         UiDraw.badge(gui, font, x + width - PAD - statusWidth, y + 7, statusWidth,
                 connectionState(), statusBackground(), statusColor(), mouseX, mouseY);
-        gui.fill(x + PAD, y + 34, x + PAD + 36, y + 70, state.connected() ? UiTheme.ACCENT_PRIMARY : UiTheme.TEXT_SECONDARY);
+        UiDraw.pixelRounded(gui, x + PAD, y + 34, 36, 36, state.connected() ? UiTheme.ACCENT_PRIMARY : UiTheme.TEXT_SECONDARY);
         UiDraw.icon(gui, state.wifi() ? SpriteIcon.WIFI : SpriteIcon.USB, x + PAD + 7, y + 41, 22);
         int nameX = x + PAD + 46;
         int nameWidth = width >= 400 ? focusWidgets.get("disconnect").getX() - nameX - 12 : x + width - PAD - nameX;
@@ -514,12 +526,12 @@ public class HomePage implements Page {
 
     private void renderTerminal(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = terminal.x(), y = drawY(terminal.y());
-        gui.fill(x + PAD, y + PAD, x + PAD + 20, y + PAD + 20, UiTheme.ACCENT_PRIMARY);
+        UiDraw.pixelRounded(gui, x + PAD, y + PAD, 20, 20, UiTheme.ACCENT_PRIMARY);
         UiDraw.icon(gui, SpriteIcon.TERMINAL, x + PAD + 2, y + PAD + 2, 16);
         UiDraw.wrappedText(gui, font, tr("terminal"), x + PAD + 28, y + PAD,
                 terminal.width() - PAD * 2 - 28, UiTheme.TEXT_PRIMARY);
         int consoleY = drawY(console.y());
-        gui.fill(console.x(), consoleY, console.right(), consoleY + console.height(), UiTheme.BG_CONSOLE);
+        UiDraw.pixelRounded(gui, console.x(), consoleY, console.width(), console.height(), UiTheme.BG_CONSOLE);
         gui.fill(console.x(), consoleY, console.right(), consoleY + 21, UiTheme.BG_CONSOLE_ALT);
         UiDraw.clippedText(gui, font, transport().copy().append(" · ").append(state.connected() ? value(state.endpoint()) : connectionState()),
                 console.x() + 8, consoleY + 6, console.width() - 16, UiTheme.TEXT_ON_DARK, mouseX, mouseY);
@@ -560,11 +572,7 @@ public class HomePage implements Page {
                 ? tr("duration.minutes", seconds / 60, seconds % 60) : tr("duration.hours", seconds / 3600, seconds % 3600 / 60);
     }
 
-    @Override public void renderOverlay(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
-        if (dialog != null) dialog.render(gui, font, width, height, mouseX, mouseY);
-    }
     @Override public boolean keyPressed(KeyEvent event) {
-        if (dialog != null) return dialog.keyPressed(event);
         if (event.key() == GLFW.GLFW_KEY_TAB) viewport.prepareKeyboardFocus();
         if (commandBox.isFocused() && (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER)) {
             submitCommand(); return true;
@@ -579,7 +587,6 @@ public class HomePage implements Page {
         return false;
     }
     private void captureFocus() {
-        if (dialog != null) return;
         for (var entry : focusWidgets.entrySet()) if (panel.getFocused() == entry.getValue()) {
             focusKey = entry.getKey(); navigationFocus = ""; return;
         }
@@ -588,30 +595,25 @@ public class HomePage implements Page {
         }
     }
     @Override public void afterKey() {
-        if (dialog != null) { dialog.restoreFocus(panel); return; }
         captureFocus(); viewport.revealFocus(panel.getFocused());
     }
     @Override public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
-        if (dialog != null) return dialog.scrolled(vertical);
         if (!view.contains(x, y)) return false;
         if (console.contains(x, y + scroll.getScrollAmount()) && historyScroll.mouseScrolled(vertical)) return true;
         boolean moved = scroll.mouseScrolled(vertical); viewport.position(); return moved;
     }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
-        if (dialog != null) return dialog.clicked(event);
         if (view.contains(event.x(), event.y()) && historyScroll.mouseClicked(event.x(), event.y(), event.button(),
                 console.right() - 6, drawY(console.y()) + 24, 5, console.height() - 28)) return true;
         boolean handled = scroll.mouseClicked(event.x(), event.y(), event.button(), view.right() - 6, view.y(), 6, view.height());
         viewport.position(); return handled;
     }
     @Override public boolean mouseReleased(MouseButtonEvent event) {
-        if (dialog != null) return dialog.released(event.button());
         return historyScroll.mouseReleased(event.button()) | scroll.mouseReleased(event.button());
     }
     @Override public boolean mouseDragged(MouseButtonEvent event, double x, double y) {
-        if (dialog != null) return dialog.dragged(event.y());
         if (historyScroll.mouseDragged(event.y(), drawY(console.y()) + 24, console.height() - 28)) return true;
         boolean handled = scroll.mouseDragged(event.y(), view.y(), view.height()); viewport.position(); return handled;
     }
-    @Override public void onClose() { showToken = false; dialog = null; }
+    @Override public void onClose() { showToken = false; expandedHelp = ""; }
 }

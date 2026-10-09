@@ -89,8 +89,14 @@ public class IconTextButton extends AbstractWidget {
         int x = getX();
         int y = getY();
 
-        gui.fill(x, y, x + width, y + height, active ? backgroundColor : UiTheme.LINE);
-        gui.outline(x, y, width,height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
+        if (icon == SpriteIcon.QUEST) {
+            UiDraw.pixelRounded(gui, x, y, width, height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
+            UiDraw.pixelRounded(gui, x + 1, y + 1, width - 2, height - 2,
+                    active ? backgroundColor : UiTheme.LINE);
+        } else {
+            gui.fill(x, y, x + width, y + height, active ? backgroundColor : UiTheme.LINE);
+            gui.outline(x, y, width, height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
+        }
         if (isFocused()) gui.outline(x + 1, y + 1, width - 2, height - 2, UiTheme.TEXT_PRIMARY);
 
         int textX = x + PADDING;
