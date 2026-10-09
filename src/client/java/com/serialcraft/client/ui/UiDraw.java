@@ -59,10 +59,11 @@ public final class UiDraw {
 
     /** Hardware dashboard: softly tinted top, semantic accent rail and pixel-cut corners. */
     public static void dashboardCard(GuiGraphicsExtractor gui, int x, int y, int width, int height,
-                                     int accent, boolean hovered) {
-        if (width < 18 || height < 18) { card(gui, x, y, width, height, accent, hovered); return; }
-        pixelRounded(gui, x + 2, y + 4, width, height, UiTheme.SHADOW);
-        pixelRounded(gui, x, y, width, height, hovered ? UiTheme.LINE_STRONG : UiTheme.LINE);
+                                     int accent) {
+        if (width < 18 || height < 18) { card(gui, x, y, width, height, accent, false); return; }
+        // Only a one-pixel, low-opacity offset: no hover effect on passive sections.
+        pixelRounded(gui, x + 1, y + 2, width, height, 0x0C000000);
+        pixelRounded(gui, x, y, width, height, UiTheme.LINE);
         pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, UiTheme.BG_CARD);
         int tint = accent == UiTheme.ACCENT_HOME ? 0xFFFFEDF4 :
                    accent == UiTheme.OK_DARK ? UiTheme.OK_BG :
@@ -73,33 +74,24 @@ public final class UiDraw {
         gui.fill(x + 8, y + 30, x + width - 8, y + 31, UiTheme.LINE);
     }
 
-    /** Non-modal inline explanation, shared by hardware panels. */
-    public static int helpPanelHeight(Font font, Component title, Component body, int width) {
-        int available = Math.max(1, width - 26);
-        return 21 + font.split(title, available).size() * font.lineHeight
-                + font.split(body, available).size() * font.lineHeight;
+    /** A contextual explanation without another title, border, or modal overlay. */
+    public static int helpPanelHeight(Font font, Component body, int width) {
+        return 12 + font.split(body, Math.max(1, width - 18)).size() * font.lineHeight;
     }
 
-    public static void helpPanel(GuiGraphicsExtractor gui, Font font, Component title, Component body,
+    public static void helpPanel(GuiGraphicsExtractor gui, Font font, Component body,
                                  int x, int y, int width) {
-        int height = helpPanelHeight(font, title, body, width);
-        pixelRounded(gui, x, y, width, height, 0xFFC7E4EB);
-        pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, 0xFFF0F9FC);
-        gui.fill(x + 3, y + 5, x + 6, y + height - 5, UiTheme.ACCENT_PRIMARY);
-        int textX = x + 13, textWidth = Math.max(1, width - 26);
-        wrappedText(gui, font, title.copy().withStyle(ChatFormatting.BOLD),
-                textX, y + 7, textWidth, UiTheme.ACCENT_PRIMARY_DARK);
-        int bodyY = y + 11 + font.split(title, textWidth).size() * font.lineHeight;
-        wrappedText(gui, font, body, textX, bodyY, textWidth, UiTheme.TEXT_PRIMARY);
+        int height = helpPanelHeight(font, body, width);
+        gui.fill(x, y, x + width, y + height, 0xFFF4F9FA);
+        gui.fill(x + 1, y + 3, x + 3, y + height - 3, UiTheme.ACCENT_PRIMARY);
+        wrappedText(gui, font, body, x + 9, y + 6, Math.max(1, width - 18), UiTheme.TEXT_PRIMARY);
     }
 
-    /** Lower-contrast section labels: preserve the accent without boxing every row. */
+    /** Subsection label aligns with the property rows; no additional divider. */
     public static void dashboardSectionHeader(GuiGraphicsExtractor gui, Font font, Component title,
                                                int x, int y, int width, int accent) {
-        int height = sectionHeaderHeight(font, title, width);
-        gui.fill(x, y + 2, x + 3, y + 10, accent);
-        wrappedText(gui, font, title, x + 9, y, Math.max(1, width - 9), UiTheme.TEXT_PRIMARY);
-        gui.fill(x + 9, y + height - 5, x + width, y + height - 4, UiTheme.LINE);
+        wrappedText(gui, font, title.copy().withStyle(ChatFormatting.BOLD),
+                x, y, Math.max(1, width), accent);
     }
 
     /** One visible line, with the complete value available on hover. */
@@ -217,18 +209,16 @@ public final class UiDraw {
     public static final int STAT_TILE_HEIGHT = 30;
 
     /**
-     * Ficha de dato clave: etiqueta pequena sobre un valor en negrita, en una superficie
-     * tenue con borde de acento. Se lee de un vistazo, a diferencia de una fila etiqueta/valor.
+     * Aligned two-line status datum on the card's own white surface.
+     * No nested gray box, border or redundant colored rail.
      */
     public static void statTile(GuiGraphicsExtractor gui, Font font, int x, int y, int width,
                                 Component label, Component value, int accent, int valueColor,
                                 int mouseX, int mouseY) {
-        pixelRounded(gui, x, y, width, STAT_TILE_HEIGHT, UiTheme.LINE);
-        pixelRounded(gui, x + 1, y + 1, width - 2, STAT_TILE_HEIGHT - 2, UiTheme.BG_PANEL);
-        gui.fill(x + 3, y + 5, x + 6, y + STAT_TILE_HEIGHT - 5, accent);
-        clippedText(gui, font, label, x + 8, y + 5, width - 12, UiTheme.TEXT_SECONDARY, mouseX, mouseY);
-        clippedText(gui, font, value.copy().withStyle(ChatFormatting.BOLD), x + 8, y + 16, width - 12,
-                valueColor, mouseX, mouseY);
+        clippedText(gui, font, label, x, y + 3, Math.max(1, width - 4),
+                UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+        clippedText(gui, font, value.copy().withStyle(ChatFormatting.BOLD),
+                x, y + 16, Math.max(1, width - 4), valueColor, mouseX, mouseY);
     }
 
     /** Campo de texto hundido, con borde y fondo oscuro. */

@@ -56,13 +56,13 @@ public class HomePage implements Page {
                              WifiHandler.State server, int serverPort, WifiHandshake.Method authentication, boolean remembered,
                              boolean rememberable, boolean usbRememberable, boolean hasToken) {}
     private record Surface(Rect bounds, int accent) {}
-    private record InlineHelp(Component title, Component body, int x, int y, int width) {}
+    private record InlineHelp(Component body, int x, int y, int width) {}
     private record Text(Component value, int x, int y, int width, int color, int background) {}
     private record Property(Component label, Component value, int x, int y, int width, int height, int color) {}
     private record Stat(Component label, Component value, int color) {}
     private record Tile(Stat stat, int x, int y, int width) {}
     private record Badge(Component text, int x, int y, int width, int background, int color) {}
-    private record Heading(Component title, int x, int y, int width, int accent) {}
+    private record Heading(Component title, int x, int y, int width, int accent, boolean cardTitle) {}
     private final List<Surface> surfaces = new ArrayList<>();
     private final List<Text> texts = new ArrayList<>();
     private final List<Property> properties = new ArrayList<>();
@@ -174,7 +174,7 @@ public class HomePage implements Page {
         int left = x + PAD, inner = width - PAD * 2;
         int y = sectionStart(tr("usb.title"), x, top, width, "identity");
         y = paragraph(tr("properties.subtitle"), left, y, inner, UiTheme.TEXT_SECONDARY) + 10;
-        y = heading(tr("detected"), left, y, inner, UiTheme.ACCENT_HOME);
+        // The card title already identifies this group; don't add another headline.
         int modelY = y;
         y = property(tr("model"), modelName(), left, y, inner - 36, UiTheme.TEXT_PRIMARY);
         help("model", left + inner - 28, modelY);
@@ -330,14 +330,14 @@ public class HomePage implements Page {
 
     private int sectionStart(Component title, int x, int y, int width, String help) {
         int titleWidth = width - PAD * 2 - 36;
-        headings.add(new Heading(title, x + PAD, y + PAD, titleWidth, UiTheme.ACCENT_PRIMARY));
-        help(help, x + width - PAD - 28, y + PAD - 3);
+        headings.add(new Heading(title, x + PAD, y + PAD, titleWidth, UiTheme.ACCENT_PRIMARY, true));
+        help(help, x + width - PAD - 28, y + 6);
         return inlineHelp(help, x + PAD,
                 y + PAD + Math.max(22, UiDraw.sectionHeaderHeight(font, title, titleWidth)) + 8,
                 width - PAD * 2);
     }
     private int heading(Component title, int x, int y, int width, int accent) {
-        headings.add(new Heading(title, x, y, width, accent));
+        headings.add(new Heading(title, x, y, width, accent, false));
         return y + UiDraw.sectionHeaderHeight(font, title, width) + 4;
     }
     private int paragraph(Component text, int x, int y, int width, int color) {
@@ -385,10 +385,9 @@ public class HomePage implements Page {
 
     private int inlineHelp(String topic, int x, int y, int width) {
         if (!expandedHelp.equals(topic)) return y;
-        Component title = tr("help." + topic + ".title");
         Component body = tr("help." + topic + ".body");
-        helpPanels.add(new InlineHelp(title, body, x, y, width));
-        return y + UiDraw.helpPanelHeight(font, title, body, width) + 9;
+        helpPanels.add(new InlineHelp(body, x, y, width));
+        return y + UiDraw.helpPanelHeight(font, body, width) + 9;
     }
 
     private boolean usbBusy() { return ConnectionManager.isUsbReconnecting() || reconnect != null; }
@@ -460,17 +459,22 @@ public class HomePage implements Page {
         gui.enableScissor(view.x(), view.y(), view.right() - 8, view.bottom());
         for (Surface surface : surfaces) {
             Rect r = surface.bounds();
-            UiDraw.dashboardCard(gui, r.x(), drawY(r.y()), r.width(), r.height(), surface.accent(),
-                    mx >= r.x() && mx < r.right() && my >= drawY(r.y()) && my < drawY(r.bottom()));
+            UiDraw.dashboardCard(gui, r.x(), drawY(r.y()), r.width(), r.height(), surface.accent());
         }
         renderSummary(gui, mx, my);
-        for (Heading h : headings) UiDraw.dashboardSectionHeader(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), h.accent());
+        for (Heading h : headings) {
+            if (h.cardTitle())
+                UiDraw.clippedText(gui, font, h.title().copy().withStyle(ChatFormatting.BOLD),
+                        h.x(), drawY(h.y()), h.width(), UiTheme.TEXT_PRIMARY, mx, my);
+            else
+                UiDraw.dashboardSectionHeader(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), h.accent());
+        }
         for (Text t : texts) {
             if (t.background() == 0) UiDraw.wrappedText(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.color());
             else UiDraw.notice(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.background(), t.color());
         }
         for (InlineHelp h : helpPanels)
-            UiDraw.helpPanel(gui, font, h.title(), h.body(), h.x(), drawY(h.y()), h.width());
+            UiDraw.helpPanel(gui, font, h.body(), h.x(), drawY(h.y()), h.width());
         for (int i = 0; i < properties.size(); i++) {
             Property p = properties.get(i);
             UiDraw.labelledRow(gui, font, p.x(), drawY(p.y()), p.width(), p.label(), p.value(), p.color(), mx, my);
@@ -498,7 +502,7 @@ public class HomePage implements Page {
 
     private void renderSummary(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = summary.x(), y = drawY(summary.y()), width = summary.width();
-        UiDraw.dashboardCard(gui, x, y, width, summary.height(), statusColor(), false);
+        UiDraw.dashboardCard(gui, x, y, width, summary.height(), statusColor());
         gui.fill(x + 7, y + 5, x + width - 7, y + 29, statusBackground());
         int statusWidth = Math.min(width / 2, font.width(connectionState()) + 8);
         UiDraw.clippedText(gui, font, tr("active_device"), x + PAD, y + 10,
