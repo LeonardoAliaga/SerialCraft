@@ -91,6 +91,7 @@
   "gui.serialcraft.home.usb.adapter": "Adaptador USB serial (%s)",
   "gui.serialcraft.home.usb.serial": "USB / Serial",
   "gui.serialcraft.home.usb.bps": "%s bps",
+  "gui.serialcraft.home.usb.in_use": "En uso: %s bps",
   "gui.serialcraft.home.usb.baud_selector": "Velocidad serial",
   "gui.serialcraft.home.usb.baud_hint": "El baudrate debe coincidir con Serial.begin(...) en tu programa.",
   "gui.serialcraft.home.usb.processing": "Procesamiento en Minecraft",

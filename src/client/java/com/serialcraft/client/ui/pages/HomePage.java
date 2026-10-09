@@ -46,6 +46,10 @@ public class HomePage implements Page {
     private static final int GAP = UiTheme.SECTION_GAP;
     private static final int HISTORY_LIMIT = 64;
     private static final int LINE_HEIGHT = 11;
+    private static final int TILE_GAP = 5;
+    private static final int TILE_MIN_WIDTH = 120;
+    private static final int CHIP_HEIGHT = 20;
+    private static final int CHIP_GAP = 4;
 
     // Presentation snapshot only: the transports remain the owners of connection state.
     private record LinkState(boolean wifi, boolean connected, int epoch, BoardIdentity identity,
@@ -54,11 +58,16 @@ public class HomePage implements Page {
                              boolean rememberable, boolean usbRememberable, boolean hasToken) {}
     private record Surface(Rect bounds, int accent) {}
     private record Text(Component value, int x, int y, int width, int color, int background) {}
-    private record Property(Component label, Component value, int x, int y, int width, int color) {}
+    private record Property(Component label, Component value, int x, int y, int width, int height, int color) {}
+    private record Stat(Component label, Component value, int color) {}
+    private record Tile(Stat stat, int x, int y, int width) {}
+    private record Badge(Component text, int x, int y, int width, int background, int color) {}
     private record Heading(Component title, int x, int y, int width, int accent) {}
     private final List<Surface> surfaces = new ArrayList<>();
     private final List<Text> texts = new ArrayList<>();
     private final List<Property> properties = new ArrayList<>();
+    private final List<Tile> tiles = new ArrayList<>();
+    private final List<Badge> badges = new ArrayList<>();
     private final List<Heading> headings = new ArrayList<>();
     private final Map<String, AbstractWidget> focusWidgets = new LinkedHashMap<>();
     private final ScrollState scroll = new ScrollState();
@@ -92,7 +101,7 @@ public class HomePage implements Page {
         }
         if (pendingBaud == 0) pendingBaud = state.baud();
         if (state.wifi()) hostAddress = NetUtils.findLocalIpv4();
-        surfaces.clear(); texts.clear(); properties.clear(); headings.clear(); focusWidgets.clear();
+        surfaces.clear(); texts.clear(); properties.clear(); tiles.clear(); badges.clear(); headings.clear(); focusWidgets.clear();
         if (dialog != null) panel.clearUiWidgets();
 
         contentX = UiTheme.contentX(screenWidth);
@@ -175,7 +184,7 @@ public class HomePage implements Page {
         y += 22;
         y = property(tr("platform"), family(), left, y, inner, UiTheme.TEXT_PRIMARY);
         if (state.bridge() != BoardIdentity.Bridge.NONE)
-            y = property(tr("bridge"), Component.literal(state.bridge().name()), left, y, inner, UiTheme.TEXT_PRIMARY);
+            y = property(tr("bridge"), Component.literal(state.bridge().label()), left, y, inner, UiTheme.TEXT_PRIMARY);
         if (!state.identifiers().isEmpty())
             y = property(tr("usb.identifiers"), Component.literal(state.identifiers()), left, y, inner, UiTheme.TEXT_SECONDARY);
         if (state.connected() && !confirmedModel() && state.bridge() != BoardIdentity.Bridge.NONE)
@@ -197,9 +206,10 @@ public class HomePage implements Page {
                 input("token", token, y); y += 30;
             }
         } else {
-            y = property(tr("port"), state.connected() ? value(state.endpoint()) : unavailable(), left, y, inner, UiTheme.TEXT_PRIMARY);
-            y = property(tr("baud"), baud(), left, y, inner, UiTheme.TEXT_PRIMARY);
-            y = property(tr("protocol"), tr("protocol_usb"), left, y, inner, UiTheme.TEXT_PRIMARY);
+            y = tiles(left, y, inner,
+                    new Stat(tr("port"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.TEXT_PRIMARY),
+                    new Stat(tr("baud"), baud(), UiTheme.ACCENT_PRIMARY_DARK),
+                    new Stat(tr("protocol"), tr("protocol_usb"), UiTheme.TEXT_PRIMARY));
         }
         y = property(tr("usb.state"), connectionState(), left, y, inner, statusColor());
         surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.ACCENT_HOME));
@@ -209,30 +219,19 @@ public class HomePage implements Page {
     private int buildUsb(int x, int top, int width) {
         int left = x + PAD, inner = width - PAD * 2;
         int y = sectionStart(tr("usb.settings"), x, top, width, "baud");
-        y = property(tr("usb.current_baud"), baud(), left, y, inner, UiTheme.ACCENT_PRIMARY_DARK);
-        y = paragraph(tr("usb.baud_selector"), left, y + 2, inner, UiTheme.TEXT_PRIMARY) + 6;
-        int columns = Math.clamp((inner + 4) / 76, 1, SerialConfig.USB_BAUD_RATES.size());
-        int buttonWidth = (inner - (columns - 1) * 4) / columns;
-        int buttonHeight = Math.max(24, textHeight(Component.literal("230400"), buttonWidth - 24) + 8);
-        for (int i = 0; i < SerialConfig.USB_BAUD_RATES.size(); i++) {
-            int baud = SerialConfig.USB_BAUD_RATES.get(i);
-            int buttonY = y + i / columns * (buttonHeight + 4);
-            var button = new OptionButton(left + i % columns * (buttonWidth + 4), buttonY, buttonWidth, buttonHeight,
-                    Component.literal(Integer.toString(baud)), pendingBaud == baud, UiTheme.ACCENT_PRIMARY, b -> {
-                        pendingBaud = baud; resultMessage = null; focusKey = "baud." + baud; panel.refresh();
-                    });
-            button.active = state.connected() && !usbBusy();
-            input("baud." + baud, button, buttonY);
-        }
-        y += ((SerialConfig.USB_BAUD_RATES.size() + columns - 1) / columns) * (buttonHeight + 4) + 6;
+        y = baudHeader(left, y, inner);
+        y = baudChips(left, y, inner) + 8;
         y = paragraph(tr("usb.baud_hint"), left, y, inner, UiTheme.TEXT_SECONDARY) + 8;
         if (pendingBaud > 0 && (pendingBaud != state.baud() || usbBusy())) {
             y = notice(usbBusy() ? tr("usb.reconnecting") : tr("usb.pending", pendingBaud), left, y, inner,
                     UiTheme.WARN_BG, UiTheme.WARN_DARK) + 8;
         }
+        // La accion principal de la tarjeta solo se destaca cuando hay algo que aplicar.
+        boolean ready = state.connected() && !usbBusy() && pendingBaud > 0 && pendingBaud != state.baud();
         Component applyLabel = tr(usbBusy() ? "usb.reconnecting" : "usb.apply");
-        var apply = new OutlineButton(left, y, inner, 24, applyLabel, b -> applyBaud());
-        apply.active = state.connected() && !usbBusy() && pendingBaud > 0 && pendingBaud != state.baud();
+        SolidButton apply = ready ? SolidButton.primary(left, y, inner, 24, applyLabel, b -> applyBaud())
+                                  : new OutlineButton(left, y, inner, 24, applyLabel, b -> applyBaud());
+        apply.active = ready;
         apply.setTooltip(Tooltip.create(applyLabel));
         input("apply", apply, y); y += 32;
         y = paragraph(tr(state.usbRememberable() ? "usb.remembered" : "usb.session_only"), left, y, inner, UiTheme.TEXT_SECONDARY) + 8;
@@ -240,6 +239,54 @@ public class HomePage implements Page {
                 resultAccepted ? UiTheme.OK_BG : UiTheme.ERROR_BG, resultAccepted ? UiTheme.OK_DARK : UiTheme.ERROR_DARK) + 4;
         surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.ACCENT_PRIMARY));
         return y + PAD;
+    }
+
+    /** Titulo del selector con la velocidad en uso a su lado, en lugar de una fila aparte. */
+    private int baudHeader(int left, int y, int inner) {
+        Component label = tr("usb.baud_selector");
+        boolean active = state.connected() && state.baud() > 0;
+        Component inUse = active ? tr("usb.in_use", state.baud()) : unavailable();
+        int badgeWidth = Math.min(inner, font.width(inUse) + 8);
+        boolean sameRow = font.width(label) + badgeWidth + 8 <= inner;
+        int background = active ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG;
+        int color = active ? UiTheme.OK_DARK : UiTheme.NEUTRAL_TX;
+        if (sameRow) {
+            texts.add(new Text(label, left, y + 3, inner - badgeWidth - 8, UiTheme.TEXT_PRIMARY, 0));
+            badges.add(new Badge(inUse, left + inner - badgeWidth, y, badgeWidth, background, color));
+            return y + 14 + 8;
+        }
+        int badgeY = y + textHeight(label, inner) + 4;
+        texts.add(new Text(label, left, y, inner, UiTheme.TEXT_PRIMARY, 0));
+        badges.add(new Badge(inUse, left, badgeY, badgeWidth, background, color));
+        return badgeY + 14 + 8;
+    }
+
+    /** Balance row lengths (e.g. 3/2/2), keeping equal button widths and centering shorter rows. */
+    private int baudChips(int left, int y, int inner) {
+        List<Integer> rates = SerialConfig.USB_BAUD_RATES;
+        int minCell = 0;
+        for (int rate : rates)
+            minCell = Math.max(minCell, font.width(Component.literal(Integer.toString(rate)).withStyle(ChatFormatting.BOLD)) + 14);
+        int maxColumns = Math.clamp((inner + CHIP_GAP) / (minCell + CHIP_GAP), 1, rates.size());
+        int rows = (rates.size() + maxColumns - 1) / maxColumns;
+        int columns = (rates.size() + rows - 1) / rows;
+        int cell = (inner - (columns - 1) * CHIP_GAP) / columns;
+        int index = 0;
+        for (int row = 0; row < rows; row++) {
+            int count = rates.size() / rows + (row < rates.size() % rows ? 1 : 0);
+            int rowX = left + (inner - count * cell - (count - 1) * CHIP_GAP) / 2;
+            int chipY = y + row * (CHIP_HEIGHT + CHIP_GAP);
+            for (int column = 0; column < count; column++) {
+                int baud = rates.get(index++);
+                var chip = OptionButton.compact(rowX + column * (cell + CHIP_GAP), chipY, cell, CHIP_HEIGHT,
+                        Component.literal(Integer.toString(baud)), pendingBaud == baud, UiTheme.ACCENT_PRIMARY, b -> {
+                            pendingBaud = baud; resultMessage = null; focusKey = "baud." + baud; panel.refresh();
+                        });
+                chip.active = state.connected() && !usbBusy();
+                input("baud." + baud, chip, chipY);
+            }
+        }
+        return y + rows * (CHIP_HEIGHT + CHIP_GAP) - CHIP_GAP;
     }
 
     private int buildWifi(int x, int top, int width) {
@@ -301,8 +348,22 @@ public class HomePage implements Page {
         return y + UiDraw.noticeHeight(font, text, width);
     }
     private int property(Component label, Component value, int x, int y, int width, int color) {
-        properties.add(new Property(label, value, x, y, width, color));
-        return y + UiDraw.labelledRowHeight(font, label, width);
+        int height = UiDraw.labelledRowHeight(font, label, width);
+        properties.add(new Property(label, value, x, y, width, height, color));
+        return y + height;
+    }
+    /** Fichas de dato clave en rejilla; la ultima de una fila incompleta ocupa el ancho sobrante. */
+    private int tiles(int x, int y, int width, Stat... stats) {
+        int columns = Math.clamp((width + TILE_GAP) / (TILE_MIN_WIDTH + TILE_GAP), 1, stats.length);
+        for (int i = 0; i < stats.length; i++) {
+            int row = i / columns, column = i % columns;
+            int inRow = Math.min(columns, stats.length - row * columns);
+            int tileWidth = (width - (inRow - 1) * TILE_GAP) / inRow;
+            tiles.add(new Tile(stats[i], x + column * (tileWidth + TILE_GAP),
+                    y + row * (UiDraw.STAT_TILE_HEIGHT + TILE_GAP), tileWidth));
+        }
+        int rows = (stats.length + columns - 1) / columns;
+        return y + rows * (UiDraw.STAT_TILE_HEIGHT + TILE_GAP) + 3;
     }
     private int textHeight(Component text, int width) { return font.split(text, Math.max(1, width)).size() * font.lineHeight; }
     private void input(String key, AbstractWidget widget, int y) {
@@ -398,8 +459,22 @@ public class HomePage implements Page {
             if (t.background() == 0) UiDraw.wrappedText(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.color());
             else UiDraw.notice(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.background(), t.color());
         }
-        for (Property p : properties)
+        for (int i = 0; i < properties.size(); i++) {
+            Property p = properties.get(i);
             UiDraw.labelledRow(gui, font, p.x(), drawY(p.y()), p.width(), p.label(), p.value(), p.color(), mx, my);
+            // Hairline solo entre filas consecutivas del mismo grupo.
+            boolean continues = i + 1 < properties.size() && properties.get(i + 1).x() == p.x()
+                    && properties.get(i + 1).y() == p.y() + p.height();
+            if (continues) {
+                int ruleY = drawY(p.y() + p.height() - 4);
+                gui.fill(p.x(), ruleY, p.x() + p.width(), ruleY + 1, UiTheme.LINE);
+            }
+        }
+        for (Tile t : tiles)
+            UiDraw.statTile(gui, font, t.x(), drawY(t.y()), t.width(), t.stat().label(), t.stat().value(),
+                    UiTheme.ACCENT_PRIMARY, t.stat().color(), mx, my);
+        for (Badge b : badges)
+            UiDraw.badge(gui, font, b.x(), drawY(b.y()), b.width(), b.text(), b.background(), b.color(), mx, my);
         Component confidence = tr("confidence." + state.identity().confidence().name().toLowerCase(Locale.ROOT));
         UiDraw.badge(gui, font, modelBadge.x(), drawY(modelBadge.y()), modelBadge.width(), confidence,
                 confirmedModel() ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG,

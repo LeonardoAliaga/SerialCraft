@@ -1,5 +1,6 @@
 package com.serialcraft.client.ui;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -156,6 +157,23 @@ public final class UiDraw {
         int valueX = width < 260 ? x : x + labelWidth + 8;
         int valueY = width < 260 ? y + font.split(label, Math.max(1, labelWidth)).size() * font.lineHeight + 4 : y;
         clippedText(gui, font, value, valueX, valueY, width - (valueX - x), color, mouseX, mouseY);
+    }
+
+    public static final int STAT_TILE_HEIGHT = 30;
+
+    /**
+     * Ficha de dato clave: etiqueta pequena sobre un valor en negrita, en una superficie
+     * tenue con borde de acento. Se lee de un vistazo, a diferencia de una fila etiqueta/valor.
+     */
+    public static void statTile(GuiGraphicsExtractor gui, Font font, int x, int y, int width,
+                                Component label, Component value, int accent, int valueColor,
+                                int mouseX, int mouseY) {
+        gui.fill(x, y, x + width, y + STAT_TILE_HEIGHT, UiTheme.BG_PANEL);
+        gui.outline(x, y, width, STAT_TILE_HEIGHT, UiTheme.LINE);
+        gui.fill(x, y, x + 2, y + STAT_TILE_HEIGHT, accent);
+        clippedText(gui, font, label, x + 8, y + 5, width - 12, UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+        clippedText(gui, font, value.copy().withStyle(ChatFormatting.BOLD), x + 8, y + 16, width - 12,
+                valueColor, mouseX, mouseY);
     }
 
     /** Campo de texto hundido, con borde y fondo oscuro. */

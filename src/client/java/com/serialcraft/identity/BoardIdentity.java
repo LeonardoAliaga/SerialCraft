@@ -31,7 +31,14 @@ public record BoardIdentity(String model, Family family, Confidence confidence,
     }
 
     /** Chip puente USB-serie detectado (solo informativo, para la etiqueta). */
-    public enum Bridge { NONE, CH340, CH9102, CP210X, FTDI, PL2303 }
+    public enum Bridge {
+        NONE(""), CH340("CH340"), CH9102("CH9102"), CP210X("CP210x"), FTDI("FTDI"), PL2303("PL2303");
+
+        private final String label;
+        Bridge(String label) { this.label = label; }
+        /** Nombre comercial del chip, para mostrar en la interfaz (vacio si no hay). */
+        public String label() { return label; }
+    }
 
     private static final BoardIdentity UNKNOWN_INSTANCE =
             new BoardIdentity("", Family.UNKNOWN, Confidence.UNKNOWN, Bridge.NONE, "", "");
