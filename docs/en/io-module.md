@@ -1,13 +1,13 @@
 # Hardware I/O Module
 
-The module connects one hardware channel to redstone. The name is a label; **Channel** must match the sketch exactly. Right-click the base to edit without connecting hardware. Saving waits for server validation and keeps the draft on errors. The server checks ownership, dimension, loaded chunks, distance (64 blocks) and valid values.
+The module connects one hardware channel to redstone. The name is a label; **Channel** must match the sketch exactly. Right-click the base to edit without connecting hardware. The editor now has **Configuration** and **Diagnostics** tabs, contextual **?** help, and a draft preserved while switching tabs. Save is enabled for unsaved changes and waits for server approval; rejection retains the draft, while closing unsaved changes asks for confirmation. The server checks ownership, dimension, loaded chunks, distance (64 blocks) and valid values. Connector roles are edited directly on the block in the world.
 
 | Direction | Green input | Red output | Disabled |
 | --- | --- | --- | --- |
 | Hardware → Minecraft | Enables the received sample | Emits redstone | Unused |
 | Minecraft → Hardware | Reads and combines redstone | Inactive | Unused |
 
-Five terminals face north, south, east, west and down. The bottom terminal is on the board's top surface near its south edge, so it remains selectable while placed on a block. It communicates with the block below. There is no top port. Right-click a terminal toggles input/off; Shift + right-click toggles output/off. The editor cycles Off → Input → Output. Colors indicate configured roles; LEDs indicate direction and enabled state.
+Five terminals face north, south, east, west and down. The bottom terminal is on the board's top surface near its south edge, so it remains selectable while placed on a block. It communicates with the block below. There is no top port. Right-click a terminal toggles input/off; Shift + right-click toggles output/off. The current editor does **not** provide a connector selector. Colors indicate configured roles; LEDs indicate direction and enabled state.
 
 ## Examples and logic
 
@@ -19,7 +19,7 @@ OR takes the maximum input. AND takes the minimum, including zero. XOR takes the
 
 ## Diagnostics and limits
 
-RX is the last received value; TX is the last value forwarded to the owner's client, **without physical acknowledgement**. Read is the input combination; Out is emitted redstone. `-1` means no sample/send. Connection state is reported by the hardware-owning client.
+RX is the last received value; TX is the last value forwarded to the owner's client, **without physical acknowledgement**. Read is the combined input; Processed is the evaluated value; Out is emitted redstone. The editor also displays the reported connection and RX sample age, with localized no-sample/no-send labels for missing data (internally `-1`). Connection state is reported by the hardware-owning client.
 
 Disconnecting invalidates RX and clears redstone. Silence alone is not a disconnect because the protocol has no mandatory heartbeat. Reload/restart requires a fresh RX sample. Changing dimension invalidates samples; only the owner's current dimension exchanges signals. Reconnecting resends TX, with an extra USB resend after two seconds for the bootloader. A firmware reset that leaves the transport open requires manual reconnection/resynchronization.
 

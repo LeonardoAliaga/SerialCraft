@@ -69,7 +69,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 | :--- | :--- |
 | **Laptop** | Objeto de mano. Abre la interfaz: conexión, lista de placas, eventos, visualizar (osciloscopio) y consola. |
 | **Bloque Conector** | Ancla la conexión por USB en el mundo y guarda los baudios. |
-| **Bloque IO** | El puente real. Cada uno tiene un `Target Data`, un modo (INPUT/OUTPUT), un tipo de señal (Digital/Analógica) y lados configurables. |
+| **Módulo de E/S** | Puente entre redstone y hardware. Tiene nombre, **Canal**, dirección de datos, señal digital/analógica, lógica OR/AND/XOR y cinco terminales configurables en el mundo. |
 
 ---
 
@@ -104,7 +104,7 @@ El canal Wi-Fi va **en texto claro**. El token evita el acceso casual dentro de 
 
 Consulta la [guía del Módulo de E/S](/io-module) para conectores, lógica, diagnóstico y cambios de compatibilidad.
 
-1. Coloca un **Bloque IO** y haz clic derecho.
+1. Coloca un **Módulo de E/S** y haz clic derecho en su base. Desde **Placas → Configuración** puedes editar nombre, Canal, dirección, señal y lógica. Los botones **?** explican cada opción; **Diagnóstico** muestra RX/TX y el estado de la conexión.
 2. En **Canal**, escribe un identificador único, por ejemplo `led_verde`.
 3. Elige el modo:
    * **Minecraft → Hardware** (antiguo OUTPUT) — Minecraft envía a la placa (encender un LED, mover un motor).
@@ -112,10 +112,10 @@ Consulta la [guía del Módulo de E/S](/io-module) para conectores, lógica, dia
 4. Elige el tipo de señal:
    * **Digital** — encendido o apagado (0 o 255 en el cable).
    * **Analógica** — proporcional a la redstone (0-255 en el cable).
-5. Configura los lados que actúan como entrada de redstone.
+5. **En el mundo**, haz clic derecho sobre el terminal para entrada verde, o Shift + clic derecho para salida roja. Usa una entrada verde para `led_verde` (Minecraft → Hardware) y una salida roja para `pot_val` (Hardware → Minecraft).
 6. Carga en la placa el sketch correspondiente.
 
-Con dos bloques IO —uno `INPUT` llamado `pot_val` y otro `OUTPUT` llamado `led_verde`— ya tienes el circuito completo de los ejemplos.
+Con dos Módulos de E/S —uno en dirección **Hardware → Minecraft** con canal `pot_val` y otro en **Minecraft → Hardware** con canal `led_verde`— tienes el circuito bidireccional de los ejemplos. El botón **Guardar** requiere cambios pendientes y espera una respuesta del servidor; si cancelas con cambios sin guardar, se solicita confirmación.
 
 👉 **[Ejemplos listos para cargar y probar](/ejemplos/)** — Arduino Uno R3, ESP32 y Arduino Uno Q, con esquemas de conexión.
 
@@ -210,8 +210,7 @@ Si hay un servo o un motor conectado, empieza con la amplitud al 25 %.
 
 Vale la pena conocerlos antes de montar algo grande:
 
-* La lista de placas admite rueda y barra de desplazamiento. Falta verificar visualmente todas las escalas de GUI pequeñas.
-* La interfaz está pensada para resoluciones normales; con la escala de GUI al máximo en 854×480 las tarjetas se salen del área visible.
+* La lista de módulos y el editor usan una distribución adaptable y desplazamiento, pero conviene comprobar visualmente su legibilidad en tu resolución y escala GUI reales. El editor de v0.4.6-beta todavía **no incluye una vista gráfica interactiva de los cinco conectores**; se configuran en el propio mundo.
 * No existe un modo en el que **el servidor** sea dueño del hardware. El puerto serie vive en el ordenador de cada jugador, así que el modelo es "cada jugador controla sus propias placas desde su PC". Esto es una decisión de arquitectura, no un olvido.
 * El canal Wi-Fi no está cifrado.
 * La pestaña Visualizar guarda las últimas ~4000 muestras de hasta 16 señales a la vez. Es un registro de **mensajes**, no un osciloscopio: no ve nada que ocurra entre dos mensajes.

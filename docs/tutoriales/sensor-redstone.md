@@ -55,7 +55,7 @@ La diferencia de 3 unidades reduce pequeñas oscilaciones. También hay una inst
 2. Coloca el Módulo de E/S y define el canal `pot_val`.
 3. Selecciona dirección **Hardware → Minecraft**: los datos entran desde el hardware a Minecraft.
 4. Selecciona tipo de señal **ANALOG**.
-5. Configura una **cara roja de salida de redstone**, conectada al circuito que deseas alimentar.
+5. **En el mundo**, usa Shift + clic derecho en uno de los terminales del módulo para asignarle la salida roja de redstone; conéctala al circuito que deseas alimentar. El editor no dispone de selector gráfico de terminales en esta versión.
 6. Para observar el resultado, utiliza una línea de polvo de redstone o elementos que respondan a distinta intensidad.
 
 En versiones antiguas, el modo global se llamaba INPUT. En el editor actual, **Hardware → Minecraft** describe ese mismo flujo. La cara roja OUTPUT indica una salida de redstone, no la dirección del mensaje.

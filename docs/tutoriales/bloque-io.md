@@ -21,7 +21,7 @@ El módulo tiene un nombre para identificarlo y un **canal** como `pot_val` o `l
 
 Una señal física que entra al juego requiere una **cara roja** hacia el circuito de redstone. Una palanca que controla el dispositivo físico requiere una **cara verde** que lea redstone.
 
-El editor se abre con clic derecho sobre la base y funciona sin hardware conectado. Configura dirección, canal, señal digital o analógica, compuerta y terminales desde **Conectores y diagnóstico**.
+El editor se abre con clic derecho sobre la base y funciona sin hardware conectado. La nueva interfaz de la pestaña **Placas** tiene dos apartados: **Configuración** (nombre, canal, habilitación, dirección, tipo de señal y lógica) y **Diagnóstico** (valores y estado de la sesión). Los iconos **?** abren ayudas explicativas sin salir del editor. **Los conectores se ajustan directamente sobre el bloque en el mundo, no desde el editor.** Los cambios del formulario permanecen al cambiar de pestaña; al guardar se espera la confirmación del servidor y, si se rechazan, el borrador se conserva.
 
 ## Conectores
 
@@ -33,7 +33,7 @@ Existen cinco: norte, sur, este, oeste y **abajo**. No hay conector superior. El
 
 - Clic derecho en un terminal: entrada verde o desactivado.
 - Shift + clic derecho: salida roja o desactivado.
-- Editor: recorre desactivado → entrada → salida.
+- En esta versión, **no hay selector gráfico de conectores dentro del editor**: selecciónalos físicamente sobre el modelo en el mundo. Una futura vista de placa interactiva aún no forma parte de este commit.
 
 El color identifica configuración, **no una confirmación física** de que se haya procesado un mensaje.
 
@@ -79,7 +79,7 @@ Con dos entradas activas, 2 y 7, XOR produce 0. **No son operaciones bit a bit.*
 
 <!-- SC046_MEDIA:V03 -->
 
-La pantalla distingue **RX** (último dato recibido), **TX** (último valor remitido al cliente), **Lectura** (redstone combinada) y **Salida** (redstone emitida). TX **no es una confirmación física del actuador**. `-1` indica ausencia de muestra o envío.
+La pestaña **Diagnóstico** distingue **RX** (último dato recibido), **TX** (último valor remitido al cliente), **Lectura** (redstone combinada), **Procesado** (valor evaluado), **Salida** (redstone emitida), estado de conexión y antigüedad de RX. TX **no es una confirmación física del actuador**. La interfaz muestra «Sin muestra» o «Sin envío» cuando el dato no existe. Consulta el icono **?** para interpretar las métricas. El botón **Guardar** solo se activa con cambios pendientes; cerrar con modificaciones sin guardar solicita confirmación.
 
 Desconectar invalida RX y apaga la salida. Reiniciar o descargar y cargar el módulo tampoco recupera una muestra RX antigua: el firmware debe enviar el valor actual de nuevo. Los sketches de 0.4.6 envían la primera muestra, incluidos ceros, además de cambios y una instantánea periódica.
 

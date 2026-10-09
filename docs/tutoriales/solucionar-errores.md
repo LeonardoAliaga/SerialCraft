@@ -17,7 +17,7 @@ Esta guía corresponde al protocolo de la versión en desarrollo **0.4.6-beta**.
 | Hardware | ¿La placa ejecuta el programa? | LED de inicio, salida serial de diagnóstico |
 | Transporte | ¿Existe conexión USB o TCP? | Puerto correcto, estado de conexión |
 | Protocolo | ¿Se envían líneas completas? | `canal:valor\n` |
-| Enrutamiento | ¿El Módulo de E/S reconoce el canal? | Coinciden `Target Data` y modo |
+| Enrutamiento | ¿El Módulo de E/S reconoce el canal? | Coinciden **Canal** y dirección de datos |
 | Redstone | ¿La cara correcta lee o emite? | Palanca o lámpara en la cara configurada |
 
 Si mezclas varias modificaciones, dejas de saber qué cambio solucionó el fallo.
@@ -70,7 +70,7 @@ Prepara una descripción reproducible:
 
 1. Versión de Minecraft, Fabric y SerialCraft.
 2. Modelo exacto de placa y tipo de transporte.
-3. Modo y `Target Data` del Módulo de E/S.
+3. Dirección de datos y **Canal** del Módulo de E/S.
 4. Mensaje esperado y mensaje observado, sin contraseñas ni tokens.
 5. Qué etapas de esta guía funcionan y cuál falla.
 

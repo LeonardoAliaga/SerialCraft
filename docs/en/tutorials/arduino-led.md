@@ -26,8 +26,8 @@ Connect Uno **D9 → resistor → LED anode**, then the LED cathode to **GND**. 
 
 1. Install the version-compatible Minecraft **26.2**, **Java 25**, Fabric Loader, Fabric API and SerialCraft.
 2. Connect the Uno at **115200 baud**.
-3. Place an I/O Module with Target Data `led_verde` and data direction **Minecraft → Hardware**.
-4. Configure a redstone **green input** face and connect a lever or a redstone line.
+3. Place an I/O Module, open **Boards → Configuration**, set the **Channel** to `led_verde`, and choose **Minecraft → Hardware**.
+4. **In the world**, right-click one of the module's terminals to set it as a **green input** face and connect a lever or redstone line. The Diagnostics tab does not edit terminals.
 5. Choose DIGITAL for on/off; ANALOG for values proportional to the received redstone strength.
 
 With full redstone, the expected message is `led_verde:255`; with no redstone, `led_verde:0`. An Uno sketch can read complete lines and apply the value with `analogWrite(9, value)`.

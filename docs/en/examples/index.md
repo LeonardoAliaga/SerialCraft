@@ -14,22 +14,22 @@ The circuit is identical in all three cases; only the transport changes.
 
 ## 1. Shared setup in Minecraft
 
-All three examples need exactly the same two IO Blocks:
+All three examples use the same two **Hardware I/O Modules**:
 
-| Block | Target Data | Mode | Signal type | What it does |
+| Module | Channel | Data direction | Signal type | What it does |
 | :--- | :--- | :--- | :--- | :--- |
-| Input | `pot_val` | **INPUT** | **Analog** | The potentiometer produces redstone 0-15 |
-| Output | `led_verde` | **OUTPUT** | **Analog** | In-game redstone sets the LED brightness |
+| Sensor | `pot_val` | **Hardware → Minecraft** | **Analog** | Potentiometer powers redstone through a red output face |
+| LED | `led_verde` | **Minecraft → Hardware** | **Analog** | Redstone on a green input face controls LED brightness |
 
 ::: tip The block ID is not translated
-The sketches use `led_verde` (Spanish for "green LED") as the literal key. `Target Data` is a raw string, not a localised name — if you rename it in the game, rename it in the sketch too.
+The sketches use `led_verde` (Spanish for "green LED") as the literal key. **Channel** is a raw protocol string, not a localized display name — if you change it in the game, change it in the sketch too.
 :::
 
 Suggested in-game build:
 
 1. Place the `pot_val` block and put a redstone lamp beside it, or a dust line into a comparator to read the level.
 2. Place the `led_verde` block with a lever or redstone dust feeding one of its configured input sides.
-3. Configure the input sides in each block's menu.
+3. Configure the terminals **on the blocks in the world**: right-click for green input, Shift + right-click for red output. Use **Boards → Configuration** for channel, direction and signal, and **Diagnostics** for RX/TX.
 
 ::: tip Testing without hardware
 Before wiring anything, enable the debug HUD (key bound under *Options → Controls → SerialCraft*). It shows outgoing and incoming messages, which separates a game-side problem from a wiring problem.

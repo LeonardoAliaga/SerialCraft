@@ -4,7 +4,7 @@ El Módulo de E/S conecta un **canal de hardware** con un circuito de redstone. 
 
 ## Configuración
 
-Haz clic derecho en la base para abrir el editor. Puedes configurar el bloque sin conectar hardware. Escribe un nombre y un canal, elige dirección, señal y lógica, y abre **Conectores y diagnóstico** para asignar las cinco caras. Guardar espera la validación del servidor; un error conserva el borrador. El servidor comprueba propietario, dimensión, distancia de hasta 64 bloques, chunk cargado y valores válidos.
+Haz clic derecho en la base para abrir el editor. Puedes configurar el bloque sin conectar hardware. La interfaz presenta las pestañas **Configuración** (nombre, canal, habilitación, dirección, señal y lógica) y **Diagnóstico** (RX, TX, lecturas, salida, enlace y antigüedad de RX), con ayuda contextual mediante el icono **?**. **Las cinco caras se configuran haciendo clic sobre los terminales del bloque en el mundo**, no desde esas pestañas. El formulario conserva los cambios al navegar y al recibir un rechazo del servidor; Guardar se habilita cuando hay cambios y espera la validación del servidor. Cerrar con un borrador sin guardar ofrece confirmación. El servidor comprueba propietario, dimensión, distancia de hasta 64 bloques, chunk cargado y valores válidos.
 
 El canal admite 1–32 letras ASCII, dígitos, `_`, `.` y `-`. `mc_` está reservado para telemetría e identificación. No uses el mismo canal para varios emisores con valores distintos, ni para un generador y un módulo que controlen el mismo actuador. Varios receptores del mismo jugador sí pueden compartirlo.
 
@@ -13,7 +13,7 @@ El canal admite 1–32 letras ASCII, dígitos, `_`, `.` y `-`. `mc_` está reser
 | Hardware → Minecraft | Condición de habilitación | Emite redstone | No participa |
 | Minecraft → Hardware | Lee y combina redstone | Inactiva | No participa |
 
-En el mundo, clic derecho en un terminal alterna entrada/desactivado; Shift + clic derecho alterna salida/desactivado. El editor recorre desactivado → entrada → salida. El terminal **inferior está en la superficie de la placa**, cerca del borde sur; se selecciona desde arriba y comunica con el bloque de abajo. No hay puerto superior. Los colores muestran el rol configurado; los LEDs muestran habilitación y dirección, sin simular actividad física confirmada.
+En el mundo, clic derecho en un terminal alterna entrada/desactivado; Shift + clic derecho alterna salida/desactivado. El editor actual **no** ofrece un selector de terminales: la configuración se realiza sobre el bloque. El terminal **inferior está en la superficie de la placa**, cerca del borde sur; se selecciona desde arriba y comunica con el bloque de abajo. No hay puerto superior. Los colores muestran el rol configurado; los LEDs muestran habilitación y dirección, sin simular actividad física confirmada.
 
 ## Hardware → Minecraft
 
@@ -43,7 +43,7 @@ Al transmitir, estas reglas calculan la magnitud enviada. Al recibir, un resulta
 
 ## Diagnóstico y conexión
 
-**RX** es el último dato recibido para ese módulo; **TX** es el último valor remitido al cliente del propietario; **Lectura** es la combinación de las entradas y **Salida** la redstone emitida. `-1` significa que no hay muestra/envío. El estado de conexión es reportado por el cliente que posee el hardware. No hay confirmación física en el protocolo, así que TX no prueba que un LED haya cambiado.
+**RX** es el último dato recibido para ese módulo; **TX** es el último valor remitido al cliente del propietario; **Lectura** es la combinación de las entradas; **Procesado** es el valor tras aplicar la lógica; y **Salida** la redstone emitida. El editor también presenta la antigüedad de RX. Los valores ausentes se representan como «Sin muestra» o «Sin envío»; en el protocolo interno, `-1` significa ausencia de muestra/envío. El estado de conexión es reportado por el cliente que posee el hardware. No hay confirmación física en el protocolo, así que TX no prueba que un LED haya cambiado.
 
 La desconexión observada invalida RX y apaga la redstone. El silencio por sí solo no implica desconexión: no existe un latido obligatorio. Al reiniciar o recargar una entidad, RX comienza sin muestra y requiere un dato nuevo. Al cambiar de dimensión se invalidan muestras; solamente los módulos de la dimensión actual del propietario intercambian datos. Reconectar reenvía los estados TX; USB hace otro reenvío a los dos segundos para cubrir el bootloader. Si el firmware reinicia internamente sin cerrar el transporte, el mod no puede detectar ese reinicio: reconecta o cambia la configuración para resincronizar.
 

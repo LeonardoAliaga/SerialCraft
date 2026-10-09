@@ -23,9 +23,9 @@ A module has a display name and a Channel such as `pot_val` or `led_verde`. The 
 
 For a sensor controlling Minecraft, configure a **red output face**. For a Minecraft lever controlling a physical LED, configure a **green input face**.
 
-Right-click the base to edit without hardware connected. The **Connectors and diagnostics** screen shows five terminals: north, south, east, west, and down. The bottom terminal is selected near the south edge on the upper surface but communicates with the block below. There is no top port.
+Right-click the base to open the editor without connected hardware. It now has **Configuration** (name, channel, enable state, data direction, signal and logic) and **Diagnostics** (signal values and connection state) sections. The **?** icons open contextual help. **The five connectors are configured by interacting with their terminals in the world, not in the editor.** The lower terminal is selected on the board's upper surface near its south edge but connects to the block below. There is no top port.
 
-Right-click a terminal to toggle green input/off; Shift + right-click toggles red output/off. In the editor, cycle Off → Input → Output.
+Right-click a terminal to toggle green input/off; Shift + right-click toggles red output/off. The editor has **no connector cycling buttons** in this version. Unsaved form changes remain while switching sections; Save waits for server confirmation, rejected changes remain editable, and closing with pending changes prompts for confirmation.
 
 ## Hardware → Minecraft example
 
@@ -63,7 +63,7 @@ For strengths 2, 7, 12: OR=12, AND=2, XOR=12. These are not bitwise operations o
 
 <!-- SC046_MEDIA:V03 -->
 
-**RX** is last hardware sample. **TX** is the latest value forwarded to the owner's client, **not proof that hardware received or acted on it**. Read denotes combined inputs; Out denotes world redstone output. A missing value may display `-1`.
+**RX** is the last hardware sample; **TX** is the latest value forwarded to the owner's client, **not proof that hardware received or acted on it**. **Read** is combined redstone input, **Processed** is the evaluated value, and **Out** is emitted redstone. The panel also reports connection state and RX age. Missing RX/TX values are shown as no sample/no send.
 
 Disconnecting clears RX and world output. Reloading a module invalidates its previous RX sample, so 0.4.6 example firmware sends an initial sample including zero, subsequent changes and periodic snapshots. USB also resends stable TX after the bootloader startup interval.
 

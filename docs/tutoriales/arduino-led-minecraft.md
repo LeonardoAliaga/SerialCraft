@@ -72,7 +72,7 @@ Este es un ejemplo didáctico. El sketch completo de referencia, con más contro
 3. Asegúrate de usar **115200 baudios**, igual que `Serial.begin(115200)`.
 4. Coloca un Módulo de E/S, abre el editor de la base y asigna el canal `led_verde`.
 5. Selecciona **Minecraft → Hardware** como dirección del módulo (Minecraft envía al hardware).
-6. Selecciona Digital o Analógico y configura una **cara verde de entrada de redstone**.
+6. En **Placas → Configuración**, selecciona Digital o Analógica. Después, **en el mundo**, haz clic derecho sobre un terminal del módulo para asignarle el estado verde de entrada de redstone. Los conectores no se cambian desde la pestaña Diagnóstico.
 7. Conecta una palanca mediante el circuito de redstone a esa cara.
 
 ::: tip Si no encuentras el menú

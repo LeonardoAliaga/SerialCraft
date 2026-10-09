@@ -27,7 +27,7 @@ Serial.println(constrain(value, 0, 255));
 
 This snippet illustrates the format only. In real firmware, **send the initial sample including zero, meaningful changes and a periodic snapshot** and limit the sample rate instead of transmitting as fast as `loop()` can run.
 
-In Minecraft, configure a direction **Hardware → Minecraft** I/O Module with `Target Data = pot_val`, type **ANALOG**, and a redstone **red output** face. Connect redstone dust to that face. A value around 128 should give approximately 8 redstone strength; 255 should give 15.
+In Minecraft, open **Boards → Configuration**, set the **Channel** to `pot_val`, choose **Hardware → Minecraft** and **ANALOG**. Then **in the world** use Shift + right-click on a terminal to set a **red output** face. Connect redstone dust to that face. A value around 128 should give approximately 8 redstone strength; 255 should give 15.
 
 If you see only on/off, check whether the block is DIGITAL. If nothing changes, verify the exact channel string, newline, serial baud rate and face direction.
 

@@ -69,7 +69,7 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 | :--- | :--- |
 | **Laptop** | Handheld item. Opens the interface: connection, board list, events, visualizer (oscilloscope), and console. |
 | **Connector Block** | Anchors the USB connection in the world and stores the baud rate. |
-| **IO Block** | The actual bridge. Each has a `Target Data`, a mode (INPUT/OUTPUT), a signal type (Digital/Analog) and configurable sides. |
+| **Hardware I/O Module** | The bridge between redstone and hardware. Has a name, **Channel**, data direction, signal type, OR/AND/XOR logic, and five terminal roles configured directly in the world. |
 
 ---
 
@@ -104,7 +104,7 @@ The Wi-Fi channel is **plaintext**. The token prevents casual access within your
 
 See the [Hardware I/O Module guide](/en/io-module) for terminal roles, logic, diagnostics and migration notes.
 
-1. Place an **IO Block** and right-click it.
+1. Place a **Hardware I/O Module** and right-click its base. **Boards → Configuration** lets you edit name, Channel, direction, signal and logic. **?** opens contextual help; **Diagnostics** displays RX/TX and connection data.
 2. In **Channel**, enter a unique identifier, for instance `green_led`.
 3. Pick the mode:
    * **Minecraft → Hardware** (legacy OUTPUT) — Minecraft sends to the board (turn on an LED, move a motor).
@@ -112,10 +112,10 @@ See the [Hardware I/O Module guide](/en/io-module) for terminal roles, logic, di
 4. Pick the signal type:
    * **Digital** — on or off (0 or 255 on the wire).
    * **Analog** — proportional to redstone (0-255 on the wire).
-5. Configure which sides accept redstone.
+5. **In the world**, right-click a terminal to select green redstone input, or Shift + right-click for a red output. Use green input for `led_verde` (Minecraft → Hardware) and red output for `pot_val` (Hardware → Minecraft).
 6. Flash the corresponding sketch to the board.
 
-With two IO Blocks — one `INPUT` named `pot_val` and one `OUTPUT` named `green_led` — you have the complete setup used in all the examples.
+With two Hardware I/O Modules — **Hardware → Minecraft** on `pot_val` and **Minecraft → Hardware** on `led_verde` — you have the two-way setup used in the examples. Saving waits for server acceptance; closing with unsaved changes prompts for confirmation.
 
 👉 **[Ready-to-flash examples](/en/examples/)** — Arduino Uno R3, ESP32 and Arduino Uno Q, with wiring diagrams.
 

@@ -14,21 +14,21 @@ El circuito es idéntico en los tres casos; lo que cambia es el transporte.
 
 ## 1. Preparación común en Minecraft
 
-Los tres ejemplos necesitan exactamente los mismos dos bloques IO:
+Los tres ejemplos necesitan exactamente los mismos dos **Módulos de E/S**:
 
-| Bloque | Target Data | Modo | Tipo de señal | Qué hace |
+| Módulo | Canal | Dirección de datos | Tipo de señal | Qué hace |
 | :--- | :--- | :--- | :--- | :--- |
-| Entrada | `pot_val` | **INPUT** | **Analógica** | El potenciómetro genera redstone 0-15 |
-| Salida | `led_verde` | **OUTPUT** | **Analógica** | La redstone del juego regula el brillo del LED |
+| Sensor | `pot_val` | **Hardware → Minecraft** | **Analógica** | El potenciómetro genera redstone 0–15 mediante una salida roja |
+| LED | `led_verde` | **Minecraft → Hardware** | **Analógica** | La redstone entrante por una cara verde regula el brillo del LED |
 
 Montaje sugerido dentro del juego:
 
 1. Coloca el bloque `pot_val` y conecta una lámpara de redstone a su lado, o una línea de polvo hacia un comparador para ver el nivel.
 2. Coloca el bloque `led_verde` con una palanca o una línea de polvo de redstone entrando por uno de sus lados configurados como entrada.
-3. Configura los lados de entrada en el menú de cada bloque.
+3. Configura las caras **directamente sobre cada bloque en el mundo**: clic derecho para entrada verde y Shift + clic derecho para salida roja. En **Placas → Configuración**, selecciona Canal, dirección y señal; en **Diagnóstico**, comprueba RX/TX.
 
 ::: tip Prueba rápida sin hardware
-Antes de conectar nada, activa el HUD de depuración (tecla asignada en *Opciones → Controles → SerialCraft*). Muestra los mensajes que salen y entran, así distingues un problema del juego de uno del cableado.
+Antes de conectar nada, activa el HUD de depuración (tecla asignada en *Opciones → Controles → SerialCraft*). Muestra mensajes y contadores del enlace; no sustituye una comprobación de hardware físico.
 :::
 
 ---
