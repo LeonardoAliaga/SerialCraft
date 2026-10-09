@@ -91,6 +91,10 @@ public class SolidButton extends AbstractWidget {
 
         gui.fill(x, y, x + w, y + h, background);
         gui.outline(x, y, w, h, border);
+        if (active && isFocused()) {
+            gui.outline(x, y, w, h, UiTheme.TEXT_PRIMARY);
+            gui.outline(x + 1, y + 1, w - 2, h - 2, UiTheme.TEXT_INVERSE);
+        }
 
         Font font = Minecraft.getInstance().font;
         int textColor = this.active ? variant.textColor

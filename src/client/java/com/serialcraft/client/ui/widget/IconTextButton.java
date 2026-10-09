@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -62,6 +63,15 @@ public class IconTextButton extends AbstractWidget {
     @Override
     public void onClick(@NotNull MouseButtonEvent event, boolean focused) {
         if (this.onPress != null) this.onPress.onPress(this);
+    }
+
+    /** Compact help action keeps a full label for keyboard narration and its tooltip. */
+    public static IconTextButton help(int x, int y, Component title, OnPress onPress) {
+        Component label = Component.translatable("gui.serialcraft.io.help.open", title);
+        var button = new IconTextButton(x, y, 28, 22, SpriteIcon.QUEST, label, onPress,
+                UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK);
+        button.setTooltip(Tooltip.create(label));
+        return button;
     }
 
     @Override

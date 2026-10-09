@@ -9,17 +9,22 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class SerialConfig {
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("serialcraft.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static SerialConfig instance;
+    public static final List<Integer> USB_BAUD_RATES = List.of(4800, 9600, 19200, 38400, 57600, 115200, 230400);
 
     // --- OPCIONES GUARDADAS ---
     public BoardProfile boardProfile = BoardProfile.ARDUINO_UNO;
     public int baudRate = 115200;
     public int analogUpdateRate = 1; // Legacy setting retained; IO now processes dirty inputs once per tick.
+    private Map<String, Integer> usbBaudRates = new LinkedHashMap<>();
 
     // --- ENUM DE PERFILES ---
     public enum BoardProfile {
@@ -54,6 +59,7 @@ public class SerialConfig {
         }
         if (instance == null) instance = new SerialConfig();
         if (instance.boardProfile == null) instance.boardProfile = BoardProfile.ARDUINO_UNO;
+        if (instance.usbBaudRates == null) instance.usbBaudRates = new LinkedHashMap<>();
     }
 
     public static void save() {
@@ -67,6 +73,21 @@ public class SerialConfig {
     public static SerialConfig get() {
         if (instance == null) load();
         return instance;
+    }
+
+    /** Per-device settings use USB identity, never a model preset or a mutable COM number. */
+    public int usbBaudRate(String uid, int fallback) {
+        if (uid.isEmpty()) return fallback;
+        Integer saved = usbBaudRates.get(uid);
+        return saved != null && USB_BAUD_RATES.contains(saved) ? saved : fallback;
+    }
+
+    public void rememberUsbBaudRate(String uid, int baud) {
+        if (uid.isEmpty() || !USB_BAUD_RATES.contains(baud)) return;
+        if (!usbBaudRates.containsKey(uid) && usbBaudRates.size() >= 64)
+            usbBaudRates.remove(usbBaudRates.keySet().iterator().next());
+        usbBaudRates.put(uid, baud);
+        save();
     }
 
     // Método helper para cambiar perfil y guardar defaults automáticamente

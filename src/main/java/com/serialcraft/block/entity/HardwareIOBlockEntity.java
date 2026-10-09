@@ -1,5 +1,7 @@
 package com.serialcraft.block.entity;
 
+import com.mojang.datafixers.util.Either;
+import com.mojang.serialization.Codec;
 import com.serialcraft.block.HardwareIOBlock;
 import com.serialcraft.block.IOSide;
 import com.serialcraft.board.*;
@@ -32,6 +34,7 @@ import java.util.UUID;
 public class HardwareIOBlockEntity extends BlockEntity {
     public static final String DEFAULT_BOARD_ID = "placa_gen";
     public static final String DEFAULT_TARGET_DATA = "cmd_1";
+    private static final Codec<Either<String, Integer>> STORED_ENUM = Codec.either(Codec.STRING, Codec.INT);
 
     private IoMode ioMode = IoMode.OUTPUT;
     private SignalType signalType = SignalType.DIGITAL;
@@ -267,12 +270,17 @@ public class HardwareIOBlockEntity extends BlockEntity {
 
     @Override protected void loadAdditional(ValueInput in) {
         super.loadAdditional(in);
-        ioMode = parseEnum(in.getString("ioMode").orElse(null), in.getIntOr("ioMode", 0), IoMode.VALUES, IoMode.OUTPUT);
-        signalType = parseEnum(in.getString("signalType").orElse(null), in.getIntOr("signalType", 0), SignalType.VALUES, SignalType.DIGITAL);
-        logicMode = parseEnum(in.getString("logicMode").orElse(null), in.getIntOr("logicMode", 0), LogicMode.VALUES, LogicMode.OR);
-        boolean validModes = validEnum(in.getString("ioMode").orElse(null), in.getIntOr("ioMode", 0), IoMode.VALUES)
-                && validEnum(in.getString("signalType").orElse(null), in.getIntOr("signalType", 0), SignalType.VALUES)
-                && validEnum(in.getString("logicMode").orElse(null), in.getIntOr("logicMode", 0), LogicMode.VALUES);
+        // Decode the two supported formats once. Probing both typed getters reports
+        // a spurious type error even when the other getter successfully reads the value.
+        var mode = in.read("ioMode", STORED_ENUM).orElse(Either.right(0));
+        var signal = in.read("signalType", STORED_ENUM).orElse(Either.right(0));
+        var logic = in.read("logicMode", STORED_ENUM).orElse(Either.right(0));
+        ioMode = parseEnum(mode.left().orElse(null), mode.right().orElse(0), IoMode.VALUES, IoMode.OUTPUT);
+        signalType = parseEnum(signal.left().orElse(null), signal.right().orElse(0), SignalType.VALUES, SignalType.DIGITAL);
+        logicMode = parseEnum(logic.left().orElse(null), logic.right().orElse(0), LogicMode.VALUES, LogicMode.OR);
+        boolean validModes = validEnum(mode.left().orElse(null), mode.right().orElse(0), IoMode.VALUES)
+                && validEnum(signal.left().orElse(null), signal.right().orElse(0), SignalType.VALUES)
+                && validEnum(logic.left().orElse(null), logic.right().orElse(0), LogicMode.VALUES);
         String channel = in.getString("targetData").orElse(DEFAULT_TARGET_DATA);
         boolean validChannel = SignalProtocol.isValidChannel(channel);
         targetData = NetGuard.sanitize(channel, BoardInfo.MAX_DATA_LENGTH, "");

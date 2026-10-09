@@ -41,11 +41,13 @@ public final class UiTheme {
     public static final int WARN_BG   = 0xFFFFF3E0;
     public static final int ERROR     = 0xFFE53935;
     public static final int ERROR_DARK= 0xFFC62828;
+    public static final int ERROR_BG  = 0xFFFFEBEE;
     public static final int INFO      = 0xFF0288D1;
     public static final int INFO_DARK = 0xFF01579B;
     public static final int INFO_BG   = 0xFFE1F5FE;
     public static final int NEUTRAL_BG= 0xFFF5F5F5;
     public static final int NEUTRAL_TX= 0xFF424242;
+    public static final int CONSOLE_RX= 0xFF4DD0E1;
 
     // ── Acentos por pestana ───────────────────────────────────────────────────
     public static final int ACCENT_HOME             = 0xFFE91E63;
@@ -67,6 +69,8 @@ public final class UiTheme {
     public static final int TAB_INACTIVE_BORDER = 0xFF37474F;
 
     // ── Metricas ──────────────────────────────────────────────────────────────
+    public static final int SECTION_GAP = 12;
+    public static final int CARD_PADDING = 12;
     /** Ancho de la barra lateral, en porcentaje del ancho de pantalla. */
     public static final int NAV_WIDTH_PERCENT = 18;
     /** Margen entre la barra lateral y el contenido. */

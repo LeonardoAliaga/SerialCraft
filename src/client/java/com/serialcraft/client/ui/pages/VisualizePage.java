@@ -266,6 +266,8 @@ public class VisualizePage implements Page {
         runGenerator(System.nanoTime());
     }
 
+    public boolean isGeneratingSignal() { return generator.isRunning(); }
+
     @Override
     public void onClose() {
         applyAction(generator.stop());

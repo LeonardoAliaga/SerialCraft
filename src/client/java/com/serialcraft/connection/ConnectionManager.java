@@ -1,6 +1,7 @@
 package com.serialcraft.connection;
 
 import com.serialcraft.client.SerialDebugHud;
+import com.serialcraft.config.SerialConfig;
 import com.serialcraft.identity.BannerSniffer;
 import com.serialcraft.identity.BoardHello;
 import com.serialcraft.identity.BoardIdentity;
@@ -17,6 +18,7 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -76,7 +78,9 @@ public final class ConnectionManager {
             });
     private static volatile BoardIdentity announced = BoardIdentity.unknown();
     private static volatile int linkEpoch = 0;
+    private static volatile long connectedAtNanos;
     private static final HardwareOutbox OUTBOX = new HardwareOutbox();
+    private static volatile boolean usbReconnecting;
     static { PROBES.scheduleWithFixedDelay(ConnectionManager::drainOutput, 25, 25, TimeUnit.MILLISECONDS); }
 
     /** Mejor identidad conocida de la placa conectada (desconocida si no hay ninguna). */
@@ -93,6 +97,7 @@ public final class ConnectionManager {
         final int epoch;
         synchronized (ConnectionManager.class) {
             announced = known;
+            connectedAtNanos = System.nanoTime();
             INBOX.clear();
             OUTBOX.clear();
             epoch = ++linkEpoch;
@@ -107,6 +112,7 @@ public final class ConnectionManager {
     static void onLinkClosed() {
         synchronized (ConnectionManager.class) {
             linkEpoch++;                       // cancela las sondas pendientes
+            connectedAtNanos = 0;
             if (!isAnyConnected()) announced = BoardIdentity.unknown();
         }
     }
@@ -128,6 +134,41 @@ public final class ConnectionManager {
 
     public static SerialHandler getSerial() { return SERIAL; }
     public static WifiHandler   getWifi()   { return WIFI; }
+    /** Monotonic session duration; opening a screen never starts or resumes a timer. */
+    public static long getConnectedSeconds() {
+        long started = connectedAtNanos;
+        // A shared epoch cannot attribute elapsed time to one of two simultaneous links.
+        return started != 0 && SERIAL.isConnected() != WIFI.isConnected()
+                ? Math.max(0, (System.nanoTime() - started) / 1_000_000_000L) : -1;
+    }
+    public static boolean isUsbReconnecting() { return usbReconnecting; }
+
+    /** Explicit USB-only restart, serialized with output draining and identification probes. */
+    public static CompletableFuture<ConnectionResult> reconnectUsb(String port, int baud) {
+        final int epoch;
+        synchronized (OUTBOX) {
+            if (usbReconnecting || OUTBOX.size() > 0)
+                return CompletableFuture.completedFuture(new ConnectionResult(false,
+                        Component.translatable("gui.serialcraft.home.usb.busy")));
+            if (WIFI.isConnected() || !SerialConfig.USB_BAUD_RATES.contains(baud))
+                return CompletableFuture.completedFuture(new ConnectionResult(false,
+                        Component.translatable("gui.serialcraft.home.usb.cancelled")));
+            epoch = linkEpoch;
+            usbReconnecting = true;
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                if (WIFI.isConnected()) return new ConnectionResult(false,
+                        Component.translatable("gui.serialcraft.home.usb.cancelled"));
+                return SERIAL.reconnect(port, baud, epoch);
+            } catch (RuntimeException e) {
+                com.serialcraft.SerialCraft.LOGGER.warn("No se pudo reconectar el puerto USB {}", port, e);
+                return new ConnectionResult(false, Component.translatable("message.serialcraft.error", String.valueOf(e.getMessage())));
+            } finally {
+                usbReconnecting = false;
+            }
+        }, PROBES);
+    }
 
     /** Sustituye a las cuatro copias de esta misma condicion en la UI. */
     public static boolean isAnyConnected() {
@@ -147,12 +188,15 @@ public final class ConnectionManager {
     }
 
     private static void enqueueOutput(String message, HardwareOutbox.Kind kind, boolean safetyStop) {
-        if (!isAnyConnected()) {
-            SerialDebugHud.addLog("Sin placa conectada (USB/Wi-Fi).");
-            addHistory("ERR: sin conexion");
-        } else if (!OUTBOX.offer(message, kind, false, safetyStop)) {
-            SerialDebugHud.addLog("Salida rechazada: cola llena o linea invalida.");
-            addHistory("ERR: salida rechazada");
+        synchronized (OUTBOX) {
+            if (usbReconnecting && !WIFI.isConnected()) return;
+            if (!isAnyConnected()) {
+                SerialDebugHud.addLog("Sin placa conectada (USB/Wi-Fi).");
+                addHistory("ERR: sin conexion");
+            } else if (!OUTBOX.offer(message, kind, false, safetyStop)) {
+                SerialDebugHud.addLog("Salida rechazada: cola llena o linea invalida.");
+                addHistory("ERR: salida rechazada");
+            }
         }
     }
 
@@ -170,7 +214,10 @@ public final class ConnectionManager {
      * @return true si la cola acepto la linea; no es una confirmacion del hardware
      */
     public static boolean sendTelemetry(String line, boolean quiet) {
-        return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.TELEMETRY, quiet, false);
+        synchronized (OUTBOX) {
+            if (usbReconnecting && !WIFI.isConnected()) return false;
+            return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.TELEMETRY, quiet, false);
+        }
     }
 
     /**
@@ -186,13 +233,17 @@ public final class ConnectionManager {
     }
 
     public static boolean sendSignal(String line, boolean safetyStop) {
-        return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.SIGNAL, true, safetyStop);
+        synchronized (OUTBOX) {
+            if (usbReconnecting && !WIFI.isConnected()) return false;
+            return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.SIGNAL, true, safetyStop);
+        }
     }
 
     public static void discardPending(String key) { OUTBOX.discard(key); }
 
     private static void drainOutput() {
         try {
+            if (usbReconnecting && !WIFI.isConnected()) return;
             if (!isAnyConnected()) { OUTBOX.clear(); return; }
             int epoch = linkEpoch;
             HardwareOutbox.Line line = OUTBOX.poll();
@@ -256,6 +307,7 @@ public final class ConnectionManager {
             reportedConnected = false;
             reportedDimension = "";
             bootResyncAt = 0;
+            connectedAtNanos = 0;
             announced = BoardIdentity.unknown();
             linkEpoch++;
         }

@@ -249,6 +249,9 @@ public class BoardsPage implements Page {
             int infoWidth = Math.max(1, controls.toggle().getX() - cardX - 20);
 
             UiDraw.card(gui, cardX, cardY, cardWidth, CARD_HEIGHT);
+            boolean hovered = mouseY >= CARD_TOP && mouseY < CARD_TOP + viewportHeight()
+                    && mouseX >= cardX && mouseX < cardX + cardWidth && mouseY >= cardY && mouseY < cardY + CARD_HEIGHT;
+            gui.outline(cardX, cardY, cardWidth, CARD_HEIGHT, hovered ? UiTheme.LINE_STRONG : UiTheme.LINE);
             gui.fill(cardX + 3, cardY, cardX + cardWidth, cardY + 26, tint);
             gui.fill(cardX, cardY, cardX + 3, cardY + CARD_HEIGHT, accent);
 
@@ -257,22 +260,17 @@ public class BoardsPage implements Page {
             gui.fill(cardX + 12, cardY + 8, cardX + 18, cardY + 14, statusColor);
             Component status = Component.translatable(connected
                     ? "gui.serialcraft.status.connected" : "gui.serialcraft.status.disconnected");
-            int statusX = cardX + 22;
-            int statusW = Math.min(font.width(status) + 8, Math.max(1, infoWidth - 24));
-            gui.fill(statusX, cardY + 4, statusX + statusW, cardY + 20,
-                    connected ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG);
-            cardText(gui, font, status, statusX + 4, cardY + 8, statusW - 8,
-                    mouseX, mouseY, connected ? UiTheme.OK_DARK : UiTheme.NEUTRAL_TX);
-
             Component signal = Component.translatable(
                     "gui.serialcraft.signal." + board.signalType().getSerializedName());
-            int typeX = statusX + statusW + 6;
-            int typeW = Math.min(font.width(signal) + 8, controls.toggle().getX() - typeX - 8);
-            if (typeW > 12) {
-                gui.fill(typeX, cardY + 4, typeX + typeW, cardY + 20, UiTheme.NEUTRAL_BG);
-                cardText(gui, font, signal, typeX + 4, cardY + 8, typeW - 8,
-                        mouseX, mouseY, UiTheme.TEXT_PRIMARY);
-            }
+            int signalWidth = Math.min(font.width(signal) + 8, (cardWidth - 40) / 2);
+            int statusX = cardX + 22;
+            int statusWidth = cardWidth - signalWidth - 46;
+            int hoverX = mouseY >= CARD_TOP && mouseY < CARD_TOP + viewportHeight() ? mouseX : -1;
+            UiDraw.badge(gui, font, statusX, cardY + 5, statusWidth, status,
+                    connected ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG,
+                    connected ? UiTheme.OK_DARK : UiTheme.NEUTRAL_TX, hoverX, mouseY);
+            UiDraw.badge(gui, font, cardX + cardWidth - 12 - signalWidth, cardY + 5, signalWidth,
+                    signal, UiTheme.NEUTRAL_BG, UiTheme.TEXT_PRIMARY, hoverX, mouseY);
 
             cardText(gui, font, Component.literal(board.id()).withStyle(ChatFormatting.BOLD),
                     cardX + 12, cardY + 27, infoWidth, mouseX, mouseY, UiTheme.TEXT_PRIMARY);
@@ -300,11 +298,8 @@ public class BoardsPage implements Page {
         scroll.renderScrollbar(gui, scrollbarX(), CARD_TOP, 6, viewportHeight());
     }
     private void cardText(GuiGraphicsExtractor gui, Font font, Component text, int x, int y, int width, int mouseX, int mouseY, int color) {
-        var lines = font.split(text, Math.max(1, width));
-        if (!lines.isEmpty()) gui.text(font, lines.getFirst(), x, y, color, false);
-        if (font.width(text) > width && mouseY >= CARD_TOP && mouseY < CARD_TOP + viewportHeight()
-                && mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + 12)
-            gui.setTooltipForNextFrame(text, mouseX, mouseY);
+        UiDraw.clippedText(gui, font, text, x, y, Math.max(1, width), color,
+                mouseY >= CARD_TOP && mouseY < CARD_TOP + viewportHeight() ? mouseX : -1, mouseY);
     }
     @Override public void renderOverlay(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
         if (editor != null) editor.renderOverlay(gui, font, width, height, mouseX, mouseY);

@@ -262,6 +262,10 @@ public class PanelUI extends Screen {
 
     public Tab getCurrentTab() { return currentTab; }
 
+    public boolean isGeneratingSignal() {
+        return ((VisualizePage) pages.get(Tab.VISUALIZE)).isGeneratingSignal();
+    }
+
     public void refresh() { this.init(); }
 
     public void setTab(Tab tab) {

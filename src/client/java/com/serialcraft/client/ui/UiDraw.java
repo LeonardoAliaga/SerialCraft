@@ -3,6 +3,7 @@ package com.serialcraft.client.ui;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.renderer.RenderPipelines;
 
 /**
  * Primitivas de dibujo compartidas.
@@ -31,6 +32,61 @@ public final class UiDraw {
         return y + height + 3;
     }
 
+    /** Dashboard surface with a semantic top edge; the original surface remains available. */
+    public static void card(GuiGraphicsExtractor gui, int x, int y, int width, int height,
+                            int accent, boolean hovered) {
+        card(gui, x, y, width, height);
+        gui.outline(x, y, width, height, hovered ? UiTheme.LINE_STRONG : UiTheme.LINE);
+        gui.fill(x + 1, y + 1, x + width - 1, y + 4, accent);
+    }
+
+    public static void icon(GuiGraphicsExtractor gui, SpriteIcon icon, int x, int y, int size) {
+        gui.blit(RenderPipelines.GUI_TEXTURED, SpriteIcon.TEXTURE, x, y, icon.u(), icon.v(),
+                size, size, SpriteIcon.SPRITE_SIZE, SpriteIcon.SPRITE_SIZE,
+                SpriteIcon.SHEET_WIDTH, SpriteIcon.SHEET_HEIGHT);
+    }
+
+    /** One visible line, with the complete value available on hover. */
+    public static void clippedText(GuiGraphicsExtractor gui, Font font, Component text,
+                                   int x, int y, int width, int color, int mouseX, int mouseY) {
+        width = Math.max(1, width);
+        boolean clipped = font.width(text) > width;
+        if (clipped) {
+            int ellipsisWidth = font.width("…");
+            if (width > ellipsisWidth) {
+                var line = font.split(text, width - ellipsisWidth).getFirst();
+                gui.text(font, line, x, y, color, false);
+                gui.text(font, "…", x + font.width(line), y, color, false);
+            }
+        } else gui.text(font, text, x, y, color, false);
+        if (clipped && mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + font.lineHeight + 2)
+            gui.setTooltipForNextFrame(text, mouseX, mouseY);
+    }
+
+    public static int sectionHeaderHeight(Font font, Component title, int width) {
+        return font.split(title, Math.max(1, width - 8)).size() * font.lineHeight + 10;
+    }
+
+    public static void sectionHeader(GuiGraphicsExtractor gui, Font font, Component title,
+                                     int x, int y, int width, int accent) {
+        int height = sectionHeaderHeight(font, title, width);
+        gui.fill(x, y, x + 2, y + height - 10, accent);
+        wrappedText(gui, font, title, x + 8, y, width - 8, UiTheme.TEXT_PRIMARY);
+        gui.fill(x, y + height - 5, x + width, y + height - 4, UiTheme.LINE);
+    }
+
+    public static int noticeHeight(Font font, Component text, int width) {
+        return font.split(text, Math.max(1, width - 20)).size() * font.lineHeight + 16;
+    }
+
+    public static void notice(GuiGraphicsExtractor gui, Font font, Component text,
+                              int x, int y, int width, int background, int color) {
+        int height = noticeHeight(font, text, width);
+        gui.fill(x, y, x + width, y + height, background);
+        gui.fill(x, y, x + 2, y + height, color);
+        wrappedText(gui, font, text, x + 10, y + 8, width - 20, color);
+    }
+
     /**
      * Insignia de texto con fondo.
      * @return la X donde termina la insignia, util para encadenar varias.
@@ -46,6 +102,14 @@ public final class UiDraw {
     public static int badge(GuiGraphicsExtractor gui, Font font, int x, int y,
                             Component text, int background, int textColor) {
         return badge(gui, font, x, y, text.getString(), background, textColor);
+    }
+
+    public static int badge(GuiGraphicsExtractor gui, Font font, int x, int y, int maxWidth,
+                            Component text, int background, int color, int mouseX, int mouseY) {
+        int width = Math.min(Math.max(8, maxWidth), font.width(text) + 8);
+        gui.fill(x, y, x + width, y + 14, background);
+        clippedText(gui, font, text, x + 4, y + 3, width - 8, color, mouseX, mouseY);
+        return x + width;
     }
 
     /**
@@ -77,6 +141,22 @@ public final class UiDraw {
     }
 
     public static final int LABEL_COLUMN_WIDTH = 93;
+
+    /** Narrow cards stack the label and value; wider cards align the value column. */
+    public static int labelledRowHeight(Font font, Component label, int width) {
+        int labelWidth = width < 260 ? width : width * 2 / 5;
+        return font.split(label, Math.max(1, labelWidth)).size() * font.lineHeight
+                + (width < 260 ? font.lineHeight + 4 : 0) + 8;
+    }
+
+    public static void labelledRow(GuiGraphicsExtractor gui, Font font, int x, int y, int width,
+                                   Component label, Component value, int color, int mouseX, int mouseY) {
+        int labelWidth = width < 260 ? width : width * 2 / 5;
+        wrappedText(gui, font, label, x, y, labelWidth, UiTheme.TEXT_SECONDARY);
+        int valueX = width < 260 ? x : x + labelWidth + 8;
+        int valueY = width < 260 ? y + font.split(label, Math.max(1, labelWidth)).size() * font.lineHeight + 4 : y;
+        clippedText(gui, font, value, valueX, valueY, width - (valueX - x), color, mouseX, mouseY);
+    }
 
     /** Campo de texto hundido, con borde y fondo oscuro. */
     public static void inputWell(GuiGraphicsExtractor gui, int x, int y, int width, int height) {

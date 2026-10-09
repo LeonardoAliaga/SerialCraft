@@ -83,6 +83,14 @@ public class WifiHandler implements BoardLink {
     public State  getState()   { return state; }
     public String getRemoteIp(){ return remoteIp; }
     public String getPairingToken() { return pairingToken; }
+    public WifiHandshake.Method getAuthenticationMethod() {
+        return isConnected() ? authMethod : WifiHandshake.Method.NONE;
+    }
+    /** The listening socket's actual port, or zero when the server is stopped. */
+    public int getServerPort() {
+        ServerSocket server = serverSocket;
+        return server != null && !server.isClosed() ? server.getLocalPort() : 0;
+    }
     public void   setPrivateOnly(boolean value) { this.privateOnly = value; }
 
     @Override

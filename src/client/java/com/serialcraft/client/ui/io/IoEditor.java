@@ -6,12 +6,12 @@ import com.serialcraft.board.LogicMode;
 import com.serialcraft.board.SignalType;
 import com.serialcraft.client.ui.ScrollState;
 import com.serialcraft.client.ui.SolidButton;
-import com.serialcraft.client.ui.SpriteIcon;
 import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.widget.ContextHelpDialog;
 import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.client.ui.widget.OptionButton;
+import com.serialcraft.client.ui.widget.OutlineButton;
 import com.serialcraft.client.ui.widget.SectionTabButton;
 import com.serialcraft.client.ui.widget.UiViewport;
 import com.serialcraft.network.BoardInfo;
@@ -42,13 +42,15 @@ import java.util.function.Function;
 
 /** Configuration, session diagnostics and local help with the shared page header. */
 public final class IoEditor {
-    private record Text(int y, Component value, int color) {}
-    private record Metric(int x, int y, int width, String label, Function<IoSnapshot, Component> value) {}
+    private record Text(int y, Component value, int color, boolean notice) {}
+    private record Heading(int y, Component title, int width) {}
+    private record Metric(int x, int y, int width, int height, String label, Function<IoSnapshot, Component> value) {}
     private static int nextRequestId;
     private final IoEditorDraft draft;
     private final Runnable close;
     private final EnumMap<IoEditorDraft.Section, ScrollState> scrolls = new EnumMap<>(IoEditorDraft.Section.class);
     private final List<Text> texts = new ArrayList<>();
+    private final List<Heading> headings = new ArrayList<>();
     private final List<Metric> metrics = new ArrayList<>();
     private final List<AbstractWidget> fixedWidgets = new ArrayList<>();
     private final Map<String, AbstractWidget> focusWidgets = new LinkedHashMap<>();
@@ -78,7 +80,7 @@ public final class IoEditor {
                 tabWidth(IoEditorDraft.Section.CONFIGURATION), tabWidth(IoEditorDraft.Section.DIAGNOSTICS));
         viewport = new UiViewport(scroll(), layout.viewport());
         contentWidth = layout.viewport().width() - 12;
-        texts.clear(); metrics.clear(); directionalTexts.clear(); fixedWidgets.clear(); focusWidgets.clear();
+        texts.clear(); headings.clear(); metrics.clear(); directionalTexts.clear(); fixedWidgets.clear(); focusWidgets.clear();
         if (modal()) panel.clearUiWidgets();
 
         for (var section : IoEditorDraft.Section.values()) {
@@ -102,7 +104,7 @@ public final class IoEditor {
                 Component.translatable("gui.serialcraft.editor.save"), b -> save());
         fixed("save", saveButton);
         var cancel = layout.cancel();
-        fixed("cancel", SolidButton.soft(cancel.x(), cancel.y(), cancel.width(), cancel.height(),
+        fixed("cancel", new OutlineButton(cancel.x(), cancel.y(), cancel.width(), cancel.height(),
                 Component.translatable("gui.serialcraft.editor.cancel"), b -> requestClose(close)));
         refreshSaveButton();
         if (modal()) dialog.build(panel, width, height, font);
@@ -182,7 +184,8 @@ public final class IoEditor {
 
     private int buildDiagnostics() {
         int y = heading(0, "section.diagnostics", "diagnostics");
-        y = paragraph(y, tr("diagnostics.notice")) + 10;
+        texts.add(new Text(y, tr("diagnostics.notice"), UiTheme.INFO_DARK, true));
+        y += UiDraw.noticeHeight(font, tr("diagnostics.notice"), contentWidth) + 10;
         int columns = contentWidth >= 400 ? 2 : 1;
         int width = (contentWidth - (columns - 1) * 8) / columns;
         String[] labels = {"rx", "tx", "read", "processed", "emitted", "connection", "age"};
@@ -193,27 +196,29 @@ public final class IoEditor {
                 s -> tr(s.connected() ? "link.connected" : "link.disconnected"),
                 s -> s.receivedAgeTicks() < 0 ? tr("no_sample") : Component.translatable("gui.serialcraft.io.age.value",
                         String.format(Locale.ROOT, "%.1f", s.receivedAgeTicks() / 20d)));
+        int rowHeight = 40;
+        for (String label : labels)
+            rowHeight = Math.max(rowHeight, UiDraw.labelledRowHeight(font, tr("diagnostics." + label), width - 16) + 16);
         for (int i = 0; i < labels.length; i++) {
             metrics.add(new Metric(layout.viewport().x() + (i % columns) * (width + 8),
-                    y + (i / columns) * 46, width, labels[i], values.get(i)));
+                    y + (i / columns) * (rowHeight + 8), width, rowHeight, labels[i], values.get(i)));
         }
-        return y + ((labels.length + columns - 1) / columns) * 46;
+        return y + ((labels.length + columns - 1) / columns) * (rowHeight + 8);
     }
 
     private int heading(int y, String key, String help) {
-        texts.add(new Text(y + 6, tr(key), UiTheme.TEXT_PRIMARY));
+        int width = contentWidth - (help == null ? 0 : 36);
+        headings.add(new Heading(y + 4, tr(key), width));
         if (help != null) {
-            var button = new IconTextButton(layout.viewport().x() + contentWidth - 28, 0, 28, 22,
-                    SpriteIcon.QUEST, Component.translatable("gui.serialcraft.io.help.open", tr("help." + help + ".title")),
-                    b -> openHelp(help), UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK);
-            button.setTooltip(Tooltip.create(button.getMessage()));
+            var button = IconTextButton.help(layout.viewport().x() + contentWidth - 28, 0,
+                    tr("help." + help + ".title"), b -> openHelp(help));
             input("help." + help, button, y, false);
         }
-        return y + 26;
+        return y + Math.max(26, UiDraw.sectionHeaderHeight(font, tr(key), width) + 8);
     }
     private int paragraph(int y, Component text) { return paragraph(y, text, UiTheme.TEXT_SECONDARY); }
     private int paragraph(int y, Component text, int color) {
-        texts.add(new Text(y, text, color));
+        texts.add(new Text(y, text, color, false));
         return y + font.split(text, contentWidth).size() * font.lineHeight;
     }
     private void input(String key, AbstractWidget widget, int y, boolean modifiesDraft) {
@@ -279,15 +284,29 @@ public final class IoEditor {
         var area = layout.viewport();
         gui.enableScissor(area.x(), area.y(), area.right(), area.bottom());
         int offset = area.y() - (int) scroll().getScrollAmount();
-        for (Text text : texts) UiDraw.wrappedText(gui, font, text.value(), area.x(), offset + text.y(), contentWidth, text.color());
+        for (Heading heading : headings)
+            UiDraw.sectionHeader(gui, font, heading.title(), area.x(), offset + heading.y(), heading.width(), UiTheme.ACCENT_BOARDS_BORDER);
+        for (Text text : texts) {
+            if (text.notice()) UiDraw.notice(gui, font, text.value(), area.x(), offset + text.y(), contentWidth, UiTheme.INFO_BG, text.color());
+            else UiDraw.wrappedText(gui, font, text.value(), area.x(), offset + text.y(), contentWidth, text.color());
+        }
         for (PositionedText text : directionalTexts) UiDraw.wrappedText(gui, font, text.value(), text.x(), offset + text.y(), text.width(), UiTheme.TEXT_SECONDARY);
         IoSnapshot snapshot = snapshot();
         for (Metric metric : metrics) {
             int y = offset + metric.y();
-            gui.fill(metric.x(), y, metric.x() + metric.width(), y + 40, UiTheme.BG_CARD);
-            gui.outline(metric.x(), y, metric.width(), 40, UiTheme.LINE);
-            gui.text(font, tr("diagnostics." + metric.label()), metric.x() + 6, y + 6, UiTheme.TEXT_SECONDARY, false);
-            UiDraw.wrappedText(gui, font, metric.value().apply(snapshot), metric.x() + 6, y + 20, metric.width() - 12, UiTheme.TEXT_PRIMARY);
+            int accent = switch (metric.label()) {
+                case "rx" -> UiTheme.OK;
+                case "tx" -> UiTheme.INFO;
+                case "connection" -> snapshot.connected() ? UiTheme.OK : UiTheme.LINE_STRONG;
+                default -> UiTheme.ACCENT_PRIMARY;
+            };
+            int hoverX = !modal() && area.contains(mouseX, mouseY) ? mouseX : -1;
+            UiDraw.card(gui, metric.x(), y, metric.width(), metric.height(), accent,
+                    hoverX >= metric.x() && hoverX < metric.x() + metric.width() && mouseY >= y && mouseY < y + metric.height());
+            UiDraw.labelledRow(gui, font, metric.x() + 8, y + 9, metric.width() - 16,
+                    tr("diagnostics." + metric.label()), metric.value().apply(snapshot),
+                    metric.label().equals("connection") && snapshot.connected() ? UiTheme.OK_DARK : UiTheme.TEXT_PRIMARY,
+                    hoverX, mouseY);
         }
         gui.disableScissor();
         viewport.render(gui, modal() ? -1 : mouseX, modal() ? -1 : mouseY, 0);

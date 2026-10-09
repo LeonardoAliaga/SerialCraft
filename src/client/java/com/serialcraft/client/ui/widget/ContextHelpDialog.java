@@ -3,6 +3,7 @@ package com.serialcraft.client.ui.widget;
 import com.serialcraft.client.ui.ScrollState;
 import com.serialcraft.client.ui.SolidButton;
 import com.serialcraft.client.ui.UiTheme;
+import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.io.IoEditorLayout.Rect;
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.Font;
@@ -39,8 +40,10 @@ public final class ContextHelpDialog {
     }
     public void build(PanelUI panel, int width, int height, Font font) {
         int textWidth = Math.min(420, width - 24) - 28;
-        bounds = bounds(width, height, Math.max(150, font.split(body, textWidth).size() * font.lineHeight + 82));
-        textBounds = new Rect(bounds.x() + 12, bounds.y() + 38, bounds.width() - 24, bounds.height() - 78);
+        int titleHeight = UiDraw.sectionHeaderHeight(font, title, textWidth);
+        bounds = bounds(width, height, Math.max(150, font.split(body, textWidth).size() * font.lineHeight + titleHeight + 64));
+        textBounds = new Rect(bounds.x() + 12, bounds.y() + 16 + titleHeight, bounds.width() - 24,
+                Math.max(1, bounds.height() - titleHeight - 56));
         scroll.update(textBounds.height(), font.split(body, textBounds.width() - 8).size() * font.lineHeight);
         buttons.clear();
         int buttonWidth = confirm == null ? bounds.width() - 24 : (bounds.width() - 30) / 2;
@@ -63,11 +66,8 @@ public final class ContextHelpDialog {
         gui.fill(0, 0, width, height, UiTheme.OVERLAY);
         gui.fill(bounds.x(), bounds.y(), bounds.right(), bounds.bottom(), UiTheme.BG_PANEL);
         gui.outline(bounds.x(), bounds.y(), bounds.width(), bounds.height(), UiTheme.LINE_STRONG);
-        int titleY = bounds.y() + 12;
-        for (var line : font.split(title, bounds.width() - 24)) {
-            gui.text(font, line, bounds.x() + 12, titleY, UiTheme.TEXT_PRIMARY, false);
-            titleY += font.lineHeight;
-        }
+        UiDraw.sectionHeader(gui, font, title, bounds.x() + 12, bounds.y() + 12,
+                bounds.width() - 28, UiTheme.ACCENT_PRIMARY);
         gui.enableScissor(textBounds.x(), textBounds.y(), textBounds.right(), textBounds.bottom());
         int y = textBounds.y() - (int) scroll.getScrollAmount();
         for (var line : font.split(body, textBounds.width() - 8)) {

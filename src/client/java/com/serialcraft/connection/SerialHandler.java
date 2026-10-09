@@ -2,11 +2,13 @@ package com.serialcraft.connection;
 
 import com.fazecast.jSerialComm.SerialPort;
 import com.serialcraft.SerialCraft;
+import com.serialcraft.config.SerialConfig;
 import com.serialcraft.identity.BoardIdentity;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -39,6 +41,9 @@ public class SerialHandler implements BoardLink {
     private volatile @Nullable SerialPort port;
     private volatile @Nullable Thread     readerThread;
     private volatile BoardIdentity identity = BoardIdentity.unknown();
+    private volatile String usbIdentifiers = "";
+    private volatile String usbSettingsUid = "";
+    private volatile long connectedAtNanos;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     @Override public String name() { return "USB"; }
@@ -56,6 +61,12 @@ public class SerialHandler implements BoardLink {
 
     /** Lo que el USB dice de la placa conectada (ver {@link UsbBoards}). */
     public BoardIdentity getIdentity() { return identity; }
+    public String getUsbIdentifiers() { return usbIdentifiers; }
+    public boolean canRememberSettings() { return !usbSettingsUid.isEmpty(); }
+    public long getConnectedSeconds() {
+        return isConnected() && connectedAtNanos != 0
+                ? Math.max(0, (System.nanoTime() - connectedAtNanos) / 1_000_000_000L) : 0;
+    }
 
     public int getBaudRate() {
         SerialPort p = port;
@@ -72,6 +83,12 @@ public class SerialHandler implements BoardLink {
     // ══════════════════════════════════════════════════════════════════════
 
     public synchronized ConnectionResult connect(String portName, int baudRate) {
+        return connect(portName, baudRate, true, -1);
+    }
+
+    private synchronized ConnectionResult connect(String portName, int baudRate, boolean restoreSaved, int expectedEpoch) {
+        if (expectedEpoch >= 0 && ConnectionManager.sessionEpoch() != expectedEpoch)
+            return new ConnectionResult(false, Component.translatable("gui.serialcraft.home.usb.cancelled"));
         if (isConnected()) return new ConnectionResult(getPortName().equalsIgnoreCase(portName),
                 Component.translatable("message.serialcraft.already_connected"));
 
@@ -87,14 +104,27 @@ public class SerialHandler implements BoardLink {
         }
 
         try {
-            target.setBaudRate(baudRate);
+            BoardIdentity detected = UsbBoards.identify(target);
+            int vid = target.getVendorID(), pid = target.getProductID();
+            String identifiers = vid > 0 && vid <= 0xffff && pid >= 0 && pid <= 0xffff
+                    ? String.format(Locale.ROOT, "%04X:%04X", vid, pid) : "";
+            String serial = target.getSerialNumber();
+            String uid = identifiers.isEmpty() || !detected.hasUid() || serial == null
+                    || serial.isBlank() || serial.equalsIgnoreCase("Unknown") || serial.matches("0+")
+                    || serial.length() > 128 ? "" : "usb-" + identifiers + "-" + serial.trim();
+            int actualBaud = restoreSaved ? SerialConfig.get().usbBaudRate(uid, baudRate) : baudRate;
+            if (!target.setBaudRate(actualBaud))
+                return new ConnectionResult(false, Component.translatable("gui.serialcraft.home.usb.baud_failed", actualBaud));
             if (!target.openPort()) {
                 return new ConnectionResult(false, Component.translatable("message.serialcraft.port_busy", portName));
             }
             target.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, READ_TIMEOUT_MS, 0);
 
             this.port = target;
-            this.identity = UsbBoards.identify(target);
+            this.identity = detected;
+            this.usbIdentifiers = identifiers;
+            this.usbSettingsUid = uid;
+            this.connectedAtNanos = System.nanoTime();
             running.set(true);
 
             // Antes de arrancar el lector: si no, el banner de arranque de la
@@ -113,6 +143,9 @@ public class SerialHandler implements BoardLink {
             SerialCraft.LOGGER.warn("Fallo al abrir el puerto {}", portName, e);
             closeQuietly(target);
             this.port = null;
+            this.usbIdentifiers = "";
+            this.usbSettingsUid = "";
+            this.connectedAtNanos = 0;
             running.set(false);
             ConnectionManager.onLinkClosed();
             return new ConnectionResult(false, Component.translatable("message.serialcraft.error", String.valueOf(e.getMessage())));
@@ -126,10 +159,35 @@ public class SerialHandler implements BoardLink {
             thread = readerThread;
             shutdown();
         }
+        awaitReader(thread);
+    }
+
+    private static void awaitReader(@Nullable Thread thread) {
         if (thread != null && thread != Thread.currentThread()) {
             try { thread.join(JOIN_TIMEOUT_MS); }
             catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }
+    }
+
+    /** Runs on the transport executor: finish queued/native writes before replacing a session. */
+    ConnectionResult reconnect(String portName, int baudRate, int expectedEpoch) {
+        Thread previous;
+        int closedEpoch;
+        synchronized (this) {
+            if (ConnectionManager.sessionEpoch() != expectedEpoch
+                    || (isConnected() && !getPortName().equalsIgnoreCase(portName)))
+                return new ConnectionResult(false, Component.translatable("gui.serialcraft.home.usb.cancelled"));
+            if (port != null && port.isOpen() && port.bytesAwaitingWrite() > 0)
+                return new ConnectionResult(false, Component.translatable("gui.serialcraft.home.usb.busy"));
+            previous = readerThread;
+            closedEpoch = expectedEpoch + (port != null ? 1 : 0);
+            shutdown();
+        }
+        awaitReader(previous);
+        ConnectionResult result = connect(portName, baudRate, false, closedEpoch);
+        if (result.connected() && isConnected() && getBaudRate() == baudRate)
+            SerialConfig.get().rememberUsbBaudRate(usbSettingsUid, baudRate);
+        return result;
     }
 
     private synchronized void shutdown() {
@@ -137,6 +195,9 @@ public class SerialHandler implements BoardLink {
         SerialPort p = port;
         port = null;
         identity = BoardIdentity.unknown();
+        usbIdentifiers = "";
+        usbSettingsUid = "";
+        connectedAtNanos = 0;
         readerThread = null;
         closeQuietly(p);
         if (p != null) ConnectionManager.onLinkClosed();
