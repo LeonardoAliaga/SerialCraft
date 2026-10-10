@@ -19,6 +19,7 @@ import com.serialcraft.identity.WifiHandshake;
 import com.serialcraft.screen.PanelUI;
 import com.serialcraft.util.NetUtils;
 import net.minecraft.client.Minecraft;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -45,8 +46,8 @@ public class HomePage implements Page {
     private static final int GAP = UiTheme.SECTION_GAP;
     private static final int HISTORY_LIMIT = 64;
     private static final int LINE_HEIGHT = 11;
-    private static final int TILE_GAP = 5;
-    private static final int TILE_MIN_WIDTH = 120;
+    private static final int TILE_GAP = 14;
+    private static final int TILE_MIN_WIDTH = 128;
     private static final int CHIP_HEIGHT = 20;
     private static final int CHIP_GAP = 4;
 
@@ -55,7 +56,7 @@ public class HomePage implements Page {
                              BoardIdentity.Bridge bridge, int baud, String endpoint, String identifiers,
                              WifiHandler.State server, int serverPort, WifiHandshake.Method authentication, boolean remembered,
                              boolean rememberable, boolean usbRememberable, boolean hasToken) {}
-    private record Surface(Rect bounds, int accent) {}
+    private record Surface(Rect bounds, int accent, int headerHeight) {}
     private record InlineHelp(Component body, int x, int y, int width) {}
     private record Text(Component value, int x, int y, int width, int color, int background) {}
     private record Property(Component label, Component value, int x, int y, int width, int height, int color) {}
@@ -77,16 +78,18 @@ public class HomePage implements Page {
     private PanelUI panel;
     private Font font;
     private UiViewport viewport;
-    private Rect view, summary, terminal, console, modelBadge;
+    private Rect view, summary, terminal, console, modelBadge, footer;
     private LinkState state;
     private EditBox commandBox;
     private String expandedHelp = "";
     private String focusKey = "", navigationFocus = "", usbPort = "", hostAddress = "";
-    private int contentX, contentWidth, summaryFooterY;
+    private int contentX, contentWidth;
     private int pendingBaud;
     private boolean showToken, resultAccepted;
     private Component resultMessage;
     private CompletableFuture<ConnectionResult> reconnect;
+    private static final String MOD_VERSION = FabricLoader.getInstance().getModContainer("serialcraft")
+            .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse("");
 
     @Override
     public void init(PanelUI panel, int screenWidth, int screenHeight) {
@@ -110,18 +113,20 @@ public class HomePage implements Page {
         view = new Rect(contentX - 2, top, contentWidth + 12,
                 Math.max(24, screenHeight - UiTheme.contentMargin(screenWidth) - top));
         viewport = new UiViewport(scroll, view);
-        int zoneY = buildSummary(top + 8) + GAP;
+        int mainBottom = buildMain(top + 8);
+        int zoneY = mainBottom + GAP;
         boolean columns = contentWidth >= 530;
-        int leftWidth = columns ? (contentWidth - GAP) * 55 / 100 : contentWidth;
-        int leftBottom = buildProperties(contentX, zoneY, leftWidth) + GAP;
-        if (state.wifi()) leftBottom = buildWifi(contentX, leftBottom, leftWidth);
-        else if (!state.endpoint().isEmpty()) leftBottom = buildUsb(contentX, leftBottom, leftWidth);
+        int leftWidth = columns ? (contentWidth - GAP) / 2 : contentWidth;
+        int settingsBottom = state.wifi() ? buildWifi(contentX, zoneY, leftWidth)
+                : !state.endpoint().isEmpty() ? buildUsb(contentX, zoneY, leftWidth) : zoneY;
         int terminalX = columns ? contentX + leftWidth + GAP : contentX;
-        int terminalY = columns ? zoneY : leftBottom + GAP;
+        int terminalY = columns ? zoneY : settingsBottom + (settingsBottom > zoneY ? GAP : 0);
         int terminalWidth = columns ? contentWidth - leftWidth - GAP : contentWidth;
         int terminalBottom = buildTerminal(terminalX, terminalY, terminalWidth,
-                columns ? Math.clamp(leftBottom - zoneY, 260, 420) : 242, commandDraft);
-        viewport.size(Math.max(leftBottom, terminalBottom) - view.y() + 8);
+                columns ? Math.max(245, settingsBottom - zoneY) : 245, commandDraft);
+        int footerY = Math.max(settingsBottom, terminalBottom) + GAP;
+        footer = new Rect(contentX, footerY, contentWidth, contentWidth >= 430 ? 28 : 42);
+        viewport.size(footer.bottom() - view.y() + 8);
         updateHistory();
         {
             AbstractWidget focused = focusWidgets.get(focusKey);
@@ -155,64 +160,95 @@ public class HomePage implements Page {
                 !wireless && serial.canRememberSettings(), wireless && !wifi.getPairingToken().isEmpty());
     }
 
+    /** The device overview, identification and connection state share one surface. */
+    private int buildMain(int top) {
+        int left = contentX + PAD;
+        int inner = contentWidth - PAD * 2;
+        int titleWidth = Math.max(1, inner - 36);
+        headings.add(new Heading(tr("main.title"), left, top + PAD, titleWidth, UiTheme.ACCENT_HOME, true));
+        help("identity", contentX + contentWidth - PAD - 28, top + 7);
+        int subtitleY = top + PAD + font.lineHeight + 7;
+        int subtitleHeight = textHeight(tr("main.subtitle"), titleWidth);
+        texts.add(new Text(tr("main.subtitle"), left, subtitleY, titleWidth, UiTheme.TEXT_SECONDARY, 0));
+        int headerHeight = subtitleY + subtitleHeight + 10 - top;
+        int summaryY = inlineHelp("identity", left, top + headerHeight + 7, inner) + 2;
+        int summaryBottom = buildSummary(summaryY);
+
+        int groupsY = summaryBottom + 13;
+        boolean split = contentWidth >= 620;
+        int groupGap = 26;
+        int identityWidth = split ? (inner - groupGap) / 2 : inner;
+        int identityBottom = buildIdentity(left, groupsY, identityWidth);
+        int connectionX = split ? left + identityWidth + groupGap : left;
+        int connectionY = split ? groupsY : identityBottom + 12;
+        int connectionWidth = split ? inner - identityWidth - groupGap : inner;
+        int connectionBottom = buildConnection(connectionX, connectionY, connectionWidth);
+        int bottom = Math.max(identityBottom, connectionBottom) + PAD;
+        surfaces.add(new Surface(new Rect(contentX, top, contentWidth, bottom - top),
+                UiTheme.ACCENT_HOME, headerHeight));
+        return bottom;
+    }
+
     private int buildSummary(int top) {
         Component disconnect = tr("disconnect");
         int buttonWidth = Math.min(contentWidth - PAD * 2, font.width(disconnect) + 24);
         boolean beside = contentWidth >= 400;
-        int buttonY = top + (beside ? 35 : 80);
+        int buttonY = top + (beside ? 7 : 73);
         var button = SolidButton.danger(beside ? contentX + contentWidth - PAD - buttonWidth : contentX + PAD,
                 buttonY, buttonWidth, 24, disconnect, b -> panel.disconnectDevice());
         button.active = !usbBusy() && (!state.endpoint().isEmpty() || state.wifi());
         button.setTooltip(Tooltip.create(disconnect));
         input("disconnect", button, buttonY);
-        summaryFooterY = top + (beside ? 82 : 114);
-        summary = new Rect(contentX, top, contentWidth, summaryFooterY - top + 26);
+        summary = new Rect(contentX, top, contentWidth, beside ? 75 : 108);
         return summary.bottom();
     }
 
-    private int buildProperties(int x, int top, int width) {
-        int left = x + PAD, inner = width - PAD * 2;
-        int y = sectionStart(tr("usb.title"), x, top, width, "identity");
-        y = paragraph(tr("properties.subtitle"), left, y, inner, UiTheme.TEXT_SECONDARY) + 10;
-        // The card title already identifies this group; don't add another headline.
+    private int buildIdentity(int x, int top, int width) {
+        int y = heading(tr("detected"), x, top, width, UiTheme.ACCENT_HOME) + 5;
         int modelY = y;
-        y = property(tr("model"), modelName(), left, y, inner - 36, UiTheme.TEXT_PRIMARY);
-        help("model", left + inner - 28, modelY);
-        y = inlineHelp("model", left, Math.max(y, modelY + 28), inner);
-        modelBadge = new Rect(left, y, inner, 14);
-        y += 22;
-        y = property(tr("platform"), family(), left, y, inner, UiTheme.TEXT_PRIMARY);
+        y = property(tr("model"), modelName(), x, y, Math.max(1, width - 32), UiTheme.TEXT_PRIMARY);
+        help("model", x + width - 28, modelY);
+        y = inlineHelp("model", x, Math.max(y, modelY + 28), width);
+        modelBadge = new Rect(x, y, width, 14);
+        y += 23;
+        y = property(tr("platform"), family(), x, y, width, UiTheme.TEXT_PRIMARY);
         if (state.bridge() != BoardIdentity.Bridge.NONE)
-            y = property(tr("bridge"), Component.literal(state.bridge().label()), left, y, inner, UiTheme.TEXT_PRIMARY);
+            y = property(tr("bridge"), Component.literal(state.bridge().label()), x, y, width, UiTheme.TEXT_PRIMARY);
         if (!state.identifiers().isEmpty())
-            y = property(tr("usb.identifiers"), Component.literal(state.identifiers()), left, y, inner, UiTheme.TEXT_SECONDARY);
+            y = property(tr("usb.identifiers"), Component.literal(state.identifiers()), x, y, width, UiTheme.TEXT_SECONDARY);
         if (state.connected() && !confirmedModel() && state.bridge() != BoardIdentity.Bridge.NONE)
-            y = notice(tr("model.warning"), left, y + 2, inner, UiTheme.WARN_BG, UiTheme.WARN_DARK) + 8;
-        y = heading(tr("connection_state"), left, y + 4, inner, UiTheme.ACCENT_PRIMARY);
+            y = notice(tr("model.warning"), x, y + 5, width, UiTheme.WARN_BG, UiTheme.WARN_DARK) + 9;
+        return y;
+    }
+
+    private int buildConnection(int x, int top, int width) {
+        int y = heading(tr("connection_state"), x, top, width, UiTheme.ACCENT_PRIMARY) + 6;
         if (state.wifi()) {
-            y = property(tr("board_ip"), state.connected() ? value(state.endpoint()) : unavailable(), left, y, inner, UiTheme.TEXT_PRIMARY);
-            y = property(tr("host_ip"), state.serverPort() > 0
-                    ? Component.literal(hostAddress + ":" + state.serverPort()) : unavailable(), left, y, inner, UiTheme.INFO_DARK);
-            y = property(tr("server"), serverState(), left, y, inner,
-                    state.connected() ? UiTheme.OK_DARK : state.server() == WifiHandler.State.LISTENING ? UiTheme.INFO_DARK : UiTheme.TEXT_SECONDARY);
-            y = property(tr("protocol"), tr("protocol_wifi"), left, y, inner, UiTheme.TEXT_PRIMARY);
+            y = tiles(x, y, width,
+                    new Stat(tr("board_ip"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.TEXT_PRIMARY),
+                    new Stat(tr("host_ip"), state.serverPort() > 0
+                            ? Component.literal(hostAddress + ":" + state.serverPort()) : unavailable(), UiTheme.INFO_DARK),
+                    new Stat(tr("server"), serverState(),
+                            state.connected() ? UiTheme.OK_DARK : UiTheme.INFO_DARK),
+                    new Stat(tr("protocol"), tr("protocol_wifi"), UiTheme.TEXT_PRIMARY));
             if (state.hasToken()) {
-                y = property(tr("token"), showToken ? value(ConnectionManager.getWifi().getPairingToken()) : tr("token.hidden"),
-                        left, y, inner, UiTheme.TEXT_PRIMARY);
+                y = property(tr("token"), showToken ? value(ConnectionManager.getWifi().getPairingToken())
+                        : tr("token.hidden"), x, y + 5, width, UiTheme.TEXT_PRIMARY);
                 Component label = tr(showToken ? "token.hide" : "token.show");
-                var token = new OutlineButton(left, y, Math.min(inner, font.width(label) + 24), 22,
+                var token = new OutlineButton(x, y, Math.min(width, font.width(label) + 24), 22,
                         label, b -> { showToken = !showToken; focusKey = "token"; panel.refresh(); });
-                input("token", token, y); y += 30;
+                input("token", token, y);
+                y += 30;
             }
+            y = property(tr("usb.state"), connectionState(), x, y + 4, width, statusColor());
         } else {
-            y = tiles(left, y, inner,
+            y = tiles(x, y, width,
                     new Stat(tr("port"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.TEXT_PRIMARY),
                     new Stat(tr("baud"), baud(), UiTheme.ACCENT_PRIMARY_DARK),
-                    new Stat(tr("protocol"), tr("protocol_usb"), UiTheme.TEXT_PRIMARY));
+                    new Stat(tr("protocol"), tr("protocol_usb"), UiTheme.TEXT_PRIMARY),
+                    new Stat(tr("usb.state"), connectionState(), statusColor()));
         }
-        y = property(tr("usb.state"), connectionState(), left, y, inner, statusColor());
-        surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.ACCENT_HOME));
-        return y + PAD;
+        return y;
     }
 
     private int buildUsb(int x, int top, int width) {
@@ -236,7 +272,7 @@ public class HomePage implements Page {
         y = paragraph(tr(state.usbRememberable() ? "usb.remembered" : "usb.session_only"), left, y, inner, UiTheme.TEXT_SECONDARY) + 8;
         if (resultMessage != null) y = notice(resultMessage, left, y, inner,
                 resultAccepted ? UiTheme.OK_BG : UiTheme.ERROR_BG, resultAccepted ? UiTheme.OK_DARK : UiTheme.ERROR_DARK) + 4;
-        surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.ACCENT_PRIMARY));
+        surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.ACCENT_PRIMARY, 35));
         return y + PAD;
     }
 
@@ -304,13 +340,13 @@ public class HomePage implements Page {
                 ? "wifi.remember_hint" : "wifi.unavailable"), left, y, inner, UiTheme.TEXT_SECONDARY) + 8;
         if (resultMessage != null) y = notice(resultMessage, left, y, inner,
                 resultAccepted ? UiTheme.OK_BG : UiTheme.ERROR_BG, resultAccepted ? UiTheme.OK_DARK : UiTheme.ERROR_DARK) + 4;
-        surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.ACCENT_PRIMARY));
+        surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.ACCENT_PRIMARY, 35));
         return y + PAD;
     }
 
     private int buildTerminal(int x, int top, int width, int height, String commandDraft) {
         int titleHeight = textHeight(tr("terminal"), width - PAD * 2 - 28);
-        int consoleTop = top + PAD + Math.max(20, titleHeight) + 10;
+        int consoleTop = top + PAD + Math.max(20, titleHeight) + 17;
         terminal = new Rect(x, top, width, Math.max(height, consoleTop - top + 146));
         console = new Rect(x + PAD, consoleTop, width - PAD * 2, terminal.bottom() - consoleTop - 44);
         int commandY = terminal.bottom() - 32;
@@ -324,7 +360,7 @@ public class HomePage implements Page {
         var send = SolidButton.success(x + PAD + commandWidth + 6, commandY, sendWidth, 22, tr("send"), b -> submitCommand());
         send.active = state.connected() && !usbBusy();
         input("send", send, commandY);
-        surfaces.add(new Surface(terminal, UiTheme.ACCENT_PRIMARY));
+        surfaces.add(new Surface(terminal, UiTheme.ACCENT_PRIMARY, 35));
         return terminal.bottom();
     }
 
@@ -459,7 +495,7 @@ public class HomePage implements Page {
         gui.enableScissor(view.x(), view.y(), view.right() - 8, view.bottom());
         for (Surface surface : surfaces) {
             Rect r = surface.bounds();
-            UiDraw.dashboardCard(gui, r.x(), drawY(r.y()), r.width(), r.height(), surface.accent());
+            UiDraw.dashboardCard(gui, r.x(), drawY(r.y()), r.width(), r.height(), surface.accent(), surface.headerHeight());
         }
         renderSummary(gui, mx, my);
         for (Heading h : headings) {
@@ -496,43 +532,63 @@ public class HomePage implements Page {
                 confirmedModel() ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG,
                 confirmedModel() ? UiTheme.OK_DARK : UiTheme.NEUTRAL_TX, mx, my);
         renderTerminal(gui, mx, my);
+        renderFooter(gui, mx, my);
         gui.disableScissor();
         viewport.render(gui, mx, my, 0);
     }
 
     private void renderSummary(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = summary.x(), y = drawY(summary.y()), width = summary.width();
-        UiDraw.dashboardCard(gui, x, y, width, summary.height(), statusColor());
-        gui.fill(x + 7, y + 5, x + width - 7, y + 29, statusBackground());
-        int statusWidth = Math.min(width / 2, font.width(connectionState()) + 8);
-        UiDraw.clippedText(gui, font, tr("active_device"), x + PAD, y + 10,
-                width - PAD * 2 - statusWidth - 8, statusColor(), mouseX, mouseY);
-        UiDraw.badge(gui, font, x + width - PAD - statusWidth, y + 7, statusWidth,
-                connectionState(), statusBackground(), statusColor(), mouseX, mouseY);
-        UiDraw.pixelRounded(gui, x + PAD, y + 34, 36, 36, state.connected() ? UiTheme.ACCENT_PRIMARY : UiTheme.TEXT_SECONDARY);
-        UiDraw.icon(gui, state.wifi() ? SpriteIcon.WIFI : SpriteIcon.USB, x + PAD + 7, y + 41, 22);
-        int nameX = x + PAD + 46;
-        int nameWidth = width >= 400 ? focusWidgets.get("disconnect").getX() - nameX - 12 : x + width - PAD - nameX;
+        boolean beside = width >= 400;
+        UiDraw.pixelRounded(gui, x + PAD, y + 6, 38, 38, UiTheme.ACCENT_PRIMARY);
+        UiDraw.icon(gui, state.wifi() ? SpriteIcon.WIFI : SpriteIcon.USB, x + PAD + 8, y + 14, 22);
+
+        int nameX = x + PAD + 50;
+        int nameWidth = beside ? focusWidgets.get("disconnect").getX() - nameX - 12
+                : x + width - PAD - nameX;
         Component name = !state.connected() && state.endpoint().isEmpty() ? tr("no_device") : modelName();
-        UiDraw.clippedText(gui, font, name.copy().withStyle(ChatFormatting.BOLD), nameX, y + 36, nameWidth,
-                UiTheme.TEXT_PRIMARY, mouseX, mouseY);
+        UiDraw.clippedText(gui, font, name.copy().withStyle(ChatFormatting.BOLD), nameX, y + 9,
+                Math.max(1, nameWidth), UiTheme.TEXT_PRIMARY, mouseX, mouseY);
         UiDraw.clippedText(gui, font, state.connected() ? family() : tr("device.disconnected"),
-                nameX, y + 51, nameWidth, UiTheme.TEXT_SECONDARY, mouseX, mouseY);
-        int footerY = drawY(summaryFooterY);
-        gui.fill(x + PAD, footerY - 5, x + width - PAD, footerY - 4, UiTheme.LINE);
-        gui.fill(x + PAD, footerY + 3, x + PAD + 5, footerY + 8, statusColor());
-        Component footer = tr(state.connected() ? "link.active" : "link.inactive").append(" · ").append(transport());
+                nameX, y + 26, Math.max(1, nameWidth), UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+
+        Component session = transport();
         long seconds = ConnectionManager.getConnectedSeconds();
-        if (state.connected() && seconds >= 0) footer = footer.copy().append(" · ").append(duration(seconds));
-        UiDraw.clippedText(gui, font, footer, x + PAD + 11, footerY + 1, width - PAD * 2 - 11,
+        if (state.connected() && seconds >= 0) session = session.copy().append(" · ").append(duration(seconds));
+        gui.fill(nameX, y + 48, nameX + 4, y + 53, statusColor());
+        UiDraw.clippedText(gui, font, session, nameX + 10, y + 46,
+                Math.max(1, (beside ? focusWidgets.get("disconnect").getX() : x + width - PAD) - nameX - 10),
                 UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+        int badgeWidth = Math.min(width / 3, font.width(connectionState()) + 12);
+        if (beside)
+            UiDraw.badge(gui, font, x + width - PAD - badgeWidth, y + 42,
+                    badgeWidth, connectionState(), statusBackground(), statusColor(), mouseX, mouseY);
+        int dividerY = y + summary.height() - 2;
+        gui.fill(x + PAD, dividerY, x + width - PAD, dividerY + 1, UiTheme.LINE);
+    }
+
+    private void renderFooter(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
+        int x = footer.x(), y = drawY(footer.y()), width = footer.width();
+        gui.fill(x, y, x + width, y + 1, UiTheme.LINE);
+        Component brand = Component.literal("SerialCraft");
+        if (!MOD_VERSION.isEmpty()) brand = brand.copy().append(" v").append(MOD_VERSION);
+        brand = brand.copy().append(" · ").append(tr("footer.tagline"));
+        Component link = transport().copy().append(" · ").append(connectionState());
+        int rightWidth = font.width(link);
+        boolean sameRow = width >= font.width(brand) + rightWidth + 30;
+        UiDraw.clippedText(gui, font, brand, x + 3, y + 10,
+                Math.max(1, sameRow ? width - rightWidth - 18 : width - 6),
+                UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+        UiDraw.clippedText(gui, font, link, sameRow ? x + width - rightWidth - 3 : x + 3,
+                y + (sameRow ? 10 : 24), Math.max(1, sameRow ? rightWidth : width - 6),
+                state.connected() ? UiTheme.OK_DARK : UiTheme.TEXT_SECONDARY, mouseX, mouseY);
     }
 
     private void renderTerminal(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = terminal.x(), y = drawY(terminal.y());
-        UiDraw.pixelRounded(gui, x + PAD, y + PAD, 20, 20, UiTheme.ACCENT_PRIMARY);
-        UiDraw.icon(gui, SpriteIcon.TERMINAL, x + PAD + 2, y + PAD + 2, 16);
-        UiDraw.wrappedText(gui, font, tr("terminal"), x + PAD + 28, y + PAD,
+        UiDraw.pixelRounded(gui, x + PAD, y + 9, 20, 20, UiTheme.ACCENT_PRIMARY);
+        UiDraw.icon(gui, SpriteIcon.TERMINAL, x + PAD + 2, y + 11, 16);
+        UiDraw.wrappedText(gui, font, tr("terminal"), x + PAD + 28, y + 13,
                 terminal.width() - PAD * 2 - 28, UiTheme.TEXT_PRIMARY);
         int consoleY = drawY(console.y());
         UiDraw.pixelRounded(gui, console.x(), consoleY, console.width(), console.height(), UiTheme.BG_CONSOLE);

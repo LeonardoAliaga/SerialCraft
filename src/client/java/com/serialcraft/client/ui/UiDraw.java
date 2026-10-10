@@ -59,19 +59,14 @@ public final class UiDraw {
 
     /** Hardware dashboard: softly tinted top, semantic accent rail and pixel-cut corners. */
     public static void dashboardCard(GuiGraphicsExtractor gui, int x, int y, int width, int height,
-                                     int accent) {
+                                     int accent, int headerHeight) {
         if (width < 18 || height < 18) { card(gui, x, y, width, height, accent, false); return; }
-        // Only a one-pixel, low-opacity offset: no hover effect on passive sections.
         pixelRounded(gui, x + 1, y + 2, width, height, 0x0C000000);
         pixelRounded(gui, x, y, width, height, UiTheme.LINE);
         pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, UiTheme.BG_CARD);
-        int tint = accent == UiTheme.ACCENT_HOME ? 0xFFFFEDF4 :
-                   accent == UiTheme.OK_DARK ? UiTheme.OK_BG :
-                   accent == UiTheme.ERROR_DARK ? UiTheme.ERROR_BG :
-                   accent == UiTheme.WARN_DARK ? UiTheme.WARN_BG : 0xFFEAF5F7;
-        gui.fill(x + 4, y + 4, x + width - 4, y + 30, tint);
-        gui.fill(x + 4, y + 4, x + 7, y + 30, accent);
-        gui.fill(x + 8, y + 30, x + width - 8, y + 31, UiTheme.LINE);
+        int bottom = y + Math.min(Math.max(28, headerHeight), height - 4);
+        gui.fill(x + 5, y + 9, x + 8, bottom - 6, accent);
+        gui.fill(x + 12, bottom, x + width - 12, bottom + 1, UiTheme.LINE);
     }
 
     /** A contextual explanation without another title, border, or modal overlay. */
@@ -219,6 +214,7 @@ public final class UiDraw {
                 UiTheme.TEXT_SECONDARY, mouseX, mouseY);
         clippedText(gui, font, value.copy().withStyle(ChatFormatting.BOLD),
                 x, y + 16, Math.max(1, width - 4), valueColor, mouseX, mouseY);
+        gui.fill(x, y + STAT_TILE_HEIGHT - 1, x + width - 4, y + STAT_TILE_HEIGHT, UiTheme.LINE);
     }
 
     /** Campo de texto hundido, con borde y fondo oscuro. */
