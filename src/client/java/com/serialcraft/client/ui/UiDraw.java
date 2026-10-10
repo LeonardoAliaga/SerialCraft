@@ -159,6 +159,22 @@ public final class UiDraw {
      * Cabecera de pagina: una palabra en color de acento y otra en negro,
      * ambas a escala aumentada.
      */
+    /** One slightly larger card heading without scaling subtitles or properties. */
+    public static void dashboardTitle(GuiGraphicsExtractor gui, Font font, Component title,
+                                      int x, int y, int width, int color) {
+        float scale = 1.35f;
+        int available = Math.max(1, (int) (width / scale));
+        String label = title.getString();
+        if (font.width(label) > available) {
+            String ellipsis = "…";
+            label = font.plainSubstrByWidth(label, Math.max(1, available - font.width(ellipsis))) + ellipsis;
+        }
+        gui.pose().pushMatrix();
+        gui.pose().scale(scale, scale);
+        gui.text(font, label, (int) (x / scale), (int) (y / scale), color, false);
+        gui.pose().popMatrix();
+    }
+
     public static void pageTitle(GuiGraphicsExtractor gui, Font font, int x,
                                  Component accent, int accentColor, Component rest) {
         float scale = UiTheme.TITLE_SCALE;

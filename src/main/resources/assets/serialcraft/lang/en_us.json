@@ -350,7 +350,7 @@
   "gui.serialcraft.io.list.channel": "Channel: %s",
   "gui.serialcraft.io.list.count_one": "1 module registered",
   "gui.serialcraft.io.list.count_many": "%s modules registered",
-  "gui.serialcraft.home.description": "Manage your board and communication",
+  "gui.serialcraft.home.description": "Monitor your connected board and its communication with Minecraft.",
   "gui.serialcraft.home.active_device": "ACTIVE DEVICE",
   "gui.serialcraft.home.device.disconnected": "No active connection",
   "gui.serialcraft.home.properties.subtitle": "Detected information and current connection status",

@@ -109,7 +109,8 @@ public class HomePage implements Page {
 
         contentX = UiTheme.contentX(screenWidth);
         contentWidth = Math.max(80, screenWidth - contentX - UiTheme.contentMargin(screenWidth) - 10);
-        int top = 40;
+        // Room for the page description below INICIO / PANEL DE CONTROL.
+        int top = 62;
         view = new Rect(contentX - 2, top, contentWidth + 12,
                 Math.max(24, screenHeight - UiTheme.contentMargin(screenWidth) - top));
         viewport = new UiViewport(scroll, view);
@@ -167,14 +168,14 @@ public class HomePage implements Page {
         int titleWidth = Math.max(1, inner - 36);
         headings.add(new Heading(tr("main.title"), left, top + PAD, titleWidth, UiTheme.ACCENT_HOME, true));
         help("identity", contentX + contentWidth - PAD - 28, top + 7);
-        int subtitleY = top + PAD + font.lineHeight + 7;
+        int subtitleY = top + PAD + font.lineHeight + 12;
         int subtitleHeight = textHeight(tr("main.subtitle"), titleWidth);
         texts.add(new Text(tr("main.subtitle"), left, subtitleY, titleWidth, UiTheme.TEXT_SECONDARY, 0));
         int headerHeight = subtitleY + subtitleHeight + 10 - top;
         int summaryY = inlineHelp("identity", left, top + headerHeight + 7, inner) + 2;
         int summaryBottom = buildSummary(summaryY);
 
-        int groupsY = summaryBottom + 13;
+        int groupsY = summaryBottom + 10;
         boolean split = contentWidth >= 620;
         int groupGap = 26;
         int identityWidth = split ? (inner - groupGap) / 2 : inner;
@@ -193,24 +194,24 @@ public class HomePage implements Page {
         Component disconnect = tr("disconnect");
         int buttonWidth = Math.min(contentWidth - PAD * 2, font.width(disconnect) + 24);
         boolean beside = contentWidth >= 400;
-        int buttonY = top + (beside ? 7 : 73);
+        int buttonY = top + (beside ? 5 : 66);
         var button = SolidButton.danger(beside ? contentX + contentWidth - PAD - buttonWidth : contentX + PAD,
                 buttonY, buttonWidth, 24, disconnect, b -> panel.disconnectDevice());
         button.active = !usbBusy() && (!state.endpoint().isEmpty() || state.wifi());
         button.setTooltip(Tooltip.create(disconnect));
         input("disconnect", button, buttonY);
-        summary = new Rect(contentX, top, contentWidth, beside ? 75 : 108);
+        summary = new Rect(contentX, top, contentWidth, beside ? 60 : 95);
         return summary.bottom();
     }
 
     private int buildIdentity(int x, int top, int width) {
-        int y = heading(tr("detected"), x, top, width, UiTheme.ACCENT_HOME) + 5;
+        int y = heading(tr("detected"), x, top, width, UiTheme.ACCENT_HOME) + 3;
         int modelY = y;
         y = property(tr("model"), modelName(), x, y, Math.max(1, width - 32), UiTheme.TEXT_PRIMARY);
         help("model", x + width - 28, modelY);
-        y = inlineHelp("model", x, Math.max(y, modelY + 28), width);
+        y = inlineHelp("model", x, Math.max(y, modelY + 24), width);
         modelBadge = new Rect(x, y, width, 14);
-        y += 23;
+        y += 20;
         y = property(tr("platform"), family(), x, y, width, UiTheme.TEXT_PRIMARY);
         if (state.bridge() != BoardIdentity.Bridge.NONE)
             y = property(tr("bridge"), Component.literal(state.bridge().label()), x, y, width, UiTheme.TEXT_PRIMARY);
@@ -222,7 +223,7 @@ public class HomePage implements Page {
     }
 
     private int buildConnection(int x, int top, int width) {
-        int y = heading(tr("connection_state"), x, top, width, UiTheme.ACCENT_PRIMARY) + 6;
+        int y = heading(tr("connection_state"), x, top, width, UiTheme.ACCENT_PRIMARY) + 3;
         if (state.wifi()) {
             y = tiles(x, y, width,
                     new Stat(tr("board_ip"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.TEXT_PRIMARY),
@@ -231,16 +232,7 @@ public class HomePage implements Page {
                     new Stat(tr("server"), serverState(),
                             state.connected() ? UiTheme.OK_DARK : UiTheme.INFO_DARK),
                     new Stat(tr("protocol"), tr("protocol_wifi"), UiTheme.TEXT_PRIMARY));
-            if (state.hasToken()) {
-                y = property(tr("token"), showToken ? value(ConnectionManager.getWifi().getPairingToken())
-                        : tr("token.hidden"), x, y + 5, width, UiTheme.TEXT_PRIMARY);
-                Component label = tr(showToken ? "token.hide" : "token.show");
-                var token = new OutlineButton(x, y, Math.min(width, font.width(label) + 24), 22,
-                        label, b -> { showToken = !showToken; focusKey = "token"; panel.refresh(); });
-                input("token", token, y);
-                y += 30;
-            }
-            y = property(tr("usb.state"), connectionState(), x, y + 4, width, statusColor());
+
         } else {
             y = tiles(x, y, width,
                     new Stat(tr("port"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.TEXT_PRIMARY),
@@ -331,6 +323,16 @@ public class HomePage implements Page {
                 left, y, inner, state.connected() ? UiTheme.OK_DARK : UiTheme.TEXT_SECONDARY);
         y = property(tr("wifi.trust"), !state.connected() ? unavailable() : tr(state.remembered() ? "wifi.remembered" : "wifi.temporary"),
                 left, y, inner, state.remembered() ? UiTheme.OK_DARK : UiTheme.TEXT_PRIMARY);
+        // The pairing token is a Wi-Fi session control, not board identification.
+        if (state.hasToken()) {
+            y = property(tr("token"), showToken ? value(ConnectionManager.getWifi().getPairingToken())
+                    : tr("token.hidden"), left, y + 5, inner, UiTheme.TEXT_PRIMARY);
+            Component tokenLabel = tr(showToken ? "token.hide" : "token.show");
+            var tokenButton = new OutlineButton(left, y, Math.min(inner, font.width(tokenLabel) + 24),
+                    22, tokenLabel, b -> { showToken = !showToken; focusKey = "token"; panel.refresh(); });
+            input("token", tokenButton, y);
+            y += 30;
+        }
         Component label = tr(state.remembered() ? "forget" : "remember");
         var trust = new OutlineButton(left, y, inner, 24, label, b -> toggleRemember());
         trust.active = state.connected() && (state.remembered() || state.rememberable());
@@ -374,7 +376,7 @@ public class HomePage implements Page {
     }
     private int heading(Component title, int x, int y, int width, int accent) {
         headings.add(new Heading(title, x, y, width, accent, false));
-        return y + UiDraw.sectionHeaderHeight(font, title, width) + 4;
+        return y + textHeight(title, width) + 12;
     }
     private int paragraph(Component text, int x, int y, int width, int color) {
         texts.add(new Text(text, x, y, width, color, 0));
@@ -490,6 +492,8 @@ public class HomePage implements Page {
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
         UiDraw.pageTitle(gui, font, contentX, tr("title"), UiTheme.ACCENT_HOME, tr("subtitle"));
+        UiDraw.clippedText(gui, font, tr("description"), contentX, 45, contentWidth,
+                UiTheme.TEXT_SECONDARY, mouseX, mouseY);
         int mx = view.contains(mouseX, mouseY) ? mouseX : -1;
         int my = mx == -1 ? -1 : mouseY;
         gui.enableScissor(view.x(), view.y(), view.right() - 8, view.bottom());
@@ -499,7 +503,9 @@ public class HomePage implements Page {
         }
         renderSummary(gui, mx, my);
         for (Heading h : headings) {
-            if (h.cardTitle())
+            if (h.cardTitle() && h.accent() == UiTheme.ACCENT_HOME)
+                UiDraw.dashboardTitle(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), UiTheme.TEXT_PRIMARY);
+            else if (h.cardTitle())
                 UiDraw.clippedText(gui, font, h.title().copy().withStyle(ChatFormatting.BOLD),
                         h.x(), drawY(h.y()), h.width(), UiTheme.TEXT_PRIMARY, mx, my);
             else
@@ -540,28 +546,28 @@ public class HomePage implements Page {
     private void renderSummary(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = summary.x(), y = drawY(summary.y()), width = summary.width();
         boolean beside = width >= 400;
-        UiDraw.pixelRounded(gui, x + PAD, y + 6, 38, 38, UiTheme.ACCENT_PRIMARY);
-        UiDraw.icon(gui, state.wifi() ? SpriteIcon.WIFI : SpriteIcon.USB, x + PAD + 8, y + 14, 22);
+        UiDraw.pixelRounded(gui, x + PAD, y + 4, 38, 38, UiTheme.ACCENT_PRIMARY);
+        UiDraw.icon(gui, state.wifi() ? SpriteIcon.WIFI : SpriteIcon.USB, x + PAD + 8, y + 12, 22);
 
         int nameX = x + PAD + 50;
         int nameWidth = beside ? focusWidgets.get("disconnect").getX() - nameX - 12
                 : x + width - PAD - nameX;
         Component name = !state.connected() && state.endpoint().isEmpty() ? tr("no_device") : modelName();
-        UiDraw.clippedText(gui, font, name.copy().withStyle(ChatFormatting.BOLD), nameX, y + 9,
+        UiDraw.clippedText(gui, font, name.copy().withStyle(ChatFormatting.BOLD), nameX, y + 7,
                 Math.max(1, nameWidth), UiTheme.TEXT_PRIMARY, mouseX, mouseY);
         UiDraw.clippedText(gui, font, state.connected() ? family() : tr("device.disconnected"),
-                nameX, y + 26, Math.max(1, nameWidth), UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+                nameX, y + 23, Math.max(1, nameWidth), UiTheme.TEXT_SECONDARY, mouseX, mouseY);
 
         Component session = transport();
         long seconds = ConnectionManager.getConnectedSeconds();
         if (state.connected() && seconds >= 0) session = session.copy().append(" · ").append(duration(seconds));
-        gui.fill(nameX, y + 48, nameX + 4, y + 53, statusColor());
-        UiDraw.clippedText(gui, font, session, nameX + 10, y + 46,
+        gui.fill(nameX, y + 42, nameX + 4, y + 47, statusColor());
+        UiDraw.clippedText(gui, font, session, nameX + 10, y + 40,
                 Math.max(1, (beside ? focusWidgets.get("disconnect").getX() : x + width - PAD) - nameX - 10),
                 UiTheme.TEXT_SECONDARY, mouseX, mouseY);
         int badgeWidth = Math.min(width / 3, font.width(connectionState()) + 12);
         if (beside)
-            UiDraw.badge(gui, font, x + width - PAD - badgeWidth, y + 42,
+            UiDraw.badge(gui, font, x + width - PAD - badgeWidth, y + 37,
                     badgeWidth, connectionState(), statusBackground(), statusColor(), mouseX, mouseY);
         int dividerY = y + summary.height() - 2;
         gui.fill(x + PAD, dividerY, x + width - PAD, dividerY + 1, UiTheme.LINE);

@@ -350,7 +350,7 @@
   "gui.serialcraft.io.list.channel": "Canal: %s",
   "gui.serialcraft.io.list.count_one": "1 módulo registrado",
   "gui.serialcraft.io.list.count_many": "%s módulos registrados",
-  "gui.serialcraft.home.description": "Controla tu placa y la comunicación",
+  "gui.serialcraft.home.description": "Supervisa la placa conectada y su comunicación con Minecraft.",
   "gui.serialcraft.home.active_device": "DISPOSITIVO ACTIVO",
   "gui.serialcraft.home.device.disconnected": "Sin conexión activa",
   "gui.serialcraft.home.properties.subtitle": "Información detectada y estado actual de la conexión",
