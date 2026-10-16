@@ -42,7 +42,7 @@ public class WelcomePage implements Page {
     private static final int LOGO_SRC_H = 261;
     private static final int LOGO_WIDTH = 190;
     private static final int LOGO_Y     = 10;
-    // Cambiar este valor modifica el ancho de todas las secciones de bienvenida.
+    // Ancho máximo del contenido (métodos, ayuda y lista); la franja de cabecera ocupa la pantalla.
     private static final int DEFAULT_CARD_WIDTH = 340;
     private static final int HEADER_CONTENT_GAP = 6;
 
@@ -136,7 +136,8 @@ public class WelcomePage implements Page {
         for (int i = 0; i < devices.size(); i++) {
             Bounds card = new Bounds(cardX, devicesY + i * UiTheme.CARD_ROW_HEIGHT,
                     cardWidth, UiTheme.CARD_HEIGHT);
-            Bounds button = new Bounds(card.right() - 92, card.y() + 14, 86, 20);
+            Bounds button = new Bounds(card.right() - 6 - 86,
+                    card.y() + (card.height() - 20) / 2, 86, 20);
             rows.add(new DeviceRow(card, button));
         }
         Bounds emptyDevices = new Bounds(cardX, devicesY, cardWidth, 44);
