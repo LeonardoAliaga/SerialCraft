@@ -42,7 +42,9 @@ public class WelcomePage implements Page {
     private static final int LOGO_SRC_H = 261;
     private static final int LOGO_WIDTH = 190;
     private static final int LOGO_Y     = 10;
+    // Cambiar este valor modifica el ancho de todas las secciones de bienvenida.
     private static final int DEFAULT_CARD_WIDTH = 340;
+    private static final int HEADER_CONTENT_GAP = 6;
 
     private static final int METHOD_H     = 42;
     private static final int METHOD_GAP   = 8;
@@ -65,8 +67,8 @@ public class WelcomePage implements Page {
     private final List<ScrollableWidget> scrollableWidgets = new ArrayList<>();
 
     private PanelUI panel;
-    private int screenWidth;
     private int screenHeight;
+    private Layout currentLayout;
     private String hostIp = "";
     private boolean showHelper = false;
     private int helperPlatform = PLATFORM_ESP32;
@@ -75,38 +77,81 @@ public class WelcomePage implements Page {
     private Component pendingCopyOriginalLabel;
     private long copyFeedbackUntilMs;
 
-    private record Layout(int cardWidth, int cardX, int logoHeight, int subtitleY, int methodY,
-                          int wifiInfoY, int wifiInfoH,
-                          int helperLinkY, int helperPanelY, int helperPanelH,
-                          int deviceListY, int totalHeight) {}
+    /** Rectángulo de una sección o elemento, siempre relativo a su contenedor. */
+    private record Bounds(int x, int y, int width, int height) {
+        int right() { return x + width; }
+        int bottom() { return y + height; }
+    }
 
-    private Layout layout(int screenWidth) {
-        int cardWidth = Math.min(DEFAULT_CARD_WIDTH, screenWidth - 24);
-        int cardX = (screenWidth - cardWidth) / 2;
+    /** El botón pertenece a la misma fila que su tarjeta, no a una lista de Y independientes. */
+    private record DeviceRow(Bounds card, Bounds connectButton) {}
 
-        int logoWidth = Math.min(LOGO_WIDTH, screenWidth - 40);
+    /** Geometría única que comparten el render y los widgets interactivos. */
+    private record Layout(Bounds header, Bounds logo, int subtitleY,
+                          Bounds usbMethod, Bounds wifiMethod, Bounds wifiInfo,
+                          Bounds helpLink, Bounds helpPanel,
+                          List<DeviceRow> deviceRows, Bounds emptyDevices,
+                          int viewportTop, int totalHeight) {
+        int cardX() { return usbMethod.x(); }
+        int cardWidth() { return wifiMethod.right() - usbMethod.x(); }
+    }
+
+    /**
+     * Flujo vertical: cabecera -> métodos -> estado Wi-Fi -> ayuda -> dispositivos.
+     * Cada Y se obtiene del límite inferior de la sección anterior.
+     * Se recalcula en init() al cambiar tamaño o al desplegar una sección.
+     */
+    private Layout layout(int width) {
+        int cardWidth = Math.max(1, Math.min(DEFAULT_CARD_WIDTH, width - 24));
+        int cardX = (width - cardWidth) / 2;
+
+        int logoWidth = Math.max(1, Math.min(LOGO_WIDTH, width - 40));
         int logoHeight = (logoWidth * LOGO_SRC_H) / LOGO_SRC_W;
-        int subtitleY  = LOGO_Y + logoHeight + 4;
-        int methodY    = subtitleY + 18;
+        Bounds logo = new Bounds((width - logoWidth) / 2, LOGO_Y, logoWidth, logoHeight);
+        int subtitleY = logo.bottom() + 4;
+        Bounds header = new Bounds(0, 0, width, subtitleY + 12);
+
+        int methodY = header.bottom() + HEADER_CONTENT_GAP;
+        int usbWidth = (cardWidth - METHOD_GAP) / 2;
+        Bounds usbMethod = new Bounds(cardX, methodY, usbWidth, METHOD_H);
+        Bounds wifiMethod = new Bounds(usbMethod.right() + METHOD_GAP, methodY,
+                cardWidth - usbWidth - METHOD_GAP, METHOD_H);
 
         WifiHandler wifi = ConnectionManager.getWifi();
-        int wifiInfoH = switch (wifi.getState()) {
-            case STOPPED    -> 0;
-            case LISTENING  -> WIFI_INFO_H_LISTENING;
-            case CONNECTED  -> WIFI_INFO_H_CONNECTED;
+        int wifiHeight = switch (wifi.getState()) {
+            case STOPPED   -> 0;
+            case LISTENING -> WIFI_INFO_H_LISTENING;
+            case CONNECTED -> WIFI_INFO_H_CONNECTED;
         };
-        int wifiInfoY = methodY + METHOD_H + 8;
+        int wifiY = usbMethod.bottom() + (wifiHeight > 0 ? 8 : 0);
+        Bounds wifiInfo = new Bounds(cardX, wifiY, cardWidth, wifiHeight);
 
-        int helperLinkY  = wifiInfoY + wifiInfoH + (wifiInfoH > 0 ? 8 : 4);
-        int helperPanelY = helperLinkY + HELPER_LINK_H + 6;
-        int helperPanelH = showHelper ? HELPER_PANEL_H : 0;
+        int helpY = (wifiHeight > 0 ? wifiInfo.bottom() + 8 : usbMethod.bottom() + 4);
+        Bounds helpLink = new Bounds(cardX, helpY, cardWidth, HELPER_LINK_H);
+        int helpPanelHeight = showHelper ? helperPanelHeight() : 0;
+        Bounds helpPanel = new Bounds(cardX, helpLink.bottom() + 6, cardWidth, helpPanelHeight);
 
-        int deviceListY = helperPanelY + (showHelper ? helperPanelH + 10 : 0);
-        int deviceCount = Math.max(1, devices.size());
-        int totalHeight = deviceListY + (deviceCount * UiTheme.CARD_ROW_HEIGHT) + 20;
+        int devicesY = showHelper ? helpPanel.bottom() + 10 : helpLink.bottom() + 6;
+        List<DeviceRow> rows = new ArrayList<>();
+        for (int i = 0; i < devices.size(); i++) {
+            Bounds card = new Bounds(cardX, devicesY + i * UiTheme.CARD_ROW_HEIGHT,
+                    cardWidth, UiTheme.CARD_HEIGHT);
+            Bounds button = new Bounds(card.right() - 92, card.y() + 14, 86, 20);
+            rows.add(new DeviceRow(card, button));
+        }
+        Bounds emptyDevices = new Bounds(cardX, devicesY, cardWidth, 44);
+        int totalHeight = devicesY + Math.max(1, devices.size()) * UiTheme.CARD_ROW_HEIGHT + 20;
 
-        return new Layout(cardWidth, cardX, logoHeight, subtitleY, methodY, wifiInfoY, wifiInfoH,
-                helperLinkY, helperPanelY, helperPanelH, deviceListY, totalHeight);
+        return new Layout(header, logo, subtitleY, usbMethod, wifiMethod, wifiInfo,
+                helpLink, helpPanel, List.copyOf(rows), emptyDevices,
+                header.bottom() + 4, totalHeight);
+    }
+
+    /** Evita que el botón de copiar invada la siguiente sección al cambiar de ejemplo. */
+    private int helperPanelHeight() {
+        int codeBoxHeight = helperSnippetLines(helperPlatform).size() * 11 + 8;
+        int copyBottom = 26 + 12 + codeBoxHeight + 6 + 16;
+        return Math.max(HELPER_PANEL_H, copyBottom + 4);
     }
 
     // ── INIT ──────────────────────────────────────────────────────────────────
@@ -114,22 +159,29 @@ public class WelcomePage implements Page {
     @Override
     public void init(PanelUI panelUi, int width, int height) {
         this.panel        = panelUi;
-        this.screenWidth  = width;
         this.screenHeight = height;
         this.scrollableWidgets.clear();
+        this.pendingCopyButton = null;
 
         if (ConnectionManager.getWifi().isServerRunning() && (hostIp == null || hostIp.isEmpty())) {
             hostIp = NetUtils.findLocalIpv4();
         }
 
         scanUsbPorts();
-        Layout l = layout(width);
+        currentLayout = layout(width);
+        Layout l = currentLayout;
 
-        buildMethodCards(panelUi, l.cardX, l.cardWidth, l.methodY);
-        if (l.wifiInfoH > 0) buildWifiInfoWidgets(panelUi, l.cardX, l.cardWidth, l.wifiInfoY, l.wifiInfoH);
-        buildHelperLink(panelUi, l.cardX, l.cardWidth, l.helperLinkY);
-        if (showHelper) buildHelperPanel(panelUi, l.cardX, l.cardWidth, l.helperPanelY);
-        buildDeviceButtons(panelUi, l.cardX, l.cardWidth, l.deviceListY);
+        buildMethodCards(panelUi, l.usbMethod(), l.wifiMethod());
+        if (l.wifiInfo().height() > 0) {
+            Bounds wifi = l.wifiInfo();
+            buildWifiInfoWidgets(panelUi, wifi.x(), wifi.width(), wifi.y(), wifi.height());
+        }
+        buildHelperLink(panelUi, l.helpLink().x(), l.helpLink().width(), l.helpLink().y());
+        if (showHelper) {
+            Bounds help = l.helpPanel();
+            buildHelperPanel(panelUi, help.x(), help.width(), help.y());
+        }
+        buildDeviceButtons(panelUi, l.deviceRows());
     }
 
     private void addScrollWidget(PanelUI panelUi, AbstractWidget widget, int baseY) {
@@ -162,11 +214,12 @@ public class WelcomePage implements Page {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
-        Layout l = layout(screenWidth);
-        int trackX = l.cardX + l.cardWidth + 4;
-        int trackY = 40;
-        int trackH = screenHeight - 50;
-        return scroll.mouseClicked(event.x(), event.y(), event.button(), trackX, trackY, 8, trackH);
+        Layout l = currentLayout;
+        if (l == null) return false;
+        int trackX = l.cardX() + l.cardWidth() + 4;
+        int trackY = l.viewportTop();
+        int trackH = Math.max(10, screenHeight - trackY - 4);
+        return scroll.mouseClicked(event.x(), event.y(), event.button(), trackX, trackY, 6, trackH);
     }
 
     @Override
@@ -176,26 +229,26 @@ public class WelcomePage implements Page {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
-        int trackY = 40;
-        int trackH = screenHeight - 50;
+        if (currentLayout == null) return false;
+        int trackY = currentLayout.viewportTop();
+        int trackH = Math.max(10, screenHeight - trackY - 4);
         return scroll.mouseDragged(event.y(), trackY, trackH);
     }
 
     // ── TARJETAS DE METODO ────────────────────────────────────────────────────
 
-    private void buildMethodCards(PanelUI panelUi, int x, int cardWidth, int y) {
-        int cardW = (cardWidth - METHOD_GAP) / 2;
+    private void buildMethodCards(PanelUI panelUi, Bounds usb, Bounds wifiCard) {
 
         long usbCount = devices.stream().filter(d -> "USB".equals(d.type())).count();
         Component usbStatus = usbCount == 0
                 ? Component.translatable("gui.serialcraft.welcome.method_usb_empty")
                 : Component.translatable("gui.serialcraft.welcome.method_usb_count", usbCount);
 
-        addScrollWidget(panelUi, new MethodCard(x, y, cardW, METHOD_H, SpriteIcon.USB,
+        addScrollWidget(panelUi, new MethodCard(usb.x(), usb.y(), usb.width(), usb.height(), SpriteIcon.USB,
                 Component.translatable("gui.serialcraft.welcome.method_usb"),
                 usbStatus, UiTheme.TEXT_ON_DARK,
                 UiTheme.TAB_INACTIVE_BG, UiTheme.TAB_INACTIVE_BORDER,
-                () -> { scanUsbPorts(); panel.refreshWelcome(); }), y);
+                () -> panel.refreshWelcome()), usb.y());
 
         WifiHandler wifi = ConnectionManager.getWifi();
         Component wifiStatus = switch (wifi.getState()) {
@@ -206,10 +259,11 @@ public class WelcomePage implements Page {
         int wifiBg     = (wifi.getState() == WifiHandler.State.LISTENING) ? UiTheme.TEAL : UiTheme.TAB_INACTIVE_BG;
         int wifiBorder = (wifi.getState() == WifiHandler.State.LISTENING) ? UiTheme.TEAL_BORDER : UiTheme.TAB_INACTIVE_BORDER;
 
-        addScrollWidget(panelUi, new MethodCard(x + cardW + METHOD_GAP, y, cardW, METHOD_H, SpriteIcon.WIFI,
+        addScrollWidget(panelUi, new MethodCard(wifiCard.x(), wifiCard.y(), wifiCard.width(),
+                wifiCard.height(), SpriteIcon.WIFI,
                 Component.translatable("gui.serialcraft.welcome.method_wifi"),
                 wifiStatus, UiTheme.TEXT_ON_DARK, wifiBg, wifiBorder,
-                this::toggleWifiServer), y);
+                this::toggleWifiServer), wifiCard.y());
     }
 
     private void toggleWifiServer() {
@@ -400,8 +454,8 @@ public class WelcomePage implements Page {
         };
     }
 
-    private void renderHelperPanel(GuiGraphicsExtractor gui, Font font, int x, int cardWidth, int y) {
-        UiDraw.surface(gui, x, y, cardWidth, HELPER_PANEL_H, 0, 0, 0, false);
+    private void renderHelperPanel(GuiGraphicsExtractor gui, Font font, int x, int cardWidth, int y, int height) {
+        UiDraw.surface(gui, x, y, cardWidth, height, 0, 0, 0, false);
 
         int textX = x + 10;
         int introY = y + 26;
@@ -454,15 +508,15 @@ public class WelcomePage implements Page {
         }
     }
 
-    private void buildDeviceButtons(PanelUI panelUi, int x, int cardWidth, int y) {
-        for (PanelUI.DeviceInfo device : devices) {
-            final PanelUI.DeviceInfo target = device;
+    private void buildDeviceButtons(PanelUI panelUi, List<DeviceRow> rows) {
+        for (int i = 0; i < devices.size(); i++) {
+            PanelUI.DeviceInfo target = devices.get(i);
+            Bounds button = rows.get(i).connectButton();
             addScrollWidget(panelUi, new IconTextButton(
-                    x + cardWidth - 92, y + 14, 86, 20, SpriteIcon.CONNECT,
+                    button.x(), button.y(), button.width(), button.height(), SpriteIcon.CONNECT,
                     Component.translatable("gui.serialcraft.welcome.connect"),
                     btn -> panelUi.connectDevice(target),
-                    UiTheme.OK_DARK, UiTheme.OK_DARK_BORDER, UiTheme.TEXT_INVERSE), y + 14);
-            y += UiTheme.CARD_ROW_HEIGHT;
+                    UiTheme.OK_DARK, UiTheme.OK_DARK_BORDER, UiTheme.TEXT_INVERSE), button.y());
         }
     }
 
@@ -502,59 +556,68 @@ public class WelcomePage implements Page {
 
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
-        Layout l = layout(width);
-        int logoWidth = Math.min(LOGO_WIDTH, width - 40);
-        int logoX = (width - logoWidth) / 2;
+        Layout l = currentLayout;
+        if (l == null) return;
 
-        int headerH = l.subtitleY + 12;
+        int headerH = l.header().height();
 
-        // Zonas separadas: el hueso no se acumula debajo del cian.
+        // Cabecera y contenido mantienen sus fondos propios, sobre el mundo desenfocado.
         gui.fill(0, headerH, width, height, UiTheme.BG_WELCOME);
         gui.fill(0, 0, width, headerH, UiTheme.BG_WELCOME_HEADER);
         gui.fill(0, headerH, width, headerH + 2, 0x20000000);
 
+        Bounds logo = l.logo();
         gui.blit(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE,
-                logoX, LOGO_Y, 0, 0, logoWidth, l.logoHeight,
+                logo.x(), logo.y(), 0, 0, logo.width(), logo.height(),
                 LOGO_SRC_W, LOGO_SRC_H, LOGO_SRC_W, LOGO_SRC_H);
 
         Component subtitle = Component.translatable("gui.serialcraft.welcome.subtitle");
-        gui.text(font, subtitle, (width - font.width(subtitle)) / 2, l.subtitleY, UiTheme.TEXT_ON_NAV, true);
+        gui.text(font, subtitle, (width - font.width(subtitle)) / 2, l.subtitleY(),
+                UiTheme.TEXT_ON_NAV, true);
 
-        int viewportTop = headerH + 4;
+        int viewportTop = l.viewportTop();
         int viewportBottom = height - 4;
         int viewportHeight = Math.max(10, viewportBottom - viewportTop);
 
-        int totalContent = l.totalHeight - viewportTop;
-        scroll.update(viewportHeight, totalContent);
+        scroll.update(viewportHeight, l.totalHeight() - viewportTop);
         int scrollY = (int) scroll.getScrollAmount();
 
-        // Actualizar widgets según el scroll
+        // Los widgets usan exactamente los mismos límites que sus secciones dibujadas.
         for (ScrollableWidget sw : scrollableWidgets) {
             int currentY = sw.baseY() - scrollY;
             sw.widget().setY(currentY);
-            boolean inView = (currentY + sw.widget().getHeight() >= viewportTop && currentY <= viewportBottom);
+            // Screen dibuja los widgets después de esta página (sin scissor).
+            // Ocultamos los que cruzan la cabecera o el pie para evitar clics fuera.
+            boolean inView = currentY >= viewportTop
+                    && currentY + sw.widget().getHeight() <= viewportBottom;
             sw.widget().visible = inView;
-            sw.widget().active  = inView;
+            sw.widget().active = inView;
         }
 
-        // Renderizado recortado dentro del viewport
         gui.enableScissor(0, viewportTop, width, viewportBottom);
 
-        renderWifiInfoPanel(gui, font, l.cardX, l.cardWidth, l.wifiInfoY - scrollY, l.wifiInfoH);
-        if (showHelper) renderHelperPanel(gui, font, l.cardX, l.cardWidth, l.helperPanelY - scrollY);
-        renderDeviceCards(gui, font, l.cardX, l.cardWidth, l.deviceListY - scrollY);
+        Bounds wifi = l.wifiInfo();
+        renderWifiInfoPanel(gui, font, wifi.x(), wifi.width(), wifi.y() - scrollY, wifi.height());
+        if (showHelper) {
+            Bounds help = l.helpPanel();
+            renderHelperPanel(gui, font, help.x(), help.width(), help.y() - scrollY, help.height());
+        }
+        renderDeviceCards(gui, font, l, scrollY);
 
         gui.disableScissor();
 
-        // Barra de desplazamiento
         if (scroll.hasScroll()) {
-            scroll.renderScrollbar(gui, l.cardX + l.cardWidth + 4, viewportTop, 6, viewportHeight);
+            scroll.renderScrollbar(gui, l.cardX() + l.cardWidth() + 4,
+                    viewportTop, 6, viewportHeight);
         }
     }
 
-    private void renderDeviceCards(GuiGraphicsExtractor gui, Font font, int x, int cardWidth, int y) {
+    private void renderDeviceCards(GuiGraphicsExtractor gui, Font font, Layout layout, int scrollY) {
         if (devices.isEmpty()) {
-            UiDraw.surface(gui, x, y, cardWidth, 44, 0, 0, 0, false);
+            Bounds empty = layout.emptyDevices();
+            int x = empty.x();
+            int y = empty.y() - scrollY;
+            UiDraw.surface(gui, x, y, empty.width(), empty.height(), 0, 0, 0, false);
             gui.text(font, Component.translatable("gui.serialcraft.welcome.no_usb"),
                     x + 12, y + 10, UiTheme.TEXT_SECONDARY, false);
             gui.text(font, Component.translatable("gui.serialcraft.welcome.no_usb_hint"),
@@ -562,8 +625,13 @@ public class WelcomePage implements Page {
             return;
         }
 
-        for (PanelUI.DeviceInfo device : devices) {
-            UiDraw.surface(gui, x, y, cardWidth, UiTheme.CARD_HEIGHT, 0, 0, 0, false);
+        for (int i = 0; i < devices.size(); i++) {
+            PanelUI.DeviceInfo device = devices.get(i);
+            Bounds card = layout.deviceRows().get(i).card();
+            int x = card.x();
+            int y = card.y() - scrollY;
+            int cardWidth = card.width();
+            UiDraw.surface(gui, x, y, cardWidth, card.height(), 0, 0, 0, false);
 
             boolean wifi = device.isWifi();
             UiDraw.badge(gui, font, x + 10, y + 14, device.type(),
@@ -574,8 +642,7 @@ public class WelcomePage implements Page {
             gui.text(font, font.plainSubstrByWidth(device.name(), nameW),
                     x + 50, y + 13, UiTheme.TEXT_PRIMARY, false);
             gui.text(font, device.address(), x + 50, y + 27, UiTheme.TEXT_SECONDARY, false);
-
-            y += UiTheme.CARD_ROW_HEIGHT;
         }
     }
+
 }
