@@ -57,15 +57,15 @@ public final class UiDraw {
         gui.fill(x, y + 4, x + width, y + height - 4, color);
     }
 
-    /** Hardware dashboard: softly tinted top, semantic accent rail and pixel-cut corners. */
+    /** Shared card surface; a zero-height header leaves a quiet background for details. */
     public static void dashboardCard(GuiGraphicsExtractor gui, int x, int y, int width, int height,
-                                     int accent, int headerHeight) {
-        if (width < 18 || height < 18) { card(gui, x, y, width, height, accent, false); return; }
+                                     int headerHeight, int background, int accent) {
         pixelRounded(gui, x + 1, y + 2, width, height, 0x0C000000);
         pixelRounded(gui, x, y, width, height, UiTheme.LINE);
-        pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, UiTheme.BG_CARD);
+        pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, background);
+        if (headerHeight <= 0) return;
         int bottom = y + Math.min(Math.max(28, headerHeight), height - 4);
-        gui.fill(x + 5, y + 9, x + 8, bottom - 6, accent);
+        gui.fill(x + 5, y + 8, x + 8, bottom - 7, accent);
         gui.fill(x + 12, bottom, x + width - 12, bottom + 1, UiTheme.LINE);
     }
 
@@ -127,10 +127,10 @@ public final class UiDraw {
     }
 
     public static void helpPanel(GuiGraphicsExtractor gui, Font font, Component body,
-                                 int x, int y, int width) {
+                                 int x, int y, int width, int background, int accent) {
         int height = helpPanelHeight(font, body, width);
-        gui.fill(x, y, x + width, y + height, UiTheme.BG_HELP);
-        gui.fill(x + 1, y + 3, x + 3, y + height - 3, UiTheme.ACCENT_PRIMARY);
+        gui.fill(x, y, x + width, y + height, background);
+        gui.fill(x + 1, y + 3, x + 3, y + height - 3, accent);
         wrappedText(gui, font, body, x + 9, y + 6, Math.max(1, width - 18), UiTheme.TEXT_PRIMARY);
     }
 
@@ -207,26 +207,24 @@ public final class UiDraw {
         return x + width;
     }
 
-    /**
-     * Cabecera de pagina: una palabra en color de acento y otra en negro,
-     * ambas a escala aumentada.
-     */
-    /** One slightly larger card heading without scaling subtitles or properties. */
+    /** All dashboard card titles share the same size, weight and clipping behavior. */
     public static void dashboardTitle(GuiGraphicsExtractor gui, Font font, Component title,
-                                      int x, int y, int width, int color) {
-        float scale = 1.35f;
+                                      int x, int y, int width, int mouseX, int mouseY) {
+        float scale = UiTheme.CARD_TITLE_SCALE;
         int available = Math.max(1, (int) (width / scale));
-        String label = title.getString();
-        if (font.width(label) > available) {
-            String ellipsis = "…";
-            label = font.plainSubstrByWidth(label, Math.max(1, available - font.width(ellipsis))) + ellipsis;
-        }
+        Component label = title.copy().withStyle(ChatFormatting.BOLD);
+        boolean clipped = font.width(label) > available;
         gui.pose().pushMatrix();
+        gui.pose().translate(x, y);
         gui.pose().scale(scale, scale);
-        gui.text(font, label, (int) (x / scale), (int) (y / scale), color, false);
+        clippedText(gui, font, label, 0, 0, available, UiTheme.TEXT_PRIMARY, -1, -1);
         gui.pose().popMatrix();
+        if (clipped && mouseX >= x && mouseX < x + width
+                && mouseY >= y && mouseY < y + Math.ceil(font.lineHeight * scale))
+            gui.setTooltipForNextFrame(title, mouseX, mouseY);
     }
 
+    /** Cabecera de pagina a escala aumentada, seguida por la descripcion a escala nativa. */
     public static void pageTitle(GuiGraphicsExtractor gui, Font font, int x,
                                  Component accent, int accentColor, Component rest) {
         float scale = UiTheme.TITLE_SCALE;

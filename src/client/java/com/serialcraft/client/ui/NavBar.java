@@ -41,6 +41,28 @@ public class NavBar {
 
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /** Rectangulo real del panel claro (x, y, ancho, alto) en pixeles GUI. */
+    private record Box(int x, int y, int width, int height) {
+        int right()  { return x + width; }
+        int bottom() { return y + height; }
+    }
+
+    /**
+     * El panel deja el mismo margen a izquierda, derecha y abajo (10 % del ancho de la barra).
+     * Antes se pasaba el ANCHO a fill() como si fuese la coordenada derecha, de modo que el
+     * panel medía 80 % y los botones (calculados sobre 90 %) quedaban pegados a su borde.
+     */
+    private static Box panelBox(int screenWidth, int screenHeight) {
+        int nav = UiTheme.navWidth(screenWidth);
+        int margin = (nav * 10) / 100;
+        int catHeight = (nav * 50) / 100;
+        int catY = (nav * 40) / 100;
+        int y = catY + catHeight - (catHeight * 24 / 100);
+        return new Box(margin, y, nav - margin * 2, Math.max(40, screenHeight - margin - y));
+    }
+
+    private static int inset(Box panel) { return Math.max(6, panel.width() * 12 / 100); }
+
     public void render(GuiGraphicsExtractor gui, int screenWidth, int screenHeight) {
         int navWidth = UiTheme.navWidth(screenWidth);
 
@@ -53,33 +75,36 @@ public class NavBar {
                 navWidth * 3 / 100, (navWidth * 12) / 100, 0, 0,
                 logoWidth, logoHeight, LOGO_SRC_W, LOGO_SRC_H, LOGO_SRC_W, LOGO_SRC_H);
 
-        gui.fill(panelX(screenWidth), panelY(screenWidth),
-                 panelWidth(screenWidth), panelHeight(screenHeight), UiTheme.BG_NAV_INNER);
+        Box panel = panelBox(screenWidth, screenHeight);
+        gui.fill(panel.x(), panel.y(), panel.right(), panel.bottom(), UiTheme.BG_NAV_INNER);
 
         int catSize = (navWidth * 50) / 100;
         gui.blit(RenderPipelines.GUI_TEXTURED, CAT_TEXTURE,
                 (navWidth * 25) / 100, (navWidth * 40) / 100, 0, 0,
                 catSize, catSize, CAT_SRC, CAT_SRC, CAT_SRC, CAT_SRC);
+
     }
 
     public void init(PanelUI panel, int screenWidth, int screenHeight, PanelUI.Tab activeTab) {
-        int x      = panelX(screenWidth);
-        int y      = panelY(screenWidth);
-        int width  = panelWidth(screenWidth);
-        int height = panelHeight(screenHeight);
+        Box box = panelBox(screenWidth, screenHeight);
 
-        int buttonWidth  = (width * 88) / 100;
-        int buttonHeight = Math.clamp((buttonWidth * 30) / 100, 20, 30);
-        int spacing      = Math.max(6, (height * 4) / 100);
-        int buttonX      = ((x + width) - buttonWidth) / 2;
+        int inset        = inset(box);
+        int buttonWidth  = Math.min(104, Math.max(1, box.width() - inset * 2));
+        int spacing      = Math.clamp(screenHeight / 50, 6, 10);
+        int buttonX      = box.x() + (box.width() - buttonWidth) / 2;
+        int navWidth     = UiTheme.navWidth(screenWidth);
+        // Leave room for the cat's paws, then keep a compact, centered button stack.
+        int buttonsTop   = Math.max(box.y() + inset, navWidth * 40 / 100 + navWidth * 50 / 100 + 6);
 
         PanelUI.Tab[] tabs = PanelUI.Tab.values();
+        int availableHeight = box.bottom() - inset - buttonsTop - (tabs.length - 1) * spacing;
+        int buttonHeight = Math.clamp(availableHeight / tabs.length, 20, 28);
         for (int i = 0; i < tabs.length; i++) {
             PanelUI.Tab tab = tabs[i];
             TabStyle style  = styleOf(tab);
             boolean active  = (tab == activeTab);
 
-            int buttonY = y + spacing + i * (buttonHeight + spacing);
+            int buttonY = buttonsTop + i * (buttonHeight + spacing);
 
             var button = new IconTextButton(
                     buttonX, buttonY, buttonWidth, buttonHeight,
@@ -90,30 +115,9 @@ public class NavBar {
                     active ? style.activeBorder() : UiTheme.TAB_INACTIVE_BORDER,
                     UiTheme.TEXT_INVERSE
             );
-            // At larger GUI scales the sidebar keeps icons; its full labels remain readable.
+            // Con escalas de GUI altas el texto puede acortarse; el tooltip conserva la etiqueta completa.
             button.setTooltip(Tooltip.create(Component.translatable(style.translationKey())));
             panel.addWidget(button);
         }
-    }
-
-    // ── Metricas ──────────────────────────────────────────────────
-
-    private static int panelX(int screenWidth) {
-        return (UiTheme.navWidth(screenWidth) * 10) / 100;
-    }
-
-    private static int panelY(int screenWidth) {
-        int navWidth  = UiTheme.navWidth(screenWidth);
-        int catHeight = (navWidth * 50) / 100;
-        int catY      = (navWidth * 40) / 100;
-        return catY + catHeight - (catHeight * 24 / 100);
-    }
-
-    private static int panelWidth(int screenWidth) {
-        return (UiTheme.navWidth(screenWidth) * 90) / 100;
-    }
-
-    private static int panelHeight(int screenHeight) {
-        return (screenHeight * 95) / 100;
     }
 }

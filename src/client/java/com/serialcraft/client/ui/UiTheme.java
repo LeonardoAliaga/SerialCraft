@@ -13,6 +13,7 @@ public final class UiTheme {
     public static final int BG_APP        = 0xFFF3F3F3;
     public static final int BG_CARD       = 0xFFFFFFFF;
     public static final int BG_PANEL      = 0xFFF5F5F0;
+    public static final int BG_DETAILS    = 0xFFEEEAE2;
     public static final int BG_CONSOLE    = 0xFF1E1E1E;
     public static final int BG_CONSOLE_ALT= 0xFF252526;
     public static final int BG_NAV        = 0xFF4995B6;
@@ -27,7 +28,7 @@ public final class UiTheme {
 
     // ── Texto ─────────────────────────────────────────────────────────────────
     public static final int TEXT_PRIMARY   = 0xFF212121;
-    public static final int TEXT_SECONDARY = 0xFF757575;
+    public static final int TEXT_SECONDARY = 0xFF666666;
     public static final int TEXT_MUTED     = 0xFF9E9E9E;
     public static final int TEXT_ON_DARK   = 0xFFE0E0E0;
     public static final int TEXT_INVERSE   = 0xFFFFFFFF;
@@ -49,17 +50,18 @@ public final class UiTheme {
     public static final int NEUTRAL_TX= 0xFF424242;
     public static final int CONSOLE_RX= 0xFF4DD0E1;
 
-    // ── Acentos por pestana ───────────────────────────────────────────────────
+    // Cada pestana conserva su identidad; los colores semanticos indican estado.
+    public static final int ACCENT_PRIMARY          = 0xFF00838F;
+    public static final int ACCENT_PRIMARY_DARK     = 0xFF006064;
     public static final int ACCENT_HOME             = 0xFFE91E63;
     public static final int ACCENT_HOME_BORDER      = 0xFFBA184F;
+    public static final int ACCENT_HOME_BG          = 0xFFFCEAF1;
     public static final int ACCENT_BOARDS           = 0xFFFFC107;
     public static final int ACCENT_BOARDS_BORDER    = 0xFFFFA000;
     public static final int ACCENT_EVENTS           = 0xFF2196F3;
     public static final int ACCENT_EVENTS_BORDER    = 0xFF1976D2;
     public static final int ACCENT_VISUALIZE        = 0xFF9C27B0;
     public static final int ACCENT_VISUALIZE_BORDER = 0xFF7B1FA2;
-    public static final int ACCENT_PRIMARY          = 0xFF00838F;
-    public static final int ACCENT_PRIMARY_DARK     = 0xFF006064;
 
     // ── Osciloscopio / Visualizador ───────────────────────────────────────────
     public static final int SCOPE_TRACE             = 0xFF39FF14;
@@ -95,6 +97,10 @@ public final class UiTheme {
     public static final int CARD_HEIGHT       = 48;
     public static final int TITLE_Y           = 22;
     public static final float TITLE_SCALE     = 1.8f;
+    /** Pagina 1.8x; tarjetas 1.2x en negrita; subtitulos 1x en negrita; datos 1x. */
+    public static final float CARD_TITLE_SCALE = 1.2f;
+    public static final int CARD_HEADER_HEIGHT = 36;
+    public static final int CARD_TITLE_INSET = 18;
 
     /** Linea de descripcion bajo el titulo, comun a todas las paginas. */
     public static final int DESCRIPTION_Y     = 45;

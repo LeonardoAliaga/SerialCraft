@@ -27,6 +27,8 @@ public class IconTextButton extends AbstractWidget {
     }
 
     private static final int PADDING = 6;
+    public static final int HELP_WIDTH = 28;
+    public static final int HELP_HEIGHT = 22;
 
     private final @Nullable SpriteIcon icon;
     private final OnPress onPress;
@@ -68,7 +70,7 @@ public class IconTextButton extends AbstractWidget {
     /** Compact help action keeps a full label for keyboard narration and its tooltip. */
     public static IconTextButton help(int x, int y, Component title, OnPress onPress) {
         Component label = Component.translatable("gui.serialcraft.io.help.open", title);
-        var button = new IconTextButton(x, y, 28, 22, SpriteIcon.QUEST, label, onPress,
+        var button = new IconTextButton(x, y, HELP_WIDTH, HELP_HEIGHT, SpriteIcon.QUEST, label, onPress,
                 UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK);
         button.setTooltip(Tooltip.create(label));
         return button;
