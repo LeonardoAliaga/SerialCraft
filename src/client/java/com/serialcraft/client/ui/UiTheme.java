@@ -68,6 +68,21 @@ public final class UiTheme {
     public static final int TAB_INACTIVE_BG     = 0xFF263238;
     public static final int TAB_INACTIVE_BORDER = 0xFF37474F;
 
+    // ── Tokens derivados (antes eran literales sueltos en las paginas) ───────
+    public static final int BG_HELP         = 0xFFF4F9FA;
+    public static final int BG_FIELD        = 0xFFF5F5F5;
+    public static final int BG_BADGE        = 0xFFECEFF1;
+    public static final int HOVER_TINT      = 0x14000000;
+    public static final int OK_DARK_BORDER  = 0xFF388E3C;
+    public static final int OK_LINE         = 0xFFA5D6A7;
+    public static final int INFO_LINE       = 0xFFB3E5FC;
+    public static final int TEAL            = 0xFF00695C;
+    public static final int TEAL_BORDER     = 0xFF00897B;
+    public static final int TEAL_BG         = 0xFFE0F2F1;
+    public static final int SLATE           = 0xFF37474F;
+    public static final int SLATE_BORDER    = 0xFF455A64;
+    public static final int TEXT_ON_NAV     = 0xFFE0F7FA;
+
     // ── Metricas ──────────────────────────────────────────────────────────────
     public static final int SECTION_GAP = 12;
     public static final int CARD_PADDING = 12;
@@ -80,6 +95,21 @@ public final class UiTheme {
     public static final int CARD_HEIGHT       = 48;
     public static final int TITLE_Y           = 22;
     public static final float TITLE_SCALE     = 1.8f;
+
+    /** Linea de descripcion bajo el titulo, comun a todas las paginas. */
+    public static final int DESCRIPTION_Y     = 45;
+    public static final int SCROLLBAR_WIDTH   = 6;
+
+    /** Pantallas bajas: se omite la descripcion y el contenido sube. */
+    public static boolean compact(int screenHeight) { return screenHeight < 280; }
+
+    /** Y donde empieza el contenido de cualquier pagina del panel. */
+    public static int contentTop(int screenHeight) { return compact(screenHeight) ? 40 : 62; }
+
+    /** X de la barra de desplazamiento, siempre pegada al borde derecho del contenido. */
+    public static int scrollbarX(int screenWidth) {
+        return screenWidth - contentMargin(screenWidth) - SCROLLBAR_WIDTH;
+    }
 
     /** Ancho util de la barra lateral para un ancho de pantalla dado. */
     public static int navWidth(int screenWidth) {

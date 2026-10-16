@@ -64,7 +64,6 @@ public class VisualizePage implements Page {
     private static final long AUTO_ACTIVE_NANOS = 120 * NANOS_PER_SEC;
     private static final long MESSAGE_NANOS     = 4 * NANOS_PER_SEC;
 
-    private static final int ROW1_Y = 46;
     private static final int BTN_H  = 18;
     private static final int GAP    = 4;
 
@@ -148,7 +147,7 @@ public class VisualizePage implements Page {
         Font font = Minecraft.getInstance().font;
 
         boolean compact = screenHeight < 280;
-        int row1Y = compact ? 38 : ROW1_Y;
+        int row1Y = UiTheme.contentTop(screenHeight);
         int btnH  = compact ? 16 : BTN_H;
         int gap   = compact ? 2 : GAP;
         int row2Y = row1Y + btnH + gap;
@@ -427,7 +426,7 @@ public class VisualizePage implements Page {
         g.width = UiTheme.contentWidth(screenW);
 
         boolean compact = screenH < 280;
-        int row1Y   = compact ? 38 : ROW1_Y;
+        int row1Y   = UiTheme.contentTop(screenH);
         int btnH    = compact ? 16 : BTN_H;
         int gap     = compact ? 2 : GAP;
         int row3Y   = row1Y + (btnH + gap) * 2;
@@ -471,6 +470,8 @@ public class VisualizePage implements Page {
         UiDraw.pageTitle(gui, font, x,
                 Component.translatable("gui.serialcraft.visualize.title"), UiTheme.ACCENT_VISUALIZE,
                 Component.translatable("gui.serialcraft.visualize.subtitle"));
+        UiDraw.pageDescription(gui, font, Component.translatable("gui.serialcraft.visualize.description"),
+                x, UiTheme.contentWidth(screenWidth), screenHeight, mouseX, mouseY);
 
         Geometry g = geometry();
         if (view == View.TIMELINE) renderTimeline(gui, font, g);

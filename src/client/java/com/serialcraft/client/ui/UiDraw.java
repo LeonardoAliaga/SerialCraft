@@ -69,6 +69,58 @@ public final class UiDraw {
         gui.fill(x + 12, bottom, x + width - 12, bottom + 1, UiTheme.LINE);
     }
 
+    /** Mitad superior de pixelRounded: cabeceras tintadas que respetan las esquinas. */
+    public static void pixelRoundedTop(GuiGraphicsExtractor gui, int x, int y, int width, int height, int color) {
+        if (width < 10 || height < 5) { gui.fill(x, y, x + width, y + height, color); return; }
+        gui.fill(x + 4, y, x + width - 4, y + height, color);
+        gui.fill(x + 2, y + 1, x + width - 2, y + height, color);
+        gui.fill(x + 1, y + 2, x + width - 1, y + height, color);
+        gui.fill(x, y + 4, x + width, y + height, color);
+    }
+
+    /**
+     * Superficie unica de la interfaz: borde y esquinas escalonadas, riel de acento
+     * a la izquierda y cabecera opcional tintada. Sustituye a las tres variantes de
+     * tarjeta que convivian (Placas, Bienvenida y Panel).
+     */
+    public static void surface(GuiGraphicsExtractor gui, int x, int y, int width, int height,
+                               int accent, int tint, int headerHeight, boolean hovered) {
+        if (width < 18 || height < 18) { card(gui, x, y, width, height, accent, hovered); return; }
+        pixelRounded(gui, x + 1, y + 2, width, height, 0x0C000000);
+        pixelRounded(gui, x, y, width, height, hovered ? UiTheme.LINE_STRONG : UiTheme.LINE);
+        pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, UiTheme.BG_CARD);
+        if (tint != 0 && headerHeight >= 5)
+            pixelRoundedTop(gui, x + 1, y + 1, width - 2, Math.min(headerHeight, height - 6), tint);
+        if ((accent >>> 24) != 0) gui.fill(x + 5, y + 9, x + 8, y + height - 9, accent);
+    }
+
+    /** Descripcion de pagina bajo el titulo. Se omite en pantallas compactas. */
+    public static void pageDescription(GuiGraphicsExtractor gui, Font font, Component text,
+                                       int x, int width, int screenHeight, int mouseX, int mouseY) {
+        if (UiTheme.compact(screenHeight)) return;
+        clippedText(gui, font, text, x, UiTheme.DESCRIPTION_Y, width, UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+    }
+
+    /** Color de una linea de consola segun su prefijo; misma regla en Inicio y Eventos. */
+    public static int consoleLineColor(String line) {
+        return line.startsWith("TX:") ? UiTheme.OK
+             : line.startsWith("RX:") ? UiTheme.CONSOLE_RX
+             : line.startsWith("TM:") ? UiTheme.WARN
+             : line.startsWith("ERR:") ? UiTheme.ERROR
+             : UiTheme.TEXT_ON_DARK;
+    }
+
+    /** Altura de la cabecera de consola. */
+    public static final int CONSOLE_HEADER_H = 21;
+
+    /** Panel de consola oscuro con barra de titulo; el contenido empieza en y + CONSOLE_HEADER_H. */
+    public static void consolePanel(GuiGraphicsExtractor gui, Font font, int x, int y, int width, int height,
+                                    Component title, int mouseX, int mouseY) {
+        pixelRounded(gui, x, y, width, height, UiTheme.BG_CONSOLE);
+        pixelRoundedTop(gui, x, y, width, CONSOLE_HEADER_H, UiTheme.BG_CONSOLE_ALT);
+        clippedText(gui, font, title, x + 8, y + 6, width - 16, UiTheme.TEXT_ON_DARK, mouseX, mouseY);
+    }
+
     /** A contextual explanation without another title, border, or modal overlay. */
     public static int helpPanelHeight(Font font, Component body, int width) {
         return 12 + font.split(body, Math.max(1, width - 18)).size() * font.lineHeight;
@@ -77,7 +129,7 @@ public final class UiDraw {
     public static void helpPanel(GuiGraphicsExtractor gui, Font font, Component body,
                                  int x, int y, int width) {
         int height = helpPanelHeight(font, body, width);
-        gui.fill(x, y, x + width, y + height, 0xFFF4F9FA);
+        gui.fill(x, y, x + width, y + height, UiTheme.BG_HELP);
         gui.fill(x + 1, y + 3, x + 3, y + height - 3, UiTheme.ACCENT_PRIMARY);
         wrappedText(gui, font, body, x + 9, y + 6, Math.max(1, width - 18), UiTheme.TEXT_PRIMARY);
     }

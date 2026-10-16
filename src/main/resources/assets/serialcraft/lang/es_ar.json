@@ -410,5 +410,11 @@
   "gui.serialcraft.home.wifi.auth.none": "Sin sesión autenticada",
   "gui.serialcraft.home.wifi.auth.token": "Token de emparejamiento",
   "gui.serialcraft.home.wifi.auth.trusted": "Clave recordada (desafío)",
-  "gui.serialcraft.io.list.refreshing": "Actualizando…"
+  "gui.serialcraft.io.list.refreshing": "Actualizando…",
+  "gui.serialcraft.boards.description": "Revisá, activá y configurá los módulos IO colocados en tu mundo.",
+  "gui.serialcraft.events.description": "Elegí qué datos del juego se envían a la placa y observá el tráfico.",
+  "gui.serialcraft.visualize.description": "Graficá señales en tiempo real y probá tu placa con ondas generadas.",
+  "gui.serialcraft.welcome.copy_all": "Copiar todo",
+  "gui.serialcraft.welcome.copy_code": "Copiar código",
+  "gui.serialcraft.welcome.wifi_server_title": "Servidor Wi-Fi (A la escucha)"
 }

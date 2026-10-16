@@ -68,8 +68,8 @@ public class NavBar {
         int width  = panelWidth(screenWidth);
         int height = panelHeight(screenHeight);
 
-        int buttonWidth  = (width * 65) / 100;
-        int buttonHeight = Math.max(20, (buttonWidth * 30) / 100);
+        int buttonWidth  = (width * 88) / 100;
+        int buttonHeight = Math.clamp((buttonWidth * 30) / 100, 20, 30);
         int spacing      = Math.max(6, (height * 4) / 100);
         int buttonX      = ((x + width) - buttonWidth) / 2;
 

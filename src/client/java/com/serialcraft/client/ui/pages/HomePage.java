@@ -110,7 +110,7 @@ public class HomePage implements Page {
         contentX = UiTheme.contentX(screenWidth);
         contentWidth = Math.max(80, screenWidth - contentX - UiTheme.contentMargin(screenWidth) - 10);
         // Room for the page description below INICIO / PANEL DE CONTROL.
-        int top = 62;
+        int top = UiTheme.contentTop(screenHeight);
         view = new Rect(contentX - 2, top, contentWidth + 12,
                 Math.max(24, screenHeight - UiTheme.contentMargin(screenWidth) - top));
         viewport = new UiViewport(scroll, view);
@@ -492,8 +492,7 @@ public class HomePage implements Page {
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
         UiDraw.pageTitle(gui, font, contentX, tr("title"), UiTheme.ACCENT_HOME, tr("subtitle"));
-        UiDraw.clippedText(gui, font, tr("description"), contentX, 45, contentWidth,
-                UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+        UiDraw.pageDescription(gui, font, tr("description"), contentX, contentWidth, height, mouseX, mouseY);
         int mx = view.contains(mouseX, mouseY) ? mouseX : -1;
         int my = mx == -1 ? -1 : mouseY;
         gui.enableScissor(view.x(), view.y(), view.right() - 8, view.bottom());
@@ -597,17 +596,15 @@ public class HomePage implements Page {
         UiDraw.wrappedText(gui, font, tr("terminal"), x + PAD + 28, y + 13,
                 terminal.width() - PAD * 2 - 28, UiTheme.TEXT_PRIMARY);
         int consoleY = drawY(console.y());
-        UiDraw.pixelRounded(gui, console.x(), consoleY, console.width(), console.height(), UiTheme.BG_CONSOLE);
-        gui.fill(console.x(), consoleY, console.right(), consoleY + 21, UiTheme.BG_CONSOLE_ALT);
-        UiDraw.clippedText(gui, font, transport().copy().append(" · ").append(state.connected() ? value(state.endpoint()) : connectionState()),
-                console.x() + 8, consoleY + 6, console.width() - 16, UiTheme.TEXT_ON_DARK, mouseX, mouseY);
+        UiDraw.consolePanel(gui, font, console.x(), consoleY, console.width(), console.height(),
+                transport().copy().append(" · ").append(state.connected() ? value(state.endpoint()) : connectionState()),
+                mouseX, mouseY);
         gui.enableScissor(console.x() + 4, consoleY + 24, console.right() - 8, consoleY + console.height() - 4);
         int lineY = consoleY + 24 - (int) historyScroll.getScrollAmount();
         if (history.isEmpty()) UiDraw.wrappedText(gui, font, tr("terminal.empty"), console.x() + 8, lineY, console.width() - 20, UiTheme.TEXT_ON_DARK);
         for (String line : history) {
             if (lineY + LINE_HEIGHT >= consoleY + 24 && lineY < consoleY + console.height() - 4) {
-                int color = line.startsWith("TX:") ? UiTheme.OK : line.startsWith("RX:") ? UiTheme.CONSOLE_RX
-                        : line.startsWith("TM:") ? UiTheme.WARN : line.startsWith("ERR:") ? UiTheme.ERROR : UiTheme.TEXT_ON_DARK;
+                int color = UiDraw.consoleLineColor(line);
                 UiDraw.clippedText(gui, font, Component.literal(line), console.x() + 8, lineY, console.width() - 20,
                         color, mouseY >= consoleY + 24 && mouseY < consoleY + console.height() - 4 ? mouseX : -1, mouseY);
             }

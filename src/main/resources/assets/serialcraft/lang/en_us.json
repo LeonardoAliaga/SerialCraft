@@ -413,5 +413,8 @@
   "gui.serialcraft.home.wifi.auth.none": "No authenticated session",
   "gui.serialcraft.home.wifi.auth.token": "Pairing token",
   "gui.serialcraft.home.wifi.auth.trusted": "Remembered key (challenge)",
-  "gui.serialcraft.io.list.refreshing": "Updating…"
+  "gui.serialcraft.io.list.refreshing": "Updating…",
+  "gui.serialcraft.boards.description": "Review, enable and configure the IO modules placed in your world.",
+  "gui.serialcraft.events.description": "Choose which game data is sent to the board and watch the traffic.",
+  "gui.serialcraft.visualize.description": "Plot signals in real time and test your board with generated waves."
 }

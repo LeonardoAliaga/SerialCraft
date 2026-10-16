@@ -55,7 +55,7 @@ public class EventToggle extends AbstractWidget {
         int y = getY();
 
         if (isHoveredOrFocused()) {
-            gui.fill(x, y, x + width, y + height, 0x14000000);
+            gui.fill(x - 3, y, x + width + 3, y + height, UiTheme.HOVER_TINT);
         }
 
         int boxY = y + (height - BOX_SIZE) / 2;
@@ -64,7 +64,10 @@ public class EventToggle extends AbstractWidget {
         gui.outline(x, boxY, BOX_SIZE, BOX_SIZE,
                 checked ? UiTheme.ACCENT_EVENTS_BORDER : UiTheme.LINE_STRONG);
         if (checked) {
-            gui.fill(x + 3, boxY + 3, x + BOX_SIZE - 3, boxY + BOX_SIZE - 3, UiTheme.TEXT_INVERSE);
+            // Marca de verificacion de 1 px, mas legible que un cuadro blanco.
+            int[][] tick = {{2, 5}, {3, 6}, {4, 7}, {5, 6}, {6, 5}, {7, 4}, {8, 3}};
+            for (int[] p : tick) gui.fill(x + p[0] - 1, boxY + p[1] - 1, x + p[0], boxY + p[1], UiTheme.TEXT_INVERSE);
+            for (int[] p : tick) gui.fill(x + p[0] - 1, boxY + p[1] - 2, x + p[0], boxY + p[1] - 1, UiTheme.TEXT_INVERSE);
         }
 
         Font font = Minecraft.getInstance().font;

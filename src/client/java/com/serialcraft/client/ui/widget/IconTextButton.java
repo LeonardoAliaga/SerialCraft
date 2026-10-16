@@ -99,29 +99,38 @@ public class IconTextButton extends AbstractWidget {
         }
         if (isFocused()) gui.outline(x + 1, y + 1, width - 2, height - 2, UiTheme.TEXT_PRIMARY);
 
+        Font font = Minecraft.getInstance().font;
+        int textColorNow = active ? textColor : UiTheme.TEXT_SECONDARY;
+        String full = getMessage().getString();
+        int iconSpace = icon != null ? SpriteIcon.DRAW_SIZE + PADDING : 0;
+        int available = width - PADDING * 2 - iconSpace;
+        // Si ni con puntos suspensivos cabe un trozo legible, queda solo el icono centrado.
+        boolean iconOnly = icon != null && available < font.width("W…");
+        boolean clipped = font.width(full) > available;
+
         int textX = x + PADDING;
         if (icon != null) {
+            int iconX = iconOnly ? x + (width - SpriteIcon.DRAW_SIZE) / 2 : textX;
             int iconY = y + (height - SpriteIcon.DRAW_SIZE) / 2;
             gui.blit(RenderPipelines.GUI_TEXTURED, SpriteIcon.TEXTURE,
-                    textX, iconY,
+                    iconX, iconY,
                     icon.u(), icon.v(),
                     SpriteIcon.DRAW_SIZE, SpriteIcon.DRAW_SIZE,
                     SpriteIcon.SPRITE_SIZE, SpriteIcon.SPRITE_SIZE,
                     SpriteIcon.SHEET_WIDTH, SpriteIcon.SHEET_HEIGHT);
-            textX += SpriteIcon.DRAW_SIZE + PADDING;
+            textX += iconSpace;
         }
+        if (iconOnly || available <= 0) return;
 
-        Font font = Minecraft.getInstance().font;
         int textY = y + (height - font.lineHeight) / 2 + 1;
-
-        // Recorte defensivo: si la traduccion es mas larga que el boton, se
-        // acorta con puntos suspensivos en vez de desbordarse sobre el widget
-        // vecino. El original dibujaba el texto completo pasara lo que pasara,
-        // que es como se rompen las interfaces al traducirlas.
-        int available = x + width - PADDING - textX;
-        if (available > 0) {
-            String label = font.plainSubstrByWidth(getMessage().getString(), available);
-            gui.text(font, label, textX, textY, active ? textColor : UiTheme.TEXT_SECONDARY, false);
+        // Una traduccion larga se acorta con puntos suspensivos en lugar de
+        // cortarse en seco o desbordar el widget vecino.
+        if (clipped) {
+            int ellipsis = font.width("…");
+            String label = font.plainSubstrByWidth(full, Math.max(0, available - ellipsis)) + "…";
+            gui.text(font, label, textX, textY, textColorNow, false);
+        } else {
+            gui.text(font, full, textX, textY, textColorNow, false);
         }
     }
 

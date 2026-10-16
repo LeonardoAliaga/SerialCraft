@@ -31,11 +31,10 @@ import java.util.List;
 
 /** Module inventory and network responses. Editor presentation lives in IoEditor. */
 public class BoardsPage implements Page {
-    private static final int CARD_TOP = 72;
     private static final int CARD_HEIGHT = 102;
     private static final int CARD_ROW = CARD_HEIGHT + 16;
-    private static final int CARD_MAX_WIDTH = 396;
-    private static final int CARD_MIN_TWO_COLUMNS = 340;
+    private static final int CARD_MAX_WIDTH = 460;
+    private static final int CARD_MIN_TWO_COLUMNS = 360;
     private static final int CARD_COLUMN_GAP = 26;
     private static final int CARD_MARGIN = 8;
     private static final int SCROLLBAR_GAP = 16;
@@ -120,8 +119,11 @@ public class BoardsPage implements Page {
         awaitingResponse = true; listRequestedAt = System.nanoTime(); listMessage = "";
         ClientPlayNetworking.send(BoardListRequestPayload.INSTANCE);
     }
+    private int cardTop() { return UiTheme.contentTop(height); }
+    /** Fila de herramientas: bajo el titulo, o junto a el en pantallas compactas. */
+    private int toolbarY() { return UiTheme.compact(height) ? 18 : 40; }
     private int cardX() { return UiTheme.contentX(width) + CARD_MARGIN; }
-    private int viewportHeight() { return Math.max(1, height - UiTheme.contentMargin(width) - CARD_TOP); }
+    private int viewportHeight() { return Math.max(1, height - UiTheme.contentMargin(width) - cardTop()); }
 
     private int availableWidth() {
         return Math.max(80, width - cardX() - UiTheme.contentMargin(width) - SCROLLBAR_GAP - 6);
@@ -140,16 +142,16 @@ public class BoardsPage implements Page {
         return cardX() + (index % columns()) * (cardWidth() + CARD_COLUMN_GAP);
     }
     private int cardY(int index) {
-        return CARD_TOP + (index / columns()) * CARD_ROW;
+        return cardTop() + (index / columns()) * CARD_ROW;
     }
-    private int scrollbarX() { return cardX() + listWidth() + SCROLLBAR_GAP; }
+    private int scrollbarX() { return UiTheme.scrollbarX(width); }
 
     private void buildList() {
         int rows = (boards.size() + columns() - 1) / columns();
         scroll.update(viewportHeight(), Math.max(0, rows * CARD_ROW - (CARD_ROW - CARD_HEIGHT)));
         int cardWidth = cardWidth();
 
-        var refresh = new IconTextButton(cardX() + listWidth() - 88, 43, 88, 22, SpriteIcon.LIST,
+        var refresh = new IconTextButton(cardX() + listWidth() - 88, toolbarY(), 88, 18, SpriteIcon.LIST,
                 Component.translatable("gui.serialcraft.io.list.refresh"),
                 b -> { requestList(); panel.refresh(); },
                 UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK);
@@ -204,7 +206,7 @@ public class BoardsPage implements Page {
         }
     }
     private boolean buttonInsideViewport(AbstractWidget button) {
-        return button.getY() >= CARD_TOP && button.getBottom() <= CARD_TOP + viewportHeight();
+        return button.getY() >= cardTop() && button.getBottom() <= cardTop() + viewportHeight();
     }
 
     @Override
@@ -216,26 +218,34 @@ public class BoardsPage implements Page {
         UiDraw.pageTitle(gui, font, UiTheme.contentX(width),
                 Component.translatable("gui.serialcraft.boards.title"), UiTheme.ACCENT_BOARDS,
                 Component.translatable("gui.serialcraft.boards.subtitle"));
-        gui.text(font, Component.translatable(boards.size() == 1
-                        ? "gui.serialcraft.io.list.count_one" : "gui.serialcraft.io.list.count_many", boards.size()),
-                x, 50, UiTheme.TEXT_SECONDARY, false);
+        Component count = Component.translatable(boards.size() == 1
+                ? "gui.serialcraft.io.list.count_one" : "gui.serialcraft.io.list.count_many", boards.size());
+        int countWidth = font.width(count);
+        int buttonX = listHeaderButton.getX();
+        gui.text(font, count, buttonX - 10 - countWidth, toolbarY() + 5, UiTheme.TEXT_SECONDARY, false);
+        UiDraw.pageDescription(gui, font, Component.translatable("gui.serialcraft.boards.description"),
+                x, Math.max(40, buttonX - countWidth - 28 - x), height, mouseX, mouseY);
         listHeaderButton.extractRenderState(gui, mouseX, mouseY, 0);
 
         if (boards.isEmpty()) {
             Component message = Component.translatable(!listMessage.isEmpty() ? listMessage : awaitingResponse
                     ? "gui.serialcraft.boards.loading" : "gui.serialcraft.boards.empty_hint");
-            UiDraw.wrappedText(gui, font, message, x, CARD_TOP + 8, listWidth(),
+            int textWidth = Math.max(40, listWidth() - 36);
+            int boxHeight = font.split(message, textWidth).size() * font.lineHeight + 24;
+            UiDraw.surface(gui, x, cardTop(), listWidth(), boxHeight, listMessage.isEmpty()
+                    ? UiTheme.ACCENT_BOARDS : UiTheme.ERROR, 0, 0, false);
+            UiDraw.wrappedText(gui, font, message, x + 16, cardTop() + 12, textWidth,
                     listMessage.isEmpty() ? UiTheme.TEXT_SECONDARY : UiTheme.ERROR_DARK);
             return;
         }
 
         positionWidgets();
-        gui.enableScissor(x - 2, CARD_TOP, x + listWidth() + 2, CARD_TOP + viewportHeight());
+        gui.enableScissor(x - 2, cardTop(), x + listWidth() + 2, cardTop() + viewportHeight());
         int offset = (int) scroll.getScrollAmount();
         for (int i = 0; i < boards.size(); i++) {
             int cardX = cardX(i);
             int cardY = cardY(i) - offset;
-            if (cardY + CARD_HEIGHT < CARD_TOP || cardY > CARD_TOP + viewportHeight()) continue;
+            if (cardY + CARD_HEIGHT < cardTop() || cardY > cardTop() + viewportHeight()) continue;
 
             BoardInfo board = boards.get(i);
             CardWidgets controls = widgets.get(i);
@@ -248,12 +258,9 @@ public class BoardsPage implements Page {
             int directionColor = enabled ? (output ? UiTheme.INFO_DARK : UiTheme.OK_DARK) : UiTheme.NEUTRAL_TX;
             int infoWidth = Math.max(1, controls.toggle().getX() - cardX - 20);
 
-            UiDraw.card(gui, cardX, cardY, cardWidth, CARD_HEIGHT);
-            boolean hovered = mouseY >= CARD_TOP && mouseY < CARD_TOP + viewportHeight()
+            boolean hovered = mouseY >= cardTop() && mouseY < cardTop() + viewportHeight()
                     && mouseX >= cardX && mouseX < cardX + cardWidth && mouseY >= cardY && mouseY < cardY + CARD_HEIGHT;
-            gui.outline(cardX, cardY, cardWidth, CARD_HEIGHT, hovered ? UiTheme.LINE_STRONG : UiTheme.LINE);
-            gui.fill(cardX + 3, cardY, cardX + cardWidth, cardY + 26, tint);
-            gui.fill(cardX, cardY, cardX + 3, cardY + CARD_HEIGHT, accent);
+            UiDraw.surface(gui, cardX, cardY, cardWidth, CARD_HEIGHT, accent, tint, 26, hovered);
 
             // Estado de la sesión y tipo de señal: ambos vienen de BoardInfo.
             int statusColor = connected ? UiTheme.OK : UiTheme.LINE_STRONG;
@@ -265,7 +272,7 @@ public class BoardsPage implements Page {
             int signalWidth = Math.min(font.width(signal) + 8, (cardWidth - 40) / 2);
             int statusX = cardX + 22;
             int statusWidth = cardWidth - signalWidth - 46;
-            int hoverX = mouseY >= CARD_TOP && mouseY < CARD_TOP + viewportHeight() ? mouseX : -1;
+            int hoverX = mouseY >= cardTop() && mouseY < cardTop() + viewportHeight() ? mouseX : -1;
             UiDraw.badge(gui, font, statusX, cardY + 5, statusWidth, status,
                     connected ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG,
                     connected ? UiTheme.OK_DARK : UiTheme.NEUTRAL_TX, hoverX, mouseY);
@@ -295,11 +302,11 @@ public class BoardsPage implements Page {
             controls.edit().extractRenderState(gui, mouseX, mouseY, 0);
         }
         gui.disableScissor();
-        scroll.renderScrollbar(gui, scrollbarX(), CARD_TOP, 6, viewportHeight());
+        scroll.renderScrollbar(gui, scrollbarX(), cardTop(), 6, viewportHeight());
     }
     private void cardText(GuiGraphicsExtractor gui, Font font, Component text, int x, int y, int width, int mouseX, int mouseY, int color) {
         UiDraw.clippedText(gui, font, text, x, y, Math.max(1, width), color,
-                mouseY >= CARD_TOP && mouseY < CARD_TOP + viewportHeight() ? mouseX : -1, mouseY);
+                mouseY >= cardTop() && mouseY < cardTop() + viewportHeight() ? mouseX : -1, mouseY);
     }
     @Override public void renderOverlay(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
         if (editor != null) editor.renderOverlay(gui, font, width, height, mouseX, mouseY);
@@ -310,7 +317,7 @@ public class BoardsPage implements Page {
     }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
         if (editor != null) return editor.mouseClicked(event);
-        boolean handled = scroll.mouseClicked(event.x(), event.y(), event.button(), scrollbarX(), CARD_TOP, 6, viewportHeight());
+        boolean handled = scroll.mouseClicked(event.x(), event.y(), event.button(), scrollbarX(), cardTop(), 6, viewportHeight());
         positionWidgets(); return handled;
     }
     @Override public boolean mouseReleased(MouseButtonEvent event) {
@@ -318,7 +325,7 @@ public class BoardsPage implements Page {
     }
     @Override public boolean mouseDragged(MouseButtonEvent event, double x, double y) {
         if (editor != null) return editor.mouseDragged(event);
-        boolean handled = scroll.mouseDragged(event.y(), CARD_TOP, viewportHeight()); positionWidgets(); return handled;
+        boolean handled = scroll.mouseDragged(event.y(), cardTop(), viewportHeight()); positionWidgets(); return handled;
     }
     @Override public boolean keyPressed(KeyEvent event) {
         if (editor != null) return editor.keyPressed(event);
@@ -336,9 +343,9 @@ public class BoardsPage implements Page {
         if (editor != null) { editor.afterKey(); return; }
         for (CardWidgets card : widgets) if (panel.getFocused() == card.edit() || panel.getFocused() == card.toggle()) {
             var focused = panel.getFocused() == card.edit() ? card.edit() : card.toggle();
-            if (focused.getY() < CARD_TOP) scroll.setScrollAmount(scroll.getScrollAmount() + focused.getY() - CARD_TOP);
-            else if (focused.getBottom() > CARD_TOP + viewportHeight())
-                scroll.setScrollAmount(scroll.getScrollAmount() + focused.getBottom() - CARD_TOP - viewportHeight());
+            if (focused.getY() < cardTop()) scroll.setScrollAmount(scroll.getScrollAmount() + focused.getY() - cardTop());
+            else if (focused.getBottom() > cardTop() + viewportHeight())
+                scroll.setScrollAmount(scroll.getScrollAmount() + focused.getBottom() - cardTop() - viewportHeight());
         }
         positionWidgets();
     }

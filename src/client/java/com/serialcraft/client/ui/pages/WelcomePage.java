@@ -203,8 +203,8 @@ public class WelcomePage implements Page {
             case LISTENING -> Component.translatable("gui.serialcraft.welcome.method_wifi_listening");
             case CONNECTED -> Component.translatable("gui.serialcraft.welcome.method_wifi_connected", wifi.getRemoteIp());
         };
-        int wifiBg     = (wifi.getState() == WifiHandler.State.LISTENING) ? 0xFF00695C : UiTheme.TAB_INACTIVE_BG;
-        int wifiBorder = (wifi.getState() == WifiHandler.State.LISTENING) ? 0xFF00897B : UiTheme.TAB_INACTIVE_BORDER;
+        int wifiBg     = (wifi.getState() == WifiHandler.State.LISTENING) ? UiTheme.TEAL : UiTheme.TAB_INACTIVE_BG;
+        int wifiBorder = (wifi.getState() == WifiHandler.State.LISTENING) ? UiTheme.TEAL_BORDER : UiTheme.TAB_INACTIVE_BORDER;
 
         addScrollWidget(panelUi, new MethodCard(x + cardW + METHOD_GAP, y, cardW, METHOD_H, SpriteIcon.WIFI,
                 Component.translatable("gui.serialcraft.welcome.method_wifi"),
@@ -239,19 +239,19 @@ public class WelcomePage implements Page {
                     btnX, y + 22, btnW, btnH, null,
                     Component.translatable("gui.serialcraft.welcome.copy"),
                     btn -> copyWithFeedback(btn, getEffectiveHostIp()),
-                    0xFF37474F, 0xFF455A64, UiTheme.TEXT_INVERSE), y + 22);
+                    UiTheme.SLATE, UiTheme.SLATE_BORDER, UiTheme.TEXT_INVERSE), y + 22);
 
             addScrollWidget(panelUi, new IconTextButton(
                     btnX, y + 44, btnW, btnH, null,
                     Component.translatable("gui.serialcraft.welcome.copy"),
                     btn -> copyWithFeedback(btn, String.valueOf(WifiHandler.DEFAULT_PORT)),
-                    0xFF37474F, 0xFF455A64, UiTheme.TEXT_INVERSE), y + 44);
+                    UiTheme.SLATE, UiTheme.SLATE_BORDER, UiTheme.TEXT_INVERSE), y + 44);
 
             addScrollWidget(panelUi, new IconTextButton(
                     btnX, y + 66, btnW, btnH, null,
                     Component.translatable("gui.serialcraft.welcome.copy"),
                     btn -> copyWithFeedback(btn, wifi.getPairingToken()),
-                    0xFF00695C, 0xFF00897B, UiTheme.TEXT_INVERSE), y + 66);
+                    UiTheme.TEAL, UiTheme.TEAL_BORDER, UiTheme.TEXT_INVERSE), y + 66);
 
         } else if (wifi.getState() == WifiHandler.State.CONNECTED) {
             addScrollWidget(panelUi, new IconTextButton(
@@ -275,10 +275,8 @@ public class WelcomePage implements Page {
         WifiHandler wifi = ConnectionManager.getWifi();
 
         if (wifi.getState() == WifiHandler.State.LISTENING) {
-            UiDraw.card(gui, x, y, cardWidth, h);
-
-            gui.fill(x, y, x + cardWidth, y + 17, 0xFFE1F5FE);
-            gui.fill(x, y + 17, x + cardWidth, y + 18, 0xFFB3E5FC);
+            UiDraw.surface(gui, x, y, cardWidth, h, 0, UiTheme.INFO_BG, 18, false);
+            gui.fill(x + 3, y + 18, x + cardWidth - 3, y + 19, UiTheme.INFO_LINE);
 
             gui.fill(x + 8, y + 5, x + 14, y + 11, UiTheme.OK);
             gui.text(font, Component.translatable("gui.serialcraft.welcome.wifi_server_title"),
@@ -289,23 +287,23 @@ public class WelcomePage implements Page {
 
             UiDraw.badge(gui, font, x + 8, y + 23,
                     Component.translatable("gui.serialcraft.welcome.wifi_host"),
-                    0xFFECEFF1, UiTheme.TEXT_SECONDARY);
-            gui.fill(valBoxX, y + 22, valBoxX + valBoxW, y + 38, 0xFFF5F5F5);
+                    UiTheme.BG_BADGE, UiTheme.TEXT_SECONDARY);
+            gui.fill(valBoxX, y + 22, valBoxX + valBoxW, y + 38, UiTheme.BG_FIELD);
             gui.outline(valBoxX, y + 22, valBoxW, 16, UiTheme.LINE_SOFT);
             gui.text(font, getEffectiveHostIp(), valBoxX + 6, y + 26, UiTheme.TEXT_PRIMARY, false);
 
             UiDraw.badge(gui, font, x + 8, y + 45,
                     Component.translatable("gui.serialcraft.welcome.wifi_port"),
-                    0xFFECEFF1, UiTheme.TEXT_SECONDARY);
-            gui.fill(valBoxX, y + 44, valBoxX + valBoxW, y + 60, 0xFFF5F5F5);
+                    UiTheme.BG_BADGE, UiTheme.TEXT_SECONDARY);
+            gui.fill(valBoxX, y + 44, valBoxX + valBoxW, y + 60, UiTheme.BG_FIELD);
             gui.outline(valBoxX, y + 44, valBoxW, 16, UiTheme.LINE_SOFT);
             gui.text(font, String.valueOf(WifiHandler.DEFAULT_PORT), valBoxX + 6, y + 48, UiTheme.TEXT_PRIMARY, false);
 
             UiDraw.badge(gui, font, x + 8, y + 67,
                     Component.translatable("gui.serialcraft.welcome.wifi_token"),
-                    0xFFE0F2F1, UiTheme.ACCENT_PRIMARY_DARK);
-            gui.fill(valBoxX, y + 66, valBoxX + valBoxW, y + 82, 0xFFE8F5E9);
-            gui.outline(valBoxX, y + 66, valBoxW, 16, 0xFFA5D6A7);
+                    UiTheme.TEAL_BG, UiTheme.ACCENT_PRIMARY_DARK);
+            gui.fill(valBoxX, y + 66, valBoxX + valBoxW, y + 82, UiTheme.OK_BG);
+            gui.outline(valBoxX, y + 66, valBoxW, 16, UiTheme.OK_LINE);
             gui.text(font, wifi.getPairingToken(), valBoxX + 6, y + 70, UiTheme.OK_DARK, false);
 
             int remembered = BoardTrust.store().all().size();
@@ -315,8 +313,7 @@ public class WelcomePage implements Page {
             }
 
         } else if (wifi.getState() == WifiHandler.State.CONNECTED) {
-            UiDraw.card(gui, x, y, cardWidth, h);
-            gui.fill(x, y, x + 4, y + h, UiTheme.OK);
+            UiDraw.surface(gui, x, y, cardWidth, h, UiTheme.OK, 0, 0, false);
 
             UiDraw.badge(gui, font, x + 10, y + 9, "WI-FI", UiTheme.OK_BG, UiTheme.OK_DARK);
 
@@ -331,7 +328,7 @@ public class WelcomePage implements Page {
         Component text = Component.translatable(showHelper
                 ? "gui.serialcraft.welcome.helper_link_close"
                 : "gui.serialcraft.welcome.helper_link_open");
-        int linkWidth = Minecraft.getInstance().font.width(text) + 24;
+        int linkWidth = Minecraft.getInstance().font.width(text) + 44;
 
         addScrollWidget(panelUi, new IconTextButton(
                 x + (cardWidth - linkWidth) / 2, y, linkWidth, HELPER_LINK_H, SpriteIcon.QUEST,
@@ -404,8 +401,7 @@ public class WelcomePage implements Page {
     }
 
     private void renderHelperPanel(GuiGraphicsExtractor gui, Font font, int x, int cardWidth, int y) {
-        UiDraw.card(gui, x, y, cardWidth, HELPER_PANEL_H);
-        gui.outline(x, y, cardWidth, HELPER_PANEL_H, 0xFF455A64);
+        UiDraw.surface(gui, x, y, cardWidth, HELPER_PANEL_H, 0, 0, 0, false);
 
         int textX = x + 10;
         int introY = y + 26;
@@ -416,7 +412,7 @@ public class WelcomePage implements Page {
         int codeBoxY = introY + 12;
         int codeBoxH = snippet.size() * 11 + 8;
         gui.fill(x + 8, codeBoxY, x + cardWidth - 8, codeBoxY + codeBoxH, UiTheme.BG_CONSOLE);
-        gui.outline(x + 8, codeBoxY, cardWidth - 16, codeBoxH, 0xFF37474F);
+        gui.outline(x + 8, codeBoxY, cardWidth - 16, codeBoxH, UiTheme.SLATE);
 
         boolean live = ConnectionManager.getWifi().isServerRunning();
         int lineY = codeBoxY + 5;
@@ -465,7 +461,7 @@ public class WelcomePage implements Page {
                     x + cardWidth - 92, y + 14, 86, 20, SpriteIcon.CONNECT,
                     Component.translatable("gui.serialcraft.welcome.connect"),
                     btn -> panelUi.connectDevice(target),
-                    0xFF2E7D32, 0xFF388E3C, UiTheme.TEXT_INVERSE), y + 14);
+                    UiTheme.OK_DARK, UiTheme.OK_DARK_BORDER, UiTheme.TEXT_INVERSE), y + 14);
             y += UiTheme.CARD_ROW_HEIGHT;
         }
     }
@@ -521,7 +517,7 @@ public class WelcomePage implements Page {
                 LOGO_SRC_W, LOGO_SRC_H, LOGO_SRC_W, LOGO_SRC_H);
 
         Component subtitle = Component.translatable("gui.serialcraft.welcome.subtitle");
-        gui.text(font, subtitle, (width - font.width(subtitle)) / 2, l.subtitleY, 0xFFE0F7FA, false);
+        gui.text(font, subtitle, (width - font.width(subtitle)) / 2, l.subtitleY, UiTheme.TEXT_ON_NAV, false);
 
         int viewportTop = headerH + 4;
         int viewportBottom = height - 4;
@@ -557,7 +553,7 @@ public class WelcomePage implements Page {
 
     private void renderDeviceCards(GuiGraphicsExtractor gui, Font font, int x, int cardWidth, int y) {
         if (devices.isEmpty()) {
-            UiDraw.card(gui, x, y, cardWidth, 44);
+            UiDraw.surface(gui, x, y, cardWidth, 44, 0, 0, 0, false);
             gui.text(font, Component.translatable("gui.serialcraft.welcome.no_usb"),
                     x + 12, y + 10, UiTheme.TEXT_SECONDARY, false);
             gui.text(font, Component.translatable("gui.serialcraft.welcome.no_usb_hint"),
@@ -566,7 +562,7 @@ public class WelcomePage implements Page {
         }
 
         for (PanelUI.DeviceInfo device : devices) {
-            UiDraw.card(gui, x, y, cardWidth, UiTheme.CARD_HEIGHT);
+            UiDraw.surface(gui, x, y, cardWidth, UiTheme.CARD_HEIGHT, 0, 0, 0, false);
 
             boolean wifi = device.isWifi();
             UiDraw.badge(gui, font, x + 10, y + 14, device.type(),
