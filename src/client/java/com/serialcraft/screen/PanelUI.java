@@ -1,7 +1,6 @@
 package com.serialcraft.screen;
 
 import com.serialcraft.client.ui.NavBar;
-import com.serialcraft.client.ui.UiTheme;
 import com.serialcraft.client.ui.pages.BoardsPage;
 import com.serialcraft.client.ui.pages.EventsPage;
 import com.serialcraft.client.ui.pages.HomePage;
@@ -234,9 +233,18 @@ public class PanelUI extends Screen {
     }
 
     @Override
-    public void extractRenderState(@NotNull GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
-        gui.fill(0, 0, this.width, this.height, UiTheme.BG_APP);
+    public void extractBackground(@NotNull GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
+        if (appState == AppState.WELCOME && minecraft.level != null) {
+            // Una sola pasada nativa, antes de los fondos y widgets nítidos.
+            // Respeta el desenfoque de menús configurado por el jugador.
+            extractBlurredBackground(gui);
+        } else {
+            super.extractBackground(gui, mouseX, mouseY, delta);
+        }
+    }
 
+    @Override
+    public void extractRenderState(@NotNull GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         if (appState == AppState.WELCOME) {
             welcomePage.render(gui, mouseX, mouseY, this.font, this.width, this.height);
         } else {

@@ -508,8 +508,9 @@ public class WelcomePage implements Page {
 
         int headerH = l.subtitleY + 12;
 
-        // Barra superior estática
-        gui.fill(0, 0, width, headerH, UiTheme.BG_NAV);
+        // Zonas separadas: el hueso no se acumula debajo del cian.
+        gui.fill(0, headerH, width, height, UiTheme.BG_WELCOME);
+        gui.fill(0, 0, width, headerH, UiTheme.BG_WELCOME_HEADER);
         gui.fill(0, headerH, width, headerH + 2, 0x20000000);
 
         gui.blit(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE,
@@ -517,7 +518,7 @@ public class WelcomePage implements Page {
                 LOGO_SRC_W, LOGO_SRC_H, LOGO_SRC_W, LOGO_SRC_H);
 
         Component subtitle = Component.translatable("gui.serialcraft.welcome.subtitle");
-        gui.text(font, subtitle, (width - font.width(subtitle)) / 2, l.subtitleY, UiTheme.TEXT_ON_NAV, false);
+        gui.text(font, subtitle, (width - font.width(subtitle)) / 2, l.subtitleY, UiTheme.TEXT_ON_NAV, true);
 
         int viewportTop = headerH + 4;
         int viewportBottom = height - 4;
