@@ -20,8 +20,8 @@ public final class UiTheme {
     public static final int BG_NAV_INNER  = 0xFFF8F4ED;
 
     // Bienvenida: hueso al 87 % y cian al 85 % sobre el mundo desenfocado.
-    public static final int BG_WELCOME        = 0xDDF8F4ED;
-    public static final int BG_WELCOME_HEADER = 0xD94995B6;
+    public static final int BG_WELCOME        = 0x80F3F3F3;
+    public static final int BG_WELCOME_HEADER = 0x804995B6;
 
     // ── Lineas y sombras ──────────────────────────────────────────────────────
     public static final int LINE          = 0xFFE0E0E0;
