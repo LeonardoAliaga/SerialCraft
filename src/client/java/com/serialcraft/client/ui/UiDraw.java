@@ -57,6 +57,36 @@ public final class UiDraw {
         gui.fill(x, y + 4, x + width, y + height - 4, color);
     }
 
+    /** Glass uses disjoint fill bands so translucent pixels are blended only once. */
+    public static void glassSurface(GuiGraphicsExtractor gui, int x, int y, int width, int height,
+                                     int background, int border, boolean glow) {
+        if (width < 6 || height < 6) return;
+        if (glow && (border >>> 24) != 0) {
+            glassOutline(gui, x - 2, y - 2, width + 4, height + 4, (border & 0x00FFFFFF) | 0x12000000);
+            glassOutline(gui, x - 1, y - 1, width + 2, height + 2, (border & 0x00FFFFFF) | 0x28000000);
+        }
+        if ((background >>> 24) != 0) {
+            gui.fill(x + 2, y, x + width - 2, y + 1, background);
+            gui.fill(x + 1, y + 1, x + width - 1, y + 2, background);
+            gui.fill(x, y + 2, x + width, y + height - 2, background);
+            gui.fill(x + 1, y + height - 2, x + width - 1, y + height - 1, background);
+            gui.fill(x + 2, y + height - 1, x + width - 2, y + height, background);
+            gui.fillGradient(x + 2, y + 2, x + width - 2, y + height / 2, 0x10FFFFFF, 0x00FFFFFF);
+        }
+        if ((border >>> 24) != 0) glassOutline(gui, x, y, width, height, border);
+    }
+
+    private static void glassOutline(GuiGraphicsExtractor gui, int x, int y, int width, int height, int color) {
+        gui.fill(x + 2, y, x + width - 2, y + 1, color);
+        gui.fill(x + 2, y + height - 1, x + width - 2, y + height, color);
+        gui.fill(x, y + 2, x + 1, y + height - 2, color);
+        gui.fill(x + width - 1, y + 2, x + width, y + height - 2, color);
+        gui.fill(x + 1, y + 1, x + 2, y + 2, color);
+        gui.fill(x + width - 2, y + 1, x + width - 1, y + 2, color);
+        gui.fill(x + 1, y + height - 2, x + 2, y + height - 1, color);
+        gui.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, color);
+    }
+
     /** Shared card surface; a zero-height header leaves a quiet background for details. */
     public static void dashboardCard(GuiGraphicsExtractor gui, int x, int y, int width, int height,
                                      int headerHeight, int background, int accent) {

@@ -19,9 +19,23 @@ public final class UiTheme {
     public static final int BG_NAV        = 0xFF4995B6;
     public static final int BG_NAV_INNER  = 0xFFF8F4ED;
 
-    // Bienvenida: hueso al 87 % y cian al 85 % sobre el mundo desenfocado.
-    public static final int BG_WELCOME        = 0x80F3F3F3;
-    public static final int BG_WELCOME_HEADER = 0x804995B6;
+    // Prueba visual de Welcome: vidrio azul grisáceo sobre el desenfoque nativo.
+    // El primer byte controla la opacidad; estos colores no se usan en el panel.
+    public static final int BG_WELCOME         = 0x2408111E;
+    public static final int WELCOME_PANEL      = 0x50324759;
+    public static final int WELCOME_CARD       = 0x90162D3D;
+    public static final int WELCOME_FIELD      = 0x9A102130;
+    public static final int WELCOME_BADGE      = 0x80466478;
+    public static final int WELCOME_LINE       = 0xA083C6E3;
+    public static final int WELCOME_TEXT       = 0xFFF1FAFF;
+    public static final int WELCOME_MUTED      = 0xFFB3D2E2;
+    public static final int WELCOME_CYAN       = 0xFF60D9FF;
+    public static final int WELCOME_TEAL       = 0xFF27F0DA;
+    public static final int WELCOME_ACTIVE     = 0xA0096265;
+    public static final int WELCOME_GREEN      = 0xFF82E88C;
+    public static final int WELCOME_CONNECT    = 0xB01B741D;
+    public static final int WELCOME_TOKEN      = 0x90304F35;
+    public static final int WELCOME_ERROR      = 0xFFFFB7AE;
 
     // ── Lineas y sombras ──────────────────────────────────────────────────────
     public static final int LINE          = 0xFFE0E0E0;
