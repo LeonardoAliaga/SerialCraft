@@ -51,6 +51,8 @@ public class WelcomePage implements Page {
     private static final int WIFI_INFO_H_LISTENING = 96;
     private static final int WIFI_INFO_H_CONNECTED = 48;
     private static final int WIFI_COPY_WIDTH = 72;
+    private static final int WIFI_REMEMBERED_Y = 92;
+    private static final int WIFI_REMEMBERED_PADDING = 12;
     private static final int HELPER_LINK_H = 18;
     private static final int HELPER_PANEL_H = 138;
 
@@ -83,6 +85,7 @@ public class WelcomePage implements Page {
     private record Bounds(int x, int y, int width, int height) {
         int right() { return x + width; }
         int bottom() { return y + height; }
+        Bounds moveDown(int offset) { return new Bounds(x, y + offset, width, height); }
     }
 
     /** El botón pertenece a la misma fila que su tarjeta, no a una lista de Y independientes. */
@@ -129,8 +132,9 @@ public class WelcomePage implements Page {
                 int remembered = BoardTrust.store().all().size();
                 int lines = remembered == 0 ? 0 : font.split(
                         Component.translatable("gui.serialcraft.welcome.wifi_remembered", remembered),
-                        Math.max(1, cardWidth - 16)).size();
-                yield Math.max(WIFI_INFO_H_LISTENING, 90 + lines * font.lineHeight);
+                        Math.max(1, cardWidth - WIFI_REMEMBERED_PADDING * 2)).size();
+                yield lines == 0 ? WIFI_INFO_H_LISTENING
+                        : WIFI_REMEMBERED_Y + lines * font.lineHeight + WIFI_REMEMBERED_PADDING;
             }
             case CONNECTED -> WIFI_INFO_H_CONNECTED;
         };
@@ -159,11 +163,19 @@ public class WelcomePage implements Page {
                 font.split(Component.translatable("gui.serialcraft.welcome.no_usb"), emptyTextWidth).size()
                 + font.split(Component.translatable("gui.serialcraft.welcome.no_usb_hint"), emptyTextWidth).size()));
         Bounds emptyDevices = new Bounds(cardX, devicesY, cardWidth, emptyHeight);
-        int totalHeight = (rows.isEmpty() ? emptyDevices.bottom() : rows.getLast().card().bottom()) + 12;
+        int contentBottom = (rows.isEmpty() ? emptyDevices.bottom() : rows.getLast().card().bottom()) + 6;
+        int totalHeight = contentBottom + 6;
+        // Centra el conjunto visible; en pantallas bajas conserva el margen superior y el scroll.
+        int offset = Math.max(0, (height - (contentBottom - logo.y())) / 2 - logo.y());
+        Bounds centeredHeader = new Bounds(0, 0, width, header.height() + offset);
+        List<DeviceRow> centeredRows = rows.stream()
+                .map(row -> new DeviceRow(row.card().moveDown(offset), row.connectButton().moveDown(offset)))
+                .toList();
 
-        return new Layout(header, logo, subtitleY, connectionPanel, usbMethod, wifiMethod, wifiInfo,
-                helpLink, helpPanel, List.copyOf(rows), emptyDevices,
-                header.bottom() + 4, totalHeight);
+        return new Layout(centeredHeader, logo.moveDown(offset), subtitleY + offset,
+                connectionPanel.moveDown(offset), usbMethod.moveDown(offset), wifiMethod.moveDown(offset),
+                wifiInfo.moveDown(offset), helpLink.moveDown(offset), helpPanel.moveDown(offset),
+                centeredRows, emptyDevices.moveDown(offset), centeredHeader.bottom() + 4, totalHeight + offset);
     }
 
     /** Evita que el botón de copiar invada la siguiente sección al cambiar de ejemplo. */
@@ -393,7 +405,8 @@ public class WelcomePage implements Page {
             int remembered = BoardTrust.store().all().size();
             if (remembered > 0) {
                 UiDraw.wrappedText(gui, font, Component.translatable("gui.serialcraft.welcome.wifi_remembered", remembered),
-                        x + 8, y + 85, cardWidth - 16, UiTheme.WELCOME_MUTED);
+                        x + WIFI_REMEMBERED_PADDING, y + WIFI_REMEMBERED_Y,
+                        cardWidth - WIFI_REMEMBERED_PADDING * 2, UiTheme.WELCOME_MUTED);
             }
 
         } else if (wifi.getState() == WifiHandler.State.CONNECTED) {
