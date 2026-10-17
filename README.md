@@ -53,8 +53,8 @@ Inglés y español, con localizaciones reales para España, México y Argentina 
 ### 1. La Laptop (Bloque Conector)
 El cerebro de la operación: gestiona la conexión con tu dispositivo del mundo real.
 
-* **Uso:** clic derecho para abrir la interfaz. Elige tu **puerto** y los **baudios** (deben coincidir con los del sketch; por defecto 115200), o inicia el **servidor Wi-Fi** y copia la IP, el puerto y el token que aparecen en pantalla.
-* **Ajustes:** puedes regular la velocidad de lectura para adaptarla a placas que envían mucho tráfico.
+* **Uso:** clic derecho para abrir la interfaz. En la bienvenida, conecta tu placa por **USB** (115200 baudios por defecto), o inicia el **servidor Wi-Fi** y copia la IP, el puerto y el token que aparecen en pantalla. Si el servidor no puede iniciarse, verás el error y podrás volver a intentarlo.
+* **Ajustes USB:** desde **Inicio**, elige los **baudios** y pulsa **Aplicar y reconectar**. Deben coincidir con `Serial.begin(...)` o su equivalente en el firmware de la placa para que los datos se entiendan.
 
 ![Interfaz de la Laptop](https://cdn.modrinth.com/data/cached_images/2a06adbdf536890ecd23076067815f49d6f7f704_0.webp)
 

@@ -81,6 +81,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 2. Coloca un **Bloque Conector** y haz clic derecho.
 3. En la pantalla de bienvenida de conexión, el escaneo lista los puertos disponibles.
 4. Selecciona la placa y pulsa **Conectar**.
+5. Para cambiar los baudios, ve a **Inicio**, selecciona el valor y pulsa **Aplicar y reconectar**. Debe coincidir con `Serial.begin(...)` o su equivalente en el firmware.
 
 ::: tip Los baudios deben coincidir
 El valor por defecto es **115200**. Si en el sketch pones `Serial.begin(9600)` y el bloque está a 115200, no llega nada legible. Es el fallo más habitual, y no da ningún error visible: simplemente no pasa nada.
@@ -89,7 +90,7 @@ El valor por defecto es **115200**. Si en el sketch pones `Serial.begin(9600)` y
 ### Opción B: Wi-Fi
 
 1. PC y placa en la **misma red local**.
-2. Abre la Laptop → **Inicio** → **Iniciar servidor Wi-Fi**.
+2. Abre la Laptop y pulsa la tarjeta **Wi-Fi** en la bienvenida. Si falla el inicio, verás el error en pantalla; libera el puerto 25585 si está ocupado y vuelve a intentarlo.
 3. La interfaz muestra tres datos: **IP local**, **puerto** (25585) y **token de enlace**.
 4. Copia esos tres valores al sketch o al script de la placa.
 5. La placa se conecta y envía el token como primera línea; el mod responde `OK`.
@@ -198,7 +199,8 @@ Reglas del generador:
 * Envía enteros de 0 a 255, como máximo **20 mensajes por segundo** (uno por tick) y solo cuando el valor cambia: el mismo techo que la telemetría del juego. A ese ritmo un seno de 2 s tiene 40 puntos por ciclo, suficientes para que se vea como una onda.
 * La clave admite letras, números, `_`, `.` y `-`, hasta 32 caracteres.
 * Sigue funcionando aunque cambies de pestaña. **Se detiene** al pulsar Detener, al cerrar la Laptop o si se pierde la conexión.
-* Al detenerse por tu orden o al cerrar la Laptop, deja la placa en reposo enviando `clave:0`.
+* El canal queda fijo mientras el generador está activo. Detén la ejecución antes de cambiarlo.
+* Al detenerse por tu orden o al cerrar la Laptop, cancela los valores pendientes y solicita `clave:0` al canal con el que arrancó. Si cambió la sesión de conexión, la ejecución anterior no envía órdenes a la nueva placa.
 
 ::: warning Envía valores reales a tu hardware
 Si hay un servo o un motor conectado, empieza con la amplitud al 25 %.

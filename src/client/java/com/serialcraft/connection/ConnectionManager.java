@@ -239,6 +239,11 @@ public final class ConnectionManager {
         }
     }
 
+    /** Check and enqueue atomically with session changes, including a generator's final zero. */
+    public static synchronized boolean sendSignal(String line, boolean safetyStop, int sessionEpoch) {
+        return sessionEpoch == linkEpoch && sendSignal(line, safetyStop);
+    }
+
     public static void discardPending(String key) { OUTBOX.discard(key); }
 
     private static void drainOutput() {

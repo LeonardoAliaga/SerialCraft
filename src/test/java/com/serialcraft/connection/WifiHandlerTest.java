@@ -15,6 +15,29 @@ import java.util.function.BooleanSupplier;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WifiHandlerTest {
+    @Test void occupiedPortReportsFailureAndCanBeRetried() throws Exception {
+        var wifi = new WifiHandler();
+        try {
+            int port;
+            try (ServerSocket occupied = new ServerSocket(0)) {
+                port = occupied.getLocalPort();
+                var result = wifi.startServer(port, "ABC234");
+                var message = assertInstanceOf(net.minecraft.network.chat.contents.TranslatableContents.class,
+                        result.getContents());
+                assertEquals("message.serialcraft.wifi_start_failed", message.getKey());
+                assertEquals(WifiHandler.State.STOPPED, wifi.getState());
+                assertFalse(wifi.isServerRunning());
+                assertFalse(wifi.isConnected());
+                assertEquals(0, wifi.getServerPort());
+            }
+            wifi.startServer(port, "ABC234");
+            assertEquals(WifiHandler.State.LISTENING, wifi.getState());
+            assertTrue(wifi.isServerRunning());
+            assertFalse(wifi.isConnected());
+            assertEquals(port, wifi.getServerPort());
+        } finally { wifi.disconnect(); }
+    }
+
     @Test void onlyCompleteBoundedFramesAreAccepted() throws Exception {
         assertEquals("sensor:128", WifiHandler.readBoundedLine(new BufferedReader(new StringReader("sensor:128\r\n"))));
         assertNull(WifiHandler.readBoundedLine(new BufferedReader(new StringReader("sensor:255"))));

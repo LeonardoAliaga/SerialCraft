@@ -70,6 +70,7 @@ public class WelcomePage implements Page {
     private int screenHeight;
     private Layout currentLayout;
     private String hostIp = "";
+    private Component wifiStartError;
     private boolean showHelper = false;
     private int helperPlatform = PLATFORM_ESP32;
 
@@ -119,7 +120,8 @@ public class WelcomePage implements Page {
 
         WifiHandler wifi = ConnectionManager.getWifi();
         int wifiHeight = switch (wifi.getState()) {
-            case STOPPED   -> 0;
+            case STOPPED   -> wifiStartError == null ? 0
+                    : UiDraw.noticeHeight(Minecraft.getInstance().font, wifiStartError, cardWidth);
             case LISTENING -> WIFI_INFO_H_LISTENING;
             case CONNECTED -> WIFI_INFO_H_CONNECTED;
         };
@@ -128,7 +130,7 @@ public class WelcomePage implements Page {
 
         int helpY = (wifiHeight > 0 ? wifiInfo.bottom() + 8 : usbMethod.bottom() + 4);
         Bounds helpLink = new Bounds(cardX, helpY, cardWidth, HELPER_LINK_H);
-        int helpPanelHeight = showHelper ? helperPanelHeight() : 0;
+        int helpPanelHeight = showHelper ? helperPanelHeight(cardWidth) : 0;
         Bounds helpPanel = new Bounds(cardX, helpLink.bottom() + 6, cardWidth, helpPanelHeight);
 
         int devicesY = showHelper ? helpPanel.bottom() + 10 : helpLink.bottom() + 6;
@@ -149,10 +151,31 @@ public class WelcomePage implements Page {
     }
 
     /** Evita que el botón de copiar invada la siguiente sección al cambiar de ejemplo. */
-    private int helperPanelHeight() {
-        int codeBoxHeight = helperSnippetLines(helperPlatform).size() * 11 + 8;
-        int copyBottom = 26 + 12 + codeBoxHeight + 6 + 16;
-        return Math.max(HELPER_PANEL_H, copyBottom + 4);
+    private int helperPanelHeight(int width) {
+        return Math.max(HELPER_PANEL_H, helperCopyOffset(width) + 16 + 6);
+    }
+
+    private Component helperIntro() {
+        return Component.translatable(switch (helperPlatform) {
+            case PLATFORM_UNO_Q -> "gui.serialcraft.welcome.helper_intro_uno_q";
+            case PLATFORM_PI -> "gui.serialcraft.welcome.helper_intro_pi";
+            default -> "gui.serialcraft.welcome.helper_intro_esp32";
+        });
+    }
+
+    private int helperCodeOffset(int width) {
+        Font font = Minecraft.getInstance().font;
+        return 26 + font.split(helperIntro(), Math.max(1, width - 20)).size() * font.lineHeight + 4;
+    }
+
+    private int helperCopyOffset(int width) {
+        int offset = helperCodeOffset(width) + helperSnippetLines(helperPlatform).size() * 11 + 8 + 6;
+        if (!ConnectionManager.getWifi().isServerRunning()) {
+            Font font = Minecraft.getInstance().font;
+            offset += font.split(Component.translatable("gui.serialcraft.welcome.helper_needs_wifi"),
+                    Math.max(1, width - 20)).size() * font.lineHeight + 6;
+        }
+        return offset;
     }
 
     // ── INIT ──────────────────────────────────────────────────────────────────
@@ -253,7 +276,7 @@ public class WelcomePage implements Page {
 
         WifiHandler wifi = ConnectionManager.getWifi();
         Component wifiStatus = switch (wifi.getState()) {
-            case STOPPED   -> Component.translatable("gui.serialcraft.welcome.method_wifi_stopped");
+            case STOPPED   -> Component.translatable("gui.serialcraft.welcome.method_wifi_start");
             case LISTENING -> Component.translatable("gui.serialcraft.welcome.method_wifi_listening");
             case CONNECTED -> Component.translatable("gui.serialcraft.welcome.method_wifi_connected", wifi.getRemoteIp());
         };
@@ -269,12 +292,18 @@ public class WelcomePage implements Page {
 
     private void toggleWifiServer() {
         WifiHandler wifi = ConnectionManager.getWifi();
+        wifiStartError = null;
         if (wifi.isServerRunning()) {
             wifi.disconnect();
             hostIp = "";
         } else {
-            hostIp = NetUtils.findLocalIpv4();
-            wifi.startServer(WifiHandler.DEFAULT_PORT, generateToken());
+            Component result = wifi.startServer(WifiHandler.DEFAULT_PORT, generateToken());
+            if (wifi.isServerRunning()) {
+                hostIp = NetUtils.findLocalIpv4();
+            } else {
+                hostIp = "";
+                wifiStartError = result;
+            }
         }
         if (panel != null) panel.refreshWelcome();
     }
@@ -329,7 +358,9 @@ public class WelcomePage implements Page {
         if (h <= 0) return;
         WifiHandler wifi = ConnectionManager.getWifi();
 
-        if (wifi.getState() == WifiHandler.State.LISTENING) {
+        if (wifi.getState() == WifiHandler.State.STOPPED && wifiStartError != null) {
+            UiDraw.notice(gui, font, wifiStartError, x, y, cardWidth, UiTheme.ERROR_BG, UiTheme.ERROR_DARK);
+        } else if (wifi.getState() == WifiHandler.State.LISTENING) {
             UiDraw.surface(gui, x, y, cardWidth, h, 0, UiTheme.INFO_BG, 18, false);
             gui.fill(x + 3, y + 18, x + cardWidth - 3, y + 19, UiTheme.INFO_LINE);
 
@@ -410,15 +441,14 @@ public class WelcomePage implements Page {
         }
 
         List<String> snippet = helperSnippetLines(helperPlatform);
-        int codeBoxY = y + 26 + 14;
-        int codeBoxH = snippet.size() * 11 + 8;
+        int copyY = y + helperCopyOffset(cardWidth);
 
         IconTextButton copyBtn = new IconTextButton(
-                    x + cardWidth - 96, codeBoxY + codeBoxH + 6, 96, 16, SpriteIcon.CODE,
-                    Component.translatable("gui.serialcraft.welcome.helper_copy"),
+                    x + cardWidth - 96, copyY, 96, 16, SpriteIcon.CODE,
+                    Component.translatable("gui.serialcraft.welcome.copy"),
                     btn -> copyWithFeedback(btn, String.join("\n", snippet)),
                     UiTheme.TAB_INACTIVE_BG, UiTheme.TAB_INACTIVE_BORDER);
-        addScrollWidget(panelUi, copyBtn, codeBoxY + codeBoxH + 6);
+        addScrollWidget(panelUi, copyBtn, copyY);
     }
 
     private List<String> helperSnippetLines(int platform) {
@@ -460,11 +490,10 @@ public class WelcomePage implements Page {
 
         int textX = x + 10;
         int introY = y + 26;
-        gui.text(font, Component.translatable("gui.serialcraft.welcome.helper_intro"),
-                textX, introY, UiTheme.TEXT_SECONDARY, false);
+        UiDraw.wrappedText(gui, font, helperIntro(), textX, introY, cardWidth - 20, UiTheme.TEXT_SECONDARY);
 
         List<String> snippet = helperSnippetLines(helperPlatform);
-        int codeBoxY = introY + 12;
+        int codeBoxY = y + helperCodeOffset(cardWidth);
         int codeBoxH = snippet.size() * 11 + 8;
         gui.fill(x + 8, codeBoxY, x + cardWidth - 8, codeBoxY + codeBoxH, UiTheme.BG_CONSOLE);
         gui.outline(x + 8, codeBoxY, cardWidth - 16, codeBoxH, UiTheme.SLATE);
@@ -478,8 +507,8 @@ public class WelcomePage implements Page {
         }
 
         if (!live) {
-            gui.text(font, Component.translatable("gui.serialcraft.welcome.helper_needs_wifi"),
-                    textX, codeBoxY + codeBoxH + 8, UiTheme.WARN_DARK, false);
+            UiDraw.wrappedText(gui, font, Component.translatable("gui.serialcraft.welcome.helper_needs_wifi"),
+                    textX, codeBoxY + codeBoxH + 6, cardWidth - 20, UiTheme.WARN_DARK);
         }
     }
 

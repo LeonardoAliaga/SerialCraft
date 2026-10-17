@@ -1,8 +1,10 @@
 # Matriz de verificación del Módulo de E/S
 
-Fecha: 2026-10-08. Rama: `test`, versión `0.4.6-beta`.
+Fecha: 2026-10-17. Rama: `test`, versión `0.4.6-beta`.
 
 **Automática** significa ejecutada sobre el código; **parcial** distingue la cobertura de lógica de la prueba con un cliente o hardware real. **Manual pendiente** nunca significa aprobada.
+
+Última ejecución local con Java 25: `build` correcto, 50 pruebas unitarias y 11 GameTests aprobados. Se comprobaron las 34 claves de traducción usadas por la bienvenida y el error de Wi-Fi en los cuatro idiomas, y el contenido del JAR instalable. La ejecución del workflow en GitHub sigue pendiente.
 
 ## Cobertura ejecutada
 
@@ -26,7 +28,7 @@ Fecha: 2026-10-08. Rama: `test`, versión `0.4.6-beta`.
 | Polvo de redstone conectado por una derivación | Leer señal sin emitir en TX | GameTest con línea de polvo norte–sur y entrada lateral |
 | Bloque sólido alimentado + lámpara | Encender y apagar sin energía residual | GameTest |
 | Desconexión observada | Invalidar RX y apagar mundo | GameTest; detección USB/TCP física pendiente |
-| Conexión TCP | Escuchar no significa conectado; token válido, escritura y cierre verificables | Tres pruebas de sockets locales / delimitación, incluida reinicialización |
+| Conexión TCP | Escuchar no significa conectado; token válido, escritura y cierre verificables | Pruebas de sockets locales / delimitación, incluida reinicialización y fallo por puerto ocupado seguido de reintento |
 | Handshake incompleto al detener servidor | Cerrar socket pendiente y liberar escucha | Prueba de socket local |
 | Reconexión con valor TX estable | Invalidar deduplicación y reenviar; USB repite a los 2 s | Política implementada; bootloader/placa real pendiente |
 | Guardar/cargar configuración | Conservar nombre, canal, propietario, señal, lógica, modo y habilitación; no persistir RX/TX/enlace | Unitarias sobre NBT real |
@@ -34,9 +36,10 @@ Fecha: 2026-10-08. Rama: `test`, versión `0.4.6-beta`.
 | Canal o modo antiguo inválido | Deshabilitar; conservar canal inválido saneado y bloquear activación sin corregirlo | Unitarias |
 | Varios módulos, mismo canal | Distribuir muestra a receptores; retirar entidades del índice | GameTest funcional de 64 módulos |
 | Permisos / distancia / chunk no cargado | Dueño permitido, otro jugador rechazado; no forzar carga | GameTest con jugadores de prueba |
-| Colas RX/TX | Turnos entre canales, FIFO IO, memoria acotada, descartes observables, parada prioritaria | Unitarias |
+| Colas RX/TX | Turnos entre canales, FIFO IO, memoria acotada, descartes observables, parada prioritaria | Unitarias, incluidas ráfagas de 17 y 64 paradas distintas, deduplicación y rechazo explícito al superar la capacidad sin perder paradas aceptadas |
 | Telemetría | Estados coalescidos, eventos acotados, cancelación por canal | Unitarias; recorrido gráfico con eventos reales pendiente |
-| Visualizador / generador | RX/TX separados, buffer circular, estadísticas, ondas y valor de reposo | Unitarias; renderizado y pérdida de enlace real pendientes |
+| Visualizador / generador | RX/TX separados, buffer circular, estadísticas, ondas, canal fijo por ejecución y valor de reposo | Unitarias de parada/cierre con borrador cambiado y de cambio de sesión sin enviar ni cancelar datos de la nueva placa; renderizado y pérdida de enlace real pendientes |
+| Bienvenida y ayuda | Textos traducidos y fallo de inicio Wi-Fi visible con posibilidad de reintento | Claves verificadas en `en_us`, `es_es`, `es_mx` y `es_ar`; renderizado del aviso y ayuda por plataforma pendiente |
 | Autenticación | Vector HMAC-SHA256, desafío nuevo, rechazo de repetición, persistencia/revocación y fallo de escritura | Unitarias; persistencia de claves en ESP32/Uno Q pendiente |
 
 ## Pruebas manuales restantes
@@ -53,10 +56,13 @@ Usar copias de mundos anteriores. Instalar el mismo mod actualizado en cliente y
 | UI y permisos | Probar escalas GUI con anchuras 320/426/640 y alturas ≥240, los cuatro idiomas, nombre/canal al alternar opciones, scroll y errores de guardar. Guardar sin hardware debe funcionar; ningún éxito antes de respuesta del servidor |
 | USB Uno R3 | Apertura ocupada/inexistente, conexión correcta, reset por DTR, desenchufar y reconectar con palanca estable. Verificar reenvío después del bootloader y primera muestra cero |
 | Wi-Fi ESP32 / Uno Q | Token correcto/incorrecto, HMAC, olvidar placa, IP privada, cable/red caída, autenticación lenta, reconexión estable y cierre durante handshake |
+| Bienvenida | En los cuatro idiomas y varias escalas GUI, abrir las tres ayudas y copiar el ejemplo. Ocupar el puerto 25585, comprobar el aviso visible y el estado detenido; liberar el puerto y reintentar |
 | Reinicio / chunks | Guardar módulo RX alimentado, cerrar servidor y volver; no recuperar señal temporal. Descargar y recargar chunk; esperar la instantánea del sensor. TX debe solicitar cero al descargar y resincronizar al cargar |
 | Dimensión y multijugador | Dos jugadores con el mismo canal en Overworld/Nether. Solo canales del dueño en su dimensión actual; cambio de dimensión invalida RX y solicita cero a emisores anteriores. Intentar modificar dueño ajeno, dimensión vieja y posiciones descargadas |
+| Apagados simultáneos | Activar 17 y luego 64 canales TX distintos. Retirar módulos, descargar sus chunks y cambiar de dimensión en pruebas separadas; confirmar que cada canal llega a cero, también con telemetría activa |
 | Dos emisores, mismo canal | Mostrar que el actuador recibe el último comando: no hay arbitraje por dispositivo. Asignar canales distintos. Probar receptores compartidos, que sí están soportados |
 | Telemetría + IO + ondas | Activar eventos, usar sensores y un generador en otro canal. Deshabilitar evento con datos pendientes, detener onda y confirmar reposo prioritario. No compartir canal entre generador y actuador controlado por IO |
+| Canal del generador | Iniciar `led_a`, comprobar que el campo no admite cambios incluso tras cambiar de pestaña o escala GUI. Detener o cerrar y confirmar cero en `led_a`; iniciar después `led_b`. Reconectar otra placa antes de detener/cerrar y confirmar que la ejecución anterior no le manda órdenes |
 | Mundo histórico | Copiar regiones reales anteriores, verificar receta, inventario, colocación, conectores, nombre, dueño y canales. Revisar AND/XOR antiguos y canales inválidos deshabilitados |
 
 ## Rendimiento

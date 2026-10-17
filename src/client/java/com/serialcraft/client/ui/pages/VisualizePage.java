@@ -94,11 +94,13 @@ public class VisualizePage implements Page {
     private int periodIndex = 1;                 // 2 s
     private int amplitudeIndex = 0;              // 100 %
     private String genKey = "led_verde";
+    private @Nullable String activeGenKey;
     private @Nullable String genMessageKey = null;
     private long genMessageUntil = 0L;
 
     // ── Widgets ──────────────────────────────────────────────────────────────
     private @Nullable SolidButton genToggle = null;
+    private @Nullable EditBox genKeyBox = null;
 
     // ── Disposicion (se fija en init y render) ────────────────────────────────
     private int screenW = 0;
@@ -239,13 +241,14 @@ public class VisualizePage implements Page {
         }));
         gx += ampW + gap;
 
-        EditBox genKeyBox = new EditBox(font, gx, row3Y, keyW, btnH,
+        genKeyBox = new EditBox(font, gx, row3Y, keyW, btnH,
                 Component.translatable("gui.serialcraft.visualize.gen_key_hint"));
         genKeyBox.setMaxLength(SignalRecorder.MAX_KEY_LENGTH);
         genKeyBox.setValue(genKey);
         genKeyBox.setHint(Component.translatable("gui.serialcraft.visualize.gen_key_hint"));
         genKeyBox.setTextColor(UiTheme.TEXT_INVERSE);
         genKeyBox.setResponder(val -> this.genKey = val);
+        genKeyBox.setEditable(!generator.isRunning());
         panel.addWidget(genKeyBox);
     }
 
@@ -270,13 +273,14 @@ public class VisualizePage implements Page {
     @Override
     public void onClose() {
         applyAction(generator.stop());
+        refreshGenToggle();
     }
 
     private void runGenerator(long now) {
         if (!generator.isRunning()) return;
         if (generatorEpoch != ConnectionManager.sessionEpoch()) {
             generator.stop();
-            ConnectionManager.discardPending(genKey.trim());
+            activeGenKey = null; // the new session owns its own pending values
             showMessage("gui.serialcraft.visualize.gen_lost");
             refreshGenToggle();
             return;
@@ -288,16 +292,20 @@ public class VisualizePage implements Page {
     }
 
     private void applyAction(GeneratorController.Action action) {
-        if (!action.send()) return;
-        boolean delivered = ConnectionManager.sendSignal(genKey.trim() + ":" + action.value(), action.stopped());
+        if (activeGenKey == null || !action.send() && !action.stopped()) return;
+        // A safety stop cancels pending values for this channel in the same enqueue operation.
+        boolean delivered = ConnectionManager.sendSignal(activeGenKey + ":" + action.value(),
+                action.stopped(), generatorEpoch);
+        if (action.stopped()) activeGenKey = null;
         if (!delivered && !action.stopped()) {
-            generator.stop();
+            applyAction(generator.stop());
             showMessage("gui.serialcraft.visualize.gen_lost");
             refreshGenToggle();
         }
     }
 
     private void refreshGenToggle() {
+        if (genKeyBox != null) genKeyBox.setEditable(!generator.isRunning());
         if (genToggle == null) return;
         genToggle.setMessage(genToggleLabel());
         genToggle.setVariant(generator.isRunning() ? SolidButton.Variant.DANGER : SolidButton.Variant.SUCCESS);
@@ -310,8 +318,9 @@ public class VisualizePage implements Page {
             String key = genKey.trim();
             if (!com.serialcraft.network.SignalProtocol.isValidChannel(key)) { showMessage("gui.serialcraft.visualize.gen_bad_key"); return; }
             if (!ConnectionManager.isAnyConnected()) { showMessage("gui.serialcraft.visualize.gen_no_board"); return; }
-            generator.start(System.nanoTime());
+            activeGenKey = key;
             generatorEpoch = ConnectionManager.sessionEpoch();
+            generator.start(System.nanoTime());
         }
         refreshGenToggle();
     }

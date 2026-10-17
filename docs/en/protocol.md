@@ -382,8 +382,8 @@ The **Visualizer** tab's generator sends the board lines in the usual `key:value
 | :--- | :--- |
 | Format | `<key>:<0-255>\n`, integer |
 | Rate | At most 20 lines/s (one per tick) and only when the value changed: the same ceiling as the game's telemetry |
-| On stop | Sends `<key>:0` once, to leave the actuator at rest |
-| Key | `[A-Za-z0-9_.-]`, up to 32 characters |
+| On stop | Cancels pending values and requests `<key>:0` on the original channel, only within the same connection session |
+| Key | `[A-Za-z0-9_.-]`, up to 32 characters; fixed for the duration of the run |
 | Console | Does not write to the console, to avoid flooding it |
 
 **Wave shapes** (period of 1, 2, 5 or 10 s; amplitude of 100, 50 or 25 % of 0-255):

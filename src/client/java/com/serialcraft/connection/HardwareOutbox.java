@@ -12,7 +12,7 @@ public final class HardwareOutbox {
     public static final int MAX_CHANNELS = 64;
     public static final int PER_CHANNEL_CAPACITY = 8;
     private final Map<String, Deque<Line>> channels = new LinkedHashMap<>();
-    private final Deque<Line> urgent = new ArrayDeque<>();
+    private final Map<String, Line> urgent = new LinkedHashMap<>();
     private int urgentRun;
     private long dropped;
 
@@ -23,9 +23,9 @@ public final class HardwareOutbox {
         String key = colon > 0 ? text.substring(0, colon) : "manual";
         if (safetyStop) {
             channels.remove(key); // no generated sample may follow the rest value
-            urgent.removeIf(p -> p.text.startsWith(key + ':'));
-            if (urgent.size() >= 16) { urgent.removeFirst(); dropped++; }
-            urgent.addFirst(line);
+            // Reserve one stop per supported channel; never evict an accepted stop.
+            if (!urgent.containsKey(key) && urgent.size() >= MAX_CHANNELS) { dropped++; return false; }
+            urgent.put(key, line);
             return true;
         }
         if (!channels.containsKey(key) && channels.size() >= MAX_CHANNELS) { dropped++; return false; }
@@ -39,7 +39,10 @@ public final class HardwareOutbox {
     }
 
     public synchronized Line poll() {
-        if (!urgent.isEmpty() && (urgentRun < 2 || channels.isEmpty())) { urgentRun++; return urgent.removeFirst(); }
+        if (!urgent.isEmpty() && (urgentRun < 2 || channels.isEmpty())) {
+            urgentRun++;
+            return urgent.remove(urgent.keySet().iterator().next());
+        }
         urgentRun = 0;
         if (channels.isEmpty()) return null;
         String key = channels.keySet().iterator().next();
@@ -51,7 +54,7 @@ public final class HardwareOutbox {
 
     public synchronized void discard(String key) {
         channels.remove(key);
-        urgent.removeIf(p -> p.text.startsWith(key + ':'));
+        urgent.remove(key);
     }
     public synchronized void clear() { channels.clear(); urgent.clear(); urgentRun = 0; }
     public synchronized int size() { return urgent.size() + channels.values().stream().mapToInt(Deque::size).sum(); }

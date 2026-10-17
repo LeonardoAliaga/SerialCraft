@@ -382,8 +382,8 @@ El generador de la pestaña **Visualizar** envía a la placa líneas con el form
 | :--- | :--- |
 | Formato | `<clave>:<0-255>\n`, entero |
 | Ritmo | Como máximo 20 líneas/s (una por tick) y solo si el valor cambió: el mismo techo que la telemetría del juego |
-| Al detenerse | Envía `<clave>:0` una vez, para dejar el actuador en reposo |
-| Clave | `[A-Za-z0-9_.-]`, hasta 32 caracteres |
+| Al detenerse | Cancela los valores pendientes y solicita `<clave>:0` al canal inicial, solo en la misma sesión de conexión |
+| Clave | `[A-Za-z0-9_.-]`, hasta 32 caracteres; fija durante la ejecución |
 | Consola | No escribe en la consola para no llenarla |
 
 **Formas de onda** (periodo de 1, 2, 5 o 10 s; amplitud del 100, 50 o 25 % de 0-255):

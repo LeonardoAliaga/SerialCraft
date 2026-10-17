@@ -1,9 +1,9 @@
 name: Build and test
 on:
   push:
-    branches: [test]
+    branches: [test, main]
   pull_request:
-    branches: [test]
+    branches: [test, main]
 permissions:
   contents: read
 jobs:
@@ -18,6 +18,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew
       - run: ./gradlew build --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: serialcraft-jar
+          path: |
+            build/libs/serialcraft-*.jar
+            !build/libs/*-sources.jar
+            !build/libs/*-dev.jar
+            !build/libs/*-javadoc.jar
+          if-no-files-found: error
       - run: ./gradlew -PioGameTests runGameTest --console=plain
       - uses: actions/upload-artifact@v4
         if: always()

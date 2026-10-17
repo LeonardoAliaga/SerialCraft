@@ -79,8 +79,9 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 
 1. Plug the board into your computer's USB port.
 2. Place a **Connector Block** and right-click it.
-3. On the **Connection** tab, the port scan lists available boards.
+3. The connection welcome screen lists available boards.
 4. Pick yours and hit **Connect**.
+5. To change the baud rate, go to **Home**, select a value and press **Apply and reconnect**. It must match `Serial.begin(...)` or its equivalent in the board's firmware.
 
 ::: tip Baud rates must match
 The default is **115200**. If your sketch uses `Serial.begin(9600)` while the block is set to 115200, nothing legible will come through. This is the single most common failure mode, and it produces no error message — simply silence.
@@ -89,7 +90,7 @@ The default is **115200**. If your sketch uses `Serial.begin(9600)` while the bl
 ### Option B: Wi-Fi
 
 1. Keep PC and board on the **same local network**.
-2. Open the Laptop → **Home** → **Start Wi-Fi server**.
+2. Open the Laptop and press the **Wi-Fi** card on the welcome screen. If startup fails, the error appears on screen; free port 25585 if it is occupied and try again.
 3. The interface displays three values: **local IP**, **port** (25585) and **pairing token**.
 4. Copy all three into your sketch or Python script.
 5. The board connects and sends the token as its first line; the mod replies `OK`.
@@ -198,7 +199,8 @@ Generator rules:
 * It sends integers from 0 to 255, at most **20 messages per second** (one per tick) and only when the value changes: the same ceiling as the game's telemetry. At that rate a 2 s sine has 40 points per cycle, enough for it to look like a wave.
 * The key accepts letters, numbers, `_`, `.` and `-`, up to 32 characters.
 * It keeps running if you switch tabs. It **stops** when you press Stop, when you close the Laptop, or if the connection is lost.
-* When it stops on your command or when you close the Laptop, it leaves the board at rest by sending `key:0`.
+* The channel stays fixed while the generator runs. Stop it before changing the channel.
+* When you stop it or close the Laptop, it cancels pending values and requests `key:0` on the channel it started with. If the connection session changed, the previous run sends no commands to the newly connected board.
 
 ::: warning It sends real values to your hardware
 If a servo or motor is connected, start with the amplitude at 25 %.
