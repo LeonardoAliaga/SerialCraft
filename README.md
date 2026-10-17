@@ -2,7 +2,7 @@
 
 ### Lleva tu hardware del mundo real a tu mundo Survival.
 
-- [Documentación](https://github.com/leonardoaliaga/serialcraft)
+- [Documentación](https://serialcraft.xyz) · [Descargar en Modrinth](https://modrinth.com/mod/serialcraft) · [Novedades de 0.4.6-beta](changelogs/0.4.6-beta.es.md)
 
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
@@ -39,7 +39,13 @@ Y en el sentido contrario, ya funcionando:
 
 ### 📶 USB o Wi-Fi
 * **USB Serial:** cable directo, la opción más simple y de menor latencia.
-* **Wi-Fi (TCP):** sin cables, con emparejamiento por token. Ideal para ESP32 y para placas con Linux embebido como el Arduino Uno Q.
+* **Wi-Fi (TCP):** sin cables, con emparejamiento por token y opción de recordar la placa mediante desafío y respuesta HMAC. Ideal para ESP32 y para placas con Linux embebido como el Arduino Uno Q.
+* **Identificación de placas:** reconoce descriptores USB y anuncios del firmware; un adaptador genérico no se confunde con un modelo confirmado.
+
+### 📊 Eventos y Visualizar
+* **Eventos:** envía vida, hambre, hora del mundo y sucesos del juego a tu placa mediante canales `mc_*`.
+* **Visualizar:** observa mensajes RX/TX en una línea de tiempo, compara sensores con su conversión a redstone y prueba un actuador con el generador de ondas en un canal dedicado.
+* La Laptop mantiene el mundo en marcha mientras usas su interfaz, incluso en un jugador.
 
 ### 🌍 Cuatro localizaciones
 Inglés y español, con localizaciones reales para España, México y Argentina (con voseo). El juego utiliza la localización elegida por el jugador.
@@ -56,8 +62,6 @@ El cerebro de la operación: gestiona la conexión con tu dispositivo del mundo 
 * **Uso:** clic derecho para abrir la interfaz. En la bienvenida, conecta tu placa por **USB** (115200 baudios por defecto), o inicia el **servidor Wi-Fi** y copia la IP, el puerto y el token que aparecen en pantalla. Si el servidor no puede iniciarse, verás el error y podrás volver a intentarlo.
 * **Ajustes USB:** desde **Inicio**, elige los **baudios** y pulsa **Aplicar y reconectar**. Deben coincidir con `Serial.begin(...)` o su equivalente en el firmware de la placa para que los datos se entiendan.
 
-![Interfaz de la Laptop](https://cdn.modrinth.com/data/cached_images/2a06adbdf536890ecd23076067815f49d6f7f704_0.webp)
-
 #### Receta
 ![Receta de la Laptop](https://cdn.modrinth.com/data/cached_images/0796082c1617ad4cd6d1c4f3beb989fc89878192_0.webp)
 
@@ -66,13 +70,11 @@ El cerebro de la operación: gestiona la conexión con tu dispositivo del mundo 
 ### 2. El Módulo de E/S
 El puente real: es lo que traduce entre la redstone y tu placa.
 
-* **Sistema de pines:**
-    * **Clic derecho** sobre un conector lateral: lo pone en **IN (verde)**. Lee redstone.
-    * **Shift + clic derecho** sobre un conector lateral: lo pone en **OUT (rojo)**. Emite redstone.
-* **Configuración:** clic derecho sobre el bloque para definir el canal (por ejemplo `led_verde` o `sensor_a`), el modo (entrada o salida) y el tipo de señal (analógica o digital).
+* **Terminales en el mundo:** clic derecho alterna entrada verde/desactivado; Shift + clic derecho alterna salida roja/desactivado. Hay cinco terminales, incluido el inferior, que se selecciona desde arriba cerca del borde sur de la placa.
+* **Configuración:** clic derecho sobre la base para definir el **Canal** (por ejemplo `led_verde` o `sensor_a`), la dirección **Minecraft → Hardware** o **Hardware → Minecraft**, y la señal analógica o digital. El canal debe coincidir con el sketch; `mc_` está reservado.
+* **Diagnóstico:** consulta RX, TX, lecturas, salida y conexión. El editor ofrece ayuda con **?** y confirma el guardado con el servidor.
 * **Compuertas lógicas:** OR combina por máximo, AND por mínimo y XOR por paridad. [Guía del Módulo de E/S](docs/io-module.md).
 
-![Interfaz del Bloque IO](https://cdn.modrinth.com/data/cached_images/151ab59e0b022613135ae530b89378e60e3b8231_0.webp)
 ![Modelo del Bloque IO](https://cdn.modrinth.com/data/cached_images/c20ed9d2c7fe7a3a5a28704394c6a64a6cc2839b.png)
 
 #### Receta
@@ -99,17 +101,17 @@ Este mod es un tributo a esa conexión: usar código para cerrar el circuito ent
 
 * **Minecraft:** 26.2
 * **Java:** 25 o superior
-* **Loader:** Fabric
-* **Dependencia:** [Fabric API](https://modrinth.com/mod/fabric-api)
+* **Loader:** Fabric 0.19.3 o superior
+* **Dependencia:** [Fabric API](https://modrinth.com/mod/fabric-api) para Minecraft 26.2
 * **Hardware:** Arduino Uno R3, Uno Q, ESP32, o cualquier microcontrolador con comunicación serial o TCP.
 
 ### Primeros pasos
 
-1. Instala el mod y la Fabric API en tu carpeta `mods`.
+1. Instala el mod y la Fabric API en tu carpeta `mods`. En multijugador, actualiza SerialCraft en cliente y servidor juntos.
 2. Conecta tu placa por USB (o ponla en la misma red Wi-Fi que tu PC).
-3. Entra a tu mundo y **craftea la Laptop** (receta visible con REI/JEI).
-4. Colócala, haz clic derecho y selecciona tu puerto en la bienvenida de conexión.
-5. Coloca un **Bloque IO**, dale un identificador en *Target Data* y elige su modo: entrada o salida.
+3. Entra a tu mundo y **craftea la Laptop** y el **Bloque Conector** con las recetas incluidas.
+4. Coloca el Conector y haz clic derecho, o abre la Laptop. Selecciona tu puerto USB o la tarjeta Wi-Fi en la bienvenida de conexión.
+5. Coloca un **Módulo de E/S**, define su **Canal** y dirección, y configura los terminales sobre el bloque: entrada verde para leer redstone, salida roja para emitirla.
 6. Carga el sketch en tu placa. Hay [ejemplos listos para probar](docs/ejemplos/) para Uno R3, ESP32 y Uno Q.
 
 ### El protocolo en una línea
@@ -128,6 +130,7 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 
 * **Multijugador:** funciona en un jugador, en LAN y en servidor dedicado. Cada jugador controla **sus propias placas desde su propio PC**, porque el puerto serie vive en el cliente. No existe un modo en el que el servidor sea dueño del hardware, y no es un olvido: es una decisión de arquitectura.
 * **Escala:** hay una prueba funcional con 64 módulos. La capacidad sostenible requiere medir MSPT y tráfico; la lista tiene scroll y los presupuestos de comunicación se comparten por jugador. Ver la [matriz de verificación](docs/io-test-matrix.md).
+* **Señales:** las colas son acotadas. TX indica una escritura al transporte, no una confirmación de que el actuador físico ejecutó la orden; no se garantizan todos los pulsos bajo sobrecarga.
 * **Seguridad:** el canal Wi-Fi va en texto claro. El token evita el acceso casual dentro de tu red, pero no es cifrado. Sirve para una red doméstica o de aula; **no redirijas el puerto en tu router**.
 
 ---
@@ -138,6 +141,14 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 * [Referencia de protocolo](docs/protocol.md)
 * [Ejemplos y rutina de prueba](docs/ejemplos/)
 * [Notas de versión en GitHub Releases](https://github.com/LeonardoAliaga/serialcraft/releases)
+
+### Publicación automática
+
+Al integrar una versión nueva en `main`, GitHub Actions compila, ejecuta las pruebas unitarias y los GameTests, y publica el mismo JAR en GitHub Releases y Modrinth. Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` para GitHub y `changelogs/<mod_version>.en.md` para Modrinth.
+
+La descripción inglesa de Modrinth se mantiene en [MODRINTH.md](MODRINTH.md) y se sincroniza al publicar desde `main`, también en cambios que conservan la versión. El secreto `MODRINTH_TOKEN` necesita **Read versions** y **Create versions**; para actualizar la descripción también necesita **Write projects** (`PROJECT_WRITE`). Si falla solo esa sincronización, el workflow muestra una advertencia y conserva la publicación.
+
+Las versiones `alpha`/`beta` se marcan como prerelease en GitHub; una versión ya publicada se conserva sin duplicarla. Si una publicación queda a medias, usa **Re-run failed jobs** en la ejecución original para conservar el mismo JAR. El workflow también permite ejecución manual en `main`; si recompila un JAR distinto al de una publicación parcial, detiene el reintento para evitar mezclar archivos.
 
 ---
 

@@ -4,6 +4,7 @@ on:
     branches: [test, main]
   pull_request:
     branches: [test, main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -18,6 +19,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew
       - run: ./gradlew build --console=plain
+      - name: Validate release JAR and Spanish/English changelogs
+        run: python3 scripts/publish_release.py --check
       - uses: actions/upload-artifact@v4
         with:
           name: serialcraft-jar
@@ -36,3 +39,38 @@ jobs:
             build/reports/tests/
             build/test-results/
             build/run/gameTest/logs/
+
+  publish:
+    name: Publish GitHub Release and Modrinth
+    needs: build
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: serialcraft-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: serialcraft-jar
+          path: release-dist
+      - name: Publish the verified JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: hLV9sPrg
+        run: python3 scripts/publish_release.py --publish --jar-dir release-dist
+      - name: Sync English Modrinth description
+        id: modrinth-readme
+        continue-on-error: true
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: hLV9sPrg
+        run: python3 scripts/publish_release.py --sync-readme
+      - name: Report description sync permissions
+        if: steps.modrinth-readme.outcome == 'failure'
+        run: |
+          echo '::warning::The release was published, but the Modrinth description could not be synchronized. Check the previous step; editing the project requires the PROJECT_WRITE token scope.'
+          echo 'Modrinth description sync failed. See the Sync English Modrinth description step; PROJECT_WRITE is required in addition to version permissions.' >> "$GITHUB_STEP_SUMMARY"
