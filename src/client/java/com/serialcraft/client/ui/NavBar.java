@@ -16,6 +16,7 @@ public class NavBar {
             SerialCraft.MOD_ID, "textures/gui/logo-txt.png");
     private static final int LOGO_SRC_W = 779;
     private static final int LOGO_SRC_H = 261;
+    private static final int BUTTON_SIDE_MARGIN = 10;
     private static final String VERSION = FabricLoader.getInstance().getModContainer(SerialCraft.MOD_ID)
             .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse("");
     private final CatSprite cat = CatSprite.random();
@@ -40,11 +41,13 @@ public class NavBar {
         int top = UiTheme.contentTop(height) + 4;
         Box sidebar = new Box(margin, top, UiTheme.navWidth(width) - margin,
                 Math.max(100, height - top - margin));
-        int gap = Math.clamp(height / 55, 4, 8);
+        int gap = Math.clamp(height / 45, 6, 10);
         int preferredCat = Math.min(104, Math.max(24, sidebar.width() - 16));
         int count = PanelUI.Tab.values().length;
-        int buttonHeight = Math.clamp((sidebar.height() - preferredCat - 38 - gap * (count - 1)) / count, 20, 28);
-        int buttonsTop = top + 8;
+        int minButtonHeight = height < 220 ? 20 : 24;
+        int buttonHeight = Math.clamp((sidebar.height() - preferredCat - 42 - gap * (count - 1)) / count,
+                minButtonHeight, 32);
+        int buttonsTop = top + 12;
         int buttonsBottom = buttonsTop + count * buttonHeight + (count - 1) * gap;
         int versionY = sidebar.bottom() - 14;
         int catHeight = Math.min(preferredCat, Math.max(0, versionY - buttonsBottom - 16));
@@ -101,12 +104,12 @@ public class NavBar {
     public void init(PanelUI panel, int width, int height, PanelUI.Tab activeTab) {
         Layout layout = layout(width, height);
         Box sidebar = layout.sidebar();
-        int buttonWidth = Math.max(1, sidebar.width() - 12);
+        int buttonWidth = Math.max(1, sidebar.width() - BUTTON_SIDE_MARGIN * 2);
         PanelUI.Tab[] tabs = PanelUI.Tab.values();
         for (int i = 0; i < tabs.length; i++) {
             PanelUI.Tab tab = tabs[i];
             TabStyle style = styleOf(tab);
-            panel.addWidget(new NavTabButton(sidebar.x() + 6,
+            panel.addWidget(new NavTabButton(sidebar.x() + BUTTON_SIDE_MARGIN,
                     layout.buttonsTop() + i * (layout.buttonHeight() + layout.gap()), buttonWidth,
                     layout.buttonHeight(), style.icon(), Component.translatable(style.key()),
                     style.accent(), tab == activeTab, button -> panel.setTab(tab)));

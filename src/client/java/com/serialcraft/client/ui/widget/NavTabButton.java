@@ -32,17 +32,17 @@ public final class NavTabButton extends SolidButton {
                 selected ? (accent & 0x00FFFFFF) | 0xB0000000 : UiTheme.TAB_INACTIVE_BG,
                 selected || hot ? accent : UiTheme.TAB_INACTIVE_BORDER, selected || hot);
         var font = Minecraft.getInstance().font;
-        int iconSize = Math.min(20, h - 6);
-        boolean iconOnly = w < 72;
-        int iconX = iconOnly ? x + (w - iconSize) / 2 : x + 4;
+        int iconSize = Math.min(20, Math.max(18, h - 10));
+        boolean iconOnly = w < 80;
+        int iconX = iconOnly ? x + (w - iconSize) / 2 : x + 8;
         int iconY = y + (h - iconSize) / 2;
         UiDraw.glassSurface(gui, iconX, iconY, iconSize, iconSize,
                 selected ? 0x20FFFFFF : (accent & 0x00FFFFFF) | 0xCC000000, 0, false);
         UiDraw.icon(gui, icon, iconX + (iconSize - 16) / 2, iconY + (iconSize - 16) / 2, 16);
         if (!iconOnly) {
-            int textX = iconX + iconSize + 8;
+            int textX = iconX + iconSize + 10;
             UiDraw.clippedText(gui, font, getMessage(), textX, y + (h - font.lineHeight) / 2 + 1,
-                    Math.max(1, x + w - textX - 6), UiTheme.TEXT_INVERSE, mouseX, mouseY);
+                    Math.max(1, x + w - textX - 10), UiTheme.TEXT_INVERSE, mouseX, mouseY);
         }
         if (isFocused()) gui.outline(x + 2, y + 2, w - 4, h - 4, UiTheme.TEXT_INVERSE);
     }

@@ -296,6 +296,7 @@ public final class UiDraw {
         int titleHeight = (int) Math.ceil(font.lineHeight * scale);
         int titleBoxHeight = (int) Math.ceil(font.lineHeight * UiTheme.TITLE_SCALE);
         int y = UiTheme.headerTitleY(screenHeight, font.lineHeight) + (titleBoxHeight - titleHeight) / 2;
+        if (!UiTheme.compact(screenHeight)) y += 3;
         gui.pose().pushMatrix();
         gui.pose().translate(x, y);
         gui.pose().scale(scale, scale);
