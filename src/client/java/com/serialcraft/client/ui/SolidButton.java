@@ -21,11 +21,11 @@ public class SolidButton extends AbstractWidget {
     }
 
     public enum Variant {
-        PRIMARY(UiTheme.ACCENT_PRIMARY, UiTheme.TEXT_INVERSE),
-        SUCCESS(UiTheme.OK_DARK,        UiTheme.TEXT_INVERSE),
-        DANGER (UiTheme.ERROR_DARK,     UiTheme.TEXT_INVERSE),
-        NEUTRAL(0xFFB0B0B0,             0xFF1F1F1F),
-        SOFT   (0xFFE6E6DF,             0xFF333333);
+        PRIMARY(0xB0007888,                UiTheme.TEXT_INVERSE),
+        SUCCESS(0xB017743A,                UiTheme.TEXT_INVERSE),
+        DANGER (0xB09A123B,                UiTheme.TEXT_INVERSE),
+        NEUTRAL(UiTheme.TAB_INACTIVE_BG,    UiTheme.TEXT_PRIMARY),
+        SOFT   (UiTheme.BG_FIELD,          UiTheme.TEXT_PRIMARY);
 
         public final int baseColor;
         public final int textColor;
@@ -36,7 +36,6 @@ public class SolidButton extends AbstractWidget {
         }
     }
 
-    private static final int BORDER_DARKEN   = 24;
     private static final int HOVER_LIGHTEN   = 18;
     private static final float DISABLED_ALPHA = 0.70f;
     private static final float DISABLED_DESAT = 0.55f;
@@ -75,22 +74,25 @@ public class SolidButton extends AbstractWidget {
     public void extractWidgetRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float partialTick) {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
         int base = variant.baseColor;
-        int background, border;
+        int background;
 
         if (!this.active) {
             int muted   = desaturate(base, DISABLED_DESAT);
             background  = applyAlpha(muted, DISABLED_ALPHA);
-            border      = applyAlpha(darken(muted, 30), DISABLED_ALPHA);
         } else if (isHoveredOrFocused()) {
             background  = lighten(base, HOVER_LIGHTEN);
-            border      = darken(background, BORDER_DARKEN);
         } else {
             background  = base;
-            border      = darken(base, BORDER_DARKEN);
         }
 
-        gui.fill(x, y, x + w, y + h, background);
-        gui.outline(x, y, w, h, border);
+        int accent = switch (variant) {
+            case PRIMARY -> UiTheme.INFO;
+            case SUCCESS -> UiTheme.OK;
+            case DANGER -> UiTheme.ERROR;
+            default -> UiTheme.LINE_STRONG;
+        };
+        int border = active ? isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : accent : UiTheme.LINE;
+        UiDraw.glassSurface(gui, x, y, w, h, background, border, active && isHoveredOrFocused());
         if (active && isFocused()) {
             gui.outline(x, y, w, h, UiTheme.TEXT_PRIMARY);
             gui.outline(x + 1, y + 1, w - 2, h - 2, UiTheme.TEXT_INVERSE);
@@ -140,7 +142,6 @@ public class SolidButton extends AbstractWidget {
     }
 
     private static int lighten(int argb, int amount) { return shift(argb,  amount); }
-    private static int darken (int argb, int amount) { return shift(argb, -amount); }
 
     private static int shift(int argb, int delta) {
         int a = (argb >>> 24) & 0xFF;

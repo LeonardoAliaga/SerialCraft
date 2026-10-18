@@ -2,11 +2,12 @@ package com.serialcraft.client.ui.widget;
 
 import com.serialcraft.client.ui.SolidButton;
 import com.serialcraft.client.ui.UiTheme;
+import com.serialcraft.client.ui.UiDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
-/** Secondary action with a light surface and the application's accent outline. */
+/** Secondary action with a dark glass surface and the application's accent outline. */
 public final class OutlineButton extends SolidButton {
     public OutlineButton(int x, int y, int width, int height, Component label, OnPress onPress) {
         super(x, y, width, height, label, onPress, Variant.SOFT);
@@ -15,8 +16,8 @@ public final class OutlineButton extends SolidButton {
     @Override
     public void extractWidgetRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
-        gui.fill(x, y, x + w, y + h, active && isHoveredOrFocused() ? UiTheme.INFO_BG : UiTheme.BG_CARD);
-        gui.outline(x, y, w, h, !active ? UiTheme.LINE_STRONG : isFocused() ? UiTheme.TEXT_PRIMARY : UiTheme.ACCENT_PRIMARY);
+        UiDraw.glassSurface(gui, x, y, w, h, active && isHoveredOrFocused() ? UiTheme.INFO_BG : UiTheme.BG_FIELD,
+                !active ? UiTheme.LINE : isFocused() ? UiTheme.TEXT_PRIMARY : UiTheme.ACCENT_PRIMARY, active && isHoveredOrFocused());
         if (active && isFocused()) gui.outline(x + 1, y + 1, w - 2, h - 2, UiTheme.TEXT_PRIMARY);
         var font = Minecraft.getInstance().font;
         String text = font.plainSubstrByWidth(getMessage().getString(), Math.max(1, w - 12));

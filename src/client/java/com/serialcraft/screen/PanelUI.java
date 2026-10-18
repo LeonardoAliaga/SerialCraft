@@ -234,7 +234,7 @@ public class PanelUI extends Screen {
 
     @Override
     public void extractBackground(@NotNull GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
-        if (appState == AppState.WELCOME && minecraft.level != null) {
+        if (minecraft.level != null) {
             // Una sola pasada nativa, antes de los fondos y widgets nítidos.
             // Respeta el desenfoque de menús configurado por el jugador.
             extractBlurredBackground(gui);

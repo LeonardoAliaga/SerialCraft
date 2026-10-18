@@ -102,13 +102,10 @@ public class IconTextButton extends AbstractWidget {
             UiDraw.glassSurface(gui, x, y, width, height,
                     active ? backgroundColor : UiTheme.WELCOME_FIELD,
                     isHoveredOrFocused() ? UiTheme.WELCOME_TEXT : borderColor, isHoveredOrFocused());
-        } else if (icon == SpriteIcon.QUEST) {
-            UiDraw.pixelRounded(gui, x, y, width, height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
-            UiDraw.pixelRounded(gui, x + 1, y + 1, width - 2, height - 2,
-                    active ? backgroundColor : UiTheme.LINE);
         } else {
-            gui.fill(x, y, x + width, y + height, active ? backgroundColor : UiTheme.LINE);
-            gui.outline(x, y, width, height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
+            int background = (backgroundColor >>> 24) == 255 ? UiTheme.glassTint(backgroundColor) : backgroundColor;
+            UiDraw.glassSurface(gui, x, y, width, height, active ? background : UiTheme.BG_FIELD,
+                    isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor, active && isHoveredOrFocused());
         }
         if (isFocused()) {
             int inset = glassStyle ? 2 : 1;

@@ -46,8 +46,8 @@ public class HomePage implements Page {
     private static final int GAP = UiTheme.SECTION_GAP;
     private static final int HISTORY_LIMIT = 64;
     private static final int LINE_HEIGHT = 11;
-    private static final int TILE_GAP = 14;
-    private static final int TILE_MIN_WIDTH = 128;
+    private static final int TILE_GAP = 10;
+    private static final int TILE_MIN_WIDTH = 76;
     private static final int CHIP_HEIGHT = 20;
     private static final int CHIP_GAP = 4;
     private static final int TERMINAL_MIN_HEIGHT = 222;
@@ -82,7 +82,7 @@ public class HomePage implements Page {
     private PanelUI panel;
     private Font font;
     private UiViewport viewport;
-    private Rect view, summary, terminal, console, modelBadge, footer;
+    private Rect view, overview, summary, terminal, console, modelBadge, footer;
     private LinkState state;
     private EditBox commandBox;
     private String expandedHelp = "";
@@ -118,12 +118,14 @@ public class HomePage implements Page {
         view = new Rect(contentX - 2, top, contentWidth + 12,
                 Math.max(24, screenHeight - UiTheme.contentMargin(screenWidth) - top));
         viewport = new UiViewport(scroll, view);
-        int mainBottom = buildMain(top + 8);
+        int mainBottom = buildMain(top + 4);
         int zoneY = mainBottom + GAP;
-        boolean columns = contentWidth >= 530;
+        boolean columns = contentWidth >= 410;
         int leftWidth = columns ? (contentWidth - GAP) / 2 : contentWidth;
-        int settingsBottom = state.wifi() ? buildWifi(contentX, zoneY, leftWidth)
-                : !state.endpoint().isEmpty() ? buildUsb(contentX, zoneY, leftWidth) : zoneY;
+        int detailsBottom = buildDetails(contentX, zoneY, leftWidth);
+        int settingsY = detailsBottom + GAP;
+        int settingsBottom = state.wifi() ? buildWifi(contentX, settingsY, leftWidth)
+                : !state.endpoint().isEmpty() ? buildUsb(contentX, settingsY, leftWidth) : detailsBottom;
         int terminalX = columns ? contentX + leftWidth + GAP : contentX;
         int terminalY = columns ? zoneY : settingsBottom + (settingsBottom > zoneY ? GAP : 0);
         int terminalWidth = columns ? contentWidth - leftWidth - GAP : contentWidth;
@@ -131,7 +133,7 @@ public class HomePage implements Page {
                 columns ? Math.max(TERMINAL_MIN_HEIGHT, settingsBottom - zoneY) : TERMINAL_MIN_HEIGHT, commandDraft);
         if (columns && settingsBottom > zoneY) {
             // Las dos tarjetas de la fila comparten altura: la corta se estira a la larga.
-            final int rowBottom = Math.max(settingsBottom, terminalBottom), rowTop = zoneY, rowX = contentX;
+            final int rowBottom = Math.max(settingsBottom, terminalBottom), rowTop = settingsBottom > detailsBottom ? settingsY : zoneY, rowX = contentX;
             surfaces.replaceAll(s -> s.bounds().x() == rowX && s.bounds().y() == rowTop
                     ? new Surface(new Rect(rowX, rowTop, s.bounds().width(), rowBottom - rowTop), s.headerHeight(), s.background()) : s);
         }
@@ -171,29 +173,27 @@ public class HomePage implements Page {
                 !wireless && serial.canRememberSettings(), wireless && !wifi.getPairingToken().isEmpty());
     }
 
-    /** Session summary above, detected information and connection state on a quieter surface below. */
+    /** The active device occupies a single full-width status card. */
     private int buildMain(int top) {
-        int left = contentX + PAD;
-        int inner = contentWidth - PAD * 2;
-        int summaryY = sectionStart(tr("main.title"), contentX, top, contentWidth, "identity");
+        int badgeWidth = Math.min(contentWidth / 3, font.width(connectionState()) + 8);
+        headings.add(new Heading(tr("main.title"), contentX + UiTheme.CARD_TITLE_INSET, cardTitleY(top),
+                Math.max(1, contentWidth - UiTheme.CARD_TITLE_INSET - PAD - badgeWidth - 12), true));
+        int summaryY = top + UiTheme.CARD_HEADER_HEIGHT + PAD;
         int summaryBottom = buildSummary(summaryY);
         int overviewBottom = summaryBottom + PAD;
-        surfaces.add(new Surface(new Rect(contentX, top, contentWidth, overviewBottom - top),
-                UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_CARD));
+        overview = new Rect(contentX, top, contentWidth, overviewBottom - top);
+        surfaces.add(new Surface(overview, UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_CARD));
+        return overviewBottom;
+    }
 
-        int detailsTop = overviewBottom + GAP;
-        int groupsY = detailsTop + PAD;
-        boolean split = contentWidth >= 620;
-        int groupGap = 26;
-        int identityWidth = split ? (inner - groupGap) / 2 : inner;
-        int identityBottom = buildIdentity(left, groupsY, identityWidth);
-        int connectionX = split ? left + identityWidth + groupGap : left;
-        int connectionY = split ? groupsY : identityBottom + 12;
-        int connectionWidth = split ? inner - identityWidth - groupGap : inner;
-        int connectionBottom = buildConnection(connectionX, connectionY, connectionWidth);
-        int bottom = Math.max(identityBottom, connectionBottom) + PAD;
-        surfaces.add(new Surface(new Rect(contentX, detailsTop, contentWidth, bottom - detailsTop),
-                0, UiTheme.BG_DETAILS));
+    private int buildDetails(int x, int top, int width) {
+        int y = sectionStart(tr("properties"), x, top, width, "identity");
+        int inner = width - PAD * 2;
+        y = buildIdentity(x + PAD, y, inner);
+        y = buildConnection(x + PAD, y + 10, inner);
+        int bottom = y + PAD;
+        surfaces.add(new Surface(new Rect(x, top, width, bottom - top),
+                UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_DETAILS));
         return bottom;
     }
 
@@ -241,7 +241,7 @@ public class HomePage implements Page {
         } else {
             y = tiles(x, y, width,
                     new Stat(tr("port"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.TEXT_PRIMARY),
-                    new Stat(tr("baud"), baud(), UiTheme.ACCENT_HOME_BORDER),
+                    new Stat(tr("baud"), baud(), UiTheme.INFO_DARK),
                     new Stat(tr("protocol"), tr("protocol_usb"), UiTheme.TEXT_PRIMARY),
                     new Stat(tr("usb.state"), connectionState(), statusColor()));
         }
@@ -428,9 +428,10 @@ public class HomePage implements Page {
             focusKey = "help." + topic;
             panel.refresh();
         });
-        button.setColors(expandedHelp.equals(topic) ? UiTheme.ACCENT_HOME_BORDER : UiTheme.ACCENT_HOME,
-                UiTheme.ACCENT_HOME_BORDER,
+        button.setColors(UiTheme.BG_FIELD,
+                expandedHelp.equals(topic) ? UiTheme.TEXT_PRIMARY : UiTheme.INFO,
                 UiTheme.TEXT_INVERSE);
+        button.withGlassStyle();
         input("help." + topic, button, y);
     }
 
@@ -511,15 +512,17 @@ public class HomePage implements Page {
         gui.enableScissor(view.x(), view.y(), view.right() - 8, view.bottom());
         for (Surface surface : surfaces) {
             Rect r = surface.bounds();
+            int accent = r.equals(overview) ? statusColor() : r.equals(terminal) ? UiTheme.INFO : UiTheme.ACCENT_HOME;
             UiDraw.dashboardCard(gui, r.x(), drawY(r.y()), r.width(), r.height(),
-                    surface.headerHeight(), surface.background(), UiTheme.ACCENT_HOME);
+                    surface.headerHeight(), surface.background(), accent);
         }
         renderSummary(gui, mx, my);
         for (Heading h : headings) {
             if (h.cardTitle())
-                UiDraw.dashboardTitle(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), mx, my);
+                UiDraw.dashboardTitle(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), mx, my,
+                        overview.contains(h.x(), h.y()) ? statusColor() : UiTheme.TEXT_PRIMARY);
             else
-                UiDraw.dashboardSectionHeader(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), UiTheme.ACCENT_HOME_BORDER);
+                UiDraw.dashboardSectionHeader(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), UiTheme.INFO_DARK);
         }
         for (Text t : texts) {
             if (t.background() == 0) UiDraw.wrappedText(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.color());
@@ -556,7 +559,7 @@ public class HomePage implements Page {
     private void renderSummary(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = summary.x(), y = drawY(summary.y()), width = summary.width();
         boolean beside = width >= 400;
-        UiDraw.pixelRounded(gui, x + PAD, y + 4, 38, 38, UiTheme.ACCENT_HOME);
+        UiDraw.glassSurface(gui, x + PAD, y + 4, 38, 38, 0xB00090AF, UiTheme.INFO, false);
         UiDraw.icon(gui, state.wifi() ? SpriteIcon.WIFI : SpriteIcon.USB, x + PAD + 8, y + 12, 22);
 
         int nameX = x + PAD + 50;
@@ -576,9 +579,9 @@ public class HomePage implements Page {
                 Math.max(1, (beside ? focusWidgets.get("disconnect").getX() : x + width - PAD) - nameX - 10),
                 UiTheme.TEXT_SECONDARY, mouseX, mouseY);
         int badgeWidth = Math.min(width / 3, font.width(connectionState()) + 8);
-        if (beside)
-            UiDraw.badge(gui, font, x + width - PAD - badgeWidth, y + 37,
-                    badgeWidth, connectionState(), statusBackground(), statusColor(), mouseX, mouseY);
+        UiDraw.badge(gui, font, x + width - PAD - badgeWidth,
+                drawY(overview.y()) + (UiTheme.CARD_HEADER_HEIGHT - 14) / 2,
+                badgeWidth, connectionState(), statusBackground(), statusColor(), mouseX, mouseY);
     }
 
     private void renderFooter(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
@@ -602,7 +605,7 @@ public class HomePage implements Page {
         int x = terminal.x(), y = drawY(terminal.y());
         int iconX = x + UiTheme.CARD_TITLE_INSET;
         int iconY = y + (UiTheme.CARD_HEADER_HEIGHT - 20) / 2;
-        UiDraw.pixelRounded(gui, iconX, iconY, 20, 20, UiTheme.ACCENT_HOME);
+        UiDraw.glassSurface(gui, iconX, iconY, 20, 20, 0xB00090AF, UiTheme.INFO, false);
         UiDraw.icon(gui, SpriteIcon.TERMINAL, iconX + 2, iconY + 2, 16);
         UiDraw.dashboardTitle(gui, font, tr("terminal"), iconX + 28, cardTitleY(y),
                 terminal.width() - UiTheme.CARD_TITLE_INSET - PAD - 28, mouseX, mouseY);
