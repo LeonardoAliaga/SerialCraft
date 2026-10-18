@@ -271,16 +271,13 @@ public final class IoEditor {
 
     public void render(GuiGraphicsExtractor gui, Font font, int mouseX, int mouseY) {
         var box = layout.panel();
-        UiDraw.pageTitle(gui, font, box.x(),
-                Component.translatable("gui.serialcraft.boards.title"), UiTheme.ACCENT_BOARDS,
-                Component.translatable("gui.serialcraft.boards.subtitle"));
         Component identity = Component.literal(draft.values().name()).append(" · ").append(Component.translatable(
                 "gui.serialcraft.boards.pos", draft.target().pos().getX(), draft.target().pos().getY(), draft.target().pos().getZ()));
-        if (panel.height >= 220) {
-            gui.text(font, font.plainSubstrByWidth(identity.getString(), box.width()), box.x(), 44, UiTheme.TEXT_SECONDARY, false);
-            if (!modal() && mouseX >= box.x() && mouseX < box.right() && mouseY >= 41 && mouseY < 55)
-                gui.setTooltipForNextFrame(identity, mouseX, mouseY);
-        }
+        int textRight = layout.tabsBesideTitle() ? layout.configurationTab().x() - 12 : box.right();
+        UiDraw.pageHeader(gui, font, panel.width, panel.height,
+                Component.translatable("gui.serialcraft.boards.title"), UiTheme.ACCENT_BOARDS,
+                Component.translatable("gui.serialcraft.boards.subtitle"), identity,
+                textRight, textRight, modal() ? -1 : mouseX, modal() ? -1 : mouseY);
         var area = layout.viewport();
         gui.enableScissor(area.x(), area.y(), area.right(), area.bottom());
         int offset = area.y() - (int) scroll().getScrollAmount();

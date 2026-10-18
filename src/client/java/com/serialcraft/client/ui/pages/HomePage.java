@@ -505,8 +505,8 @@ public class HomePage implements Page {
 
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
-        UiDraw.pageTitle(gui, font, contentX, tr("title"), UiTheme.ACCENT_HOME, tr("subtitle"));
-        UiDraw.pageDescription(gui, font, tr("description"), contentX, contentWidth, height, mouseX, mouseY);
+        UiDraw.pageHeader(gui, font, width, height, tr("title"), UiTheme.ACCENT_HOME,
+                tr("subtitle"), tr("description"), mouseX, mouseY);
         int mx = view.contains(mouseX, mouseY) ? mouseX : -1;
         int my = mx == -1 ? -1 : mouseY;
         gui.enableScissor(view.x(), view.y(), view.right() - 8, view.bottom());

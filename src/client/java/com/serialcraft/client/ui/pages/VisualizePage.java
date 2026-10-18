@@ -475,12 +475,10 @@ public class VisualizePage implements Page {
         this.screenW = screenWidth;
         this.screenH = screenHeight;
 
-        int x = UiTheme.contentX(screenWidth);
-        UiDraw.pageTitle(gui, font, x,
+        UiDraw.pageHeader(gui, font, screenWidth, screenHeight,
                 Component.translatable("gui.serialcraft.visualize.title"), UiTheme.ACCENT_VISUALIZE,
-                Component.translatable("gui.serialcraft.visualize.subtitle"));
-        UiDraw.pageDescription(gui, font, Component.translatable("gui.serialcraft.visualize.description"),
-                x, UiTheme.contentWidth(screenWidth), screenHeight, mouseX, mouseY);
+                Component.translatable("gui.serialcraft.visualize.subtitle"),
+                Component.translatable("gui.serialcraft.visualize.description"), mouseX, mouseY);
 
         Geometry g = geometry();
         if (view == View.TIMELINE) renderTimeline(gui, font, g);

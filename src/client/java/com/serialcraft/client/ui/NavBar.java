@@ -53,17 +53,20 @@ public class NavBar {
     }
 
     public void render(GuiGraphicsExtractor gui, int width, int height) {
-        int headerBottom = UiTheme.contentTop(height) - 6;
         gui.fill(0, 0, width, height, UiTheme.BG_APP);
-        UiDraw.glassSurface(gui, 10, 8, width - 20, headerBottom - 8,
-                UiTheme.BG_HEADER, UiTheme.LINE_STRONG, false);
-        int brandWidth = Math.max(20, UiTheme.navWidth(width) - 10);
-        UiDraw.glassSurface(gui, 10, 8, brandWidth, headerBottom - 8, UiTheme.BG_NAV, 0, false);
-        int logoWidth = Math.min(brandWidth - 8, (headerBottom - 16) * LOGO_SRC_W / LOGO_SRC_H);
+        var header = UiTheme.headerLayout(width, height);
+        UiDraw.angledGlassSurface(gui, header.brandX(), header.y(), header.brandWidth(), header.height(),
+                0, header.slant(), UiTheme.HEADER_BRAND, UiTheme.HEADER_BRAND_BORDER);
+        UiDraw.angledGlassSurface(gui, header.panelX(), header.y(), header.panelWidth(), header.height(),
+                header.slant(), 0, UiTheme.BG_HEADER, UiTheme.HEADER_BORDER);
+        int logoAreaWidth = Math.max(1, header.brandWidth() - header.slant() - 10);
+        int logoWidth = Math.min(logoAreaWidth, (header.height() - 10) * LOGO_SRC_W / LOGO_SRC_H);
         int logoHeight = logoWidth * LOGO_SRC_H / LOGO_SRC_W;
         gui.blit(RenderPipelines.GUI_TEXTURED, LOGO_TEXTURE,
-                10 + (brandWidth - logoWidth) / 2, 8 + (headerBottom - 8 - logoHeight) / 2,
+                header.brandX() + 5 + (logoAreaWidth - logoWidth) / 2,
+                header.y() + (header.height() - logoHeight) / 2,
                 0, 0, logoWidth, logoHeight, LOGO_SRC_W, LOGO_SRC_H, LOGO_SRC_W, LOGO_SRC_H);
+        renderHeaderDetails(gui, width, height, header);
 
         Layout layout = layout(width, height);
         Box sidebar = layout.sidebar();
@@ -76,6 +79,23 @@ public class NavBar {
         version = font.plainSubstrByWidth(version, Math.max(1, sidebar.width() - 10));
         gui.text(font, version, sidebar.x() + (sidebar.width() - font.width(version)) / 2,
                 layout.versionY(), UiTheme.TEXT_ON_DARK, true);
+    }
+
+    private static void renderHeaderDetails(GuiGraphicsExtractor gui, int width, int height,
+                                             UiTheme.HeaderLayout header) {
+        if (width < 640 || UiTheme.compact(height)) return;
+        int right = width - 16;
+        int top = header.y() + 9;
+        gui.fill(right - 13, top, right - 5, top + 8, UiTheme.HEADER_GLINT);
+        gui.fill(right - 22, top + 9, right - 17, top + 14, UiTheme.HEADER_GLINT);
+        gui.fill(right - 13, top + 9, right - 5, top + 17, UiTheme.HEADER_GLINT);
+        for (int i = 0; i < 3; i++) {
+            for (int row = 0; row < 4; row++) {
+                int x = right - 34 + i * 9 + 3 - row;
+                gui.fill(x, header.bottom() - 6 + row, x + 5, header.bottom() - 5 + row,
+                        UiTheme.HEADER_DETAIL);
+            }
+        }
     }
 
     public void init(PanelUI panel, int width, int height, PanelUI.Tab activeTab) {

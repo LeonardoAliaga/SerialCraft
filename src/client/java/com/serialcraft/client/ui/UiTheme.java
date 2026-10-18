@@ -38,6 +38,11 @@ public final class UiTheme {
     public static final int WELCOME_ERROR      = 0xFFFFB7AE;
 
     public static final int BG_HEADER = 0xA6E1EEFA;
+    public static final int HEADER_BRAND = 0xB0007894;
+    public static final int HEADER_BORDER = 0xA088DDF3;
+    public static final int HEADER_BRAND_BORDER = 0xC443DFED;
+    public static final int HEADER_GLINT = 0x30FFFFFF;
+    public static final int HEADER_DETAIL = 0xA326D8EB;
     public static final int HEADER_TEXT = 0xFF10212C;
     public static final int HEADER_TEXT_MUTED = 0xFF334E5E;
 
@@ -122,16 +127,42 @@ public final class UiTheme {
     /** Altura de una fila de tarjeta, incluido el hueco inferior. */
     public static final int CARD_ROW_HEIGHT   = 52;
     public static final int CARD_HEIGHT       = 48;
-    public static final int TITLE_Y           = 16;
     public static final float TITLE_SCALE     = 1.8f;
     /** Pagina 1.8x; tarjetas 1.2x en negrita; subtitulos 1x en negrita; datos 1x. */
     public static final float CARD_TITLE_SCALE = 1.2f;
     public static final int CARD_HEADER_HEIGHT = 36;
     public static final int CARD_TITLE_INSET = 18;
 
-    /** Linea de descripcion bajo el titulo, comun a todas las paginas. */
-    public static final int DESCRIPTION_Y     = 45;
     public static final int SCROLLBAR_WIDTH   = 6;
+
+    /** Both glass pieces and every page label use the same header geometry. */
+    public record HeaderLayout(int y, int height, int slant, int brandX, int brandWidth,
+                               int panelX, int panelWidth, int textX, int textRight) {
+        public int bottom() { return y + height; }
+    }
+
+    public static HeaderLayout headerLayout(int screenWidth, int screenHeight) {
+        int height = contentTop(screenHeight) - 14;
+        int slant = Math.min(16, height / 3);
+        int brandRight = navWidth(screenWidth);
+        int panelX = brandRight - slant + 6;
+        return new HeaderLayout(8, height, slant, 10, Math.max(1, brandRight - 10),
+                panelX, Math.max(1, screenWidth - 10 - panelX),
+                brandRight + Math.max(16, contentMargin(screenWidth)),
+                screenWidth - (screenWidth >= 640 ? 44 : 22));
+    }
+
+    /** The full title/description block is vertically centered inside the glass. */
+    public static int headerTitleY(int screenHeight, int lineHeight) {
+        int titleHeight = (int) Math.ceil(lineHeight * TITLE_SCALE);
+        int blockHeight = titleHeight + (compact(screenHeight) ? 0 : 5 + lineHeight);
+        int height = contentTop(screenHeight) - 14;
+        return 8 + (height - blockHeight) / 2;
+    }
+
+    public static int headerDescriptionY(int screenHeight, int lineHeight) {
+        return headerTitleY(screenHeight, lineHeight) + (int) Math.ceil(lineHeight * TITLE_SCALE) + 5;
+    }
 
     /** Pantallas bajas: se omite la descripcion y el contenido sube. */
     public static boolean compact(int screenHeight) { return screenHeight < 280; }

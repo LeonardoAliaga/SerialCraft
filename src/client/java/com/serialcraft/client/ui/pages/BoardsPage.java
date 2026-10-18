@@ -120,8 +120,17 @@ public class BoardsPage implements Page {
         ClientPlayNetworking.send(BoardListRequestPayload.INSTANCE);
     }
     private int cardTop() { return UiTheme.contentTop(height); }
+    private Component headerCount() {
+        return Component.translatable(boards.size() == 1
+                ? "gui.serialcraft.io.list.count_one" : "gui.serialcraft.io.list.count_many", boards.size());
+    }
     /** Fila de herramientas: bajo el titulo, o junto a el en pantallas compactas. */
-    private int toolbarY() { return UiTheme.compact(height) ? 18 : 40; }
+    private int toolbarY() {
+        var header = UiTheme.headerLayout(width, height);
+        int lineHeight = Minecraft.getInstance().font.lineHeight;
+        return UiTheme.compact(height) ? header.y() + (header.height() - 18) / 2
+                : UiTheme.headerDescriptionY(height, lineHeight) - (18 - lineHeight) / 2;
+    }
     private int cardX() { return UiTheme.contentX(width) + CARD_MARGIN; }
     private int viewportHeight() { return Math.max(1, height - UiTheme.contentMargin(width) - cardTop()); }
 
@@ -151,11 +160,13 @@ public class BoardsPage implements Page {
         scroll.update(viewportHeight(), Math.max(0, rows * CARD_ROW - (CARD_ROW - CARD_HEIGHT)));
         int cardWidth = cardWidth();
 
-        var refresh = new IconTextButton(cardX() + listWidth() - 88, toolbarY(), 88, 18, SpriteIcon.LIST,
+        var refresh = new IconTextButton(UiTheme.headerLayout(width, height).textRight() - 88,
+                toolbarY(), 88, 18, SpriteIcon.LIST,
                 Component.translatable("gui.serialcraft.io.list.refresh"),
                 b -> { requestList(); panel.refresh(); },
                 UiTheme.ACCENT_PRIMARY, UiTheme.ACCENT_PRIMARY_DARK);
         refresh.active = !awaitingResponse;
+        refresh.setTooltip(Tooltip.create(headerCount()));
         panel.addInputWidget(refresh);
         listHeaderButton = refresh;
 
@@ -215,16 +226,22 @@ public class BoardsPage implements Page {
 
         int x = cardX();
         int cardWidth = cardWidth();
-        UiDraw.pageTitle(gui, font, UiTheme.contentX(width),
-                Component.translatable("gui.serialcraft.boards.title"), UiTheme.ACCENT_BOARDS,
-                Component.translatable("gui.serialcraft.boards.subtitle"));
-        Component count = Component.translatable(boards.size() == 1
-                ? "gui.serialcraft.io.list.count_one" : "gui.serialcraft.io.list.count_many", boards.size());
+        Component title = Component.translatable("gui.serialcraft.boards.title");
+        Component subtitle = Component.translatable("gui.serialcraft.boards.subtitle");
+        Component count = headerCount();
+        var header = UiTheme.headerLayout(width, height);
         int countWidth = font.width(count);
         int buttonX = listHeaderButton.getX();
-        gui.text(font, count, buttonX - 10 - countWidth, toolbarY() + 5, UiTheme.TEXT_SECONDARY, false);
-        UiDraw.pageDescription(gui, font, Component.translatable("gui.serialcraft.boards.description"),
-                x, Math.max(40, buttonX - countWidth - 28 - x), height, mouseX, mouseY);
+        int countX = Math.max(header.textX(), buttonX - 10 - countWidth);
+        boolean showCount = !UiTheme.compact(height)
+                || countX - 12 - header.textX() >= (font.width(title) + font.width(subtitle) + 4) * 1.2f;
+        int textRight = (showCount ? countX : buttonX) - 12;
+        UiDraw.pageHeader(gui, font, width, height, title, UiTheme.ACCENT_BOARDS, subtitle,
+                Component.translatable("gui.serialcraft.boards.description"),
+                UiTheme.compact(height) ? textRight : width, textRight, mouseX, mouseY);
+        if (showCount)
+            UiDraw.clippedText(gui, font, count, countX, toolbarY() + (18 - font.lineHeight) / 2,
+                    buttonX - 10 - countX, UiTheme.HEADER_TEXT_MUTED, mouseX, mouseY);
         listHeaderButton.extractRenderState(gui, mouseX, mouseY, 0);
 
         if (boards.isEmpty()) {

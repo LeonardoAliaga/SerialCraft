@@ -1,7 +1,6 @@
 package com.serialcraft.client.ui;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -89,6 +88,31 @@ public final class UiDraw {
         gui.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, color);
     }
 
+    /** Parallel diagonal cuts; each translucent pixel belongs to a single fill band. */
+    public static void angledGlassSurface(GuiGraphicsExtractor gui, int x, int y, int width, int height,
+                                           int leftSlant, int rightSlant, int background, int border) {
+        if (width < 6 || height < 6) return;
+        for (int row = 0; row < height; row++) {
+            int corner = row == 0 || row == height - 1 ? 3 : row == 1 || row == height - 2 ? 1 : 0;
+            int left = x + (leftSlant == 0 ? corner : leftSlant - row * leftSlant / (height - 1));
+            int right = x + width - (rightSlant == 0 ? corner : row * rightSlant / (height - 1));
+            if (right <= left) continue;
+            if (row == 0 || row == height - 1 || right - left <= 2) {
+                gui.fill(left, y + row, right, y + row + 1, border);
+                continue;
+            }
+            int lift = Math.max(0, 22 - row * 44 / height);
+            if (row == 3) lift += 18;
+            int color = (background & 0xFF000000)
+                    | Math.min(255, ((background >> 16) & 255) + lift) << 16
+                    | Math.min(255, ((background >> 8) & 255) + lift) << 8
+                    | Math.min(255, (background & 255) + lift);
+            gui.fill(left, y + row, left + 1, y + row + 1, border);
+            gui.fill(left + 1, y + row, right - 1, y + row + 1, color);
+            gui.fill(right - 1, y + row, right, y + row + 1, border);
+        }
+    }
+
     /** Shared card surface; a zero-height header leaves a quiet background for details. */
     public static void dashboardCard(GuiGraphicsExtractor gui, int x, int y, int width, int height,
                                      int headerHeight, int background, int accent) {
@@ -122,13 +146,6 @@ public final class UiDraw {
         if (tint != 0 && headerHeight >= 5)
             pixelRoundedTop(gui, x + 1, y + 1, width - 2, Math.min(headerHeight, height - 6), tint);
         if ((accent >>> 24) != 0) gui.fill(x + 5, y + 9, x + 8, y + height - 9, accent);
-    }
-
-    /** Descripcion de pagina bajo el titulo. Se omite en pantallas compactas. */
-    public static void pageDescription(GuiGraphicsExtractor gui, Font font, Component text,
-                                       int x, int width, int screenHeight, int mouseX, int mouseY) {
-        if (UiTheme.compact(screenHeight)) return;
-        clippedText(gui, font, text, x, UiTheme.DESCRIPTION_Y, width, UiTheme.HEADER_TEXT_MUTED, mouseX, mouseY);
     }
 
     /** Color de una linea de consola segun su prefijo; misma regla en Inicio y Eventos. */
@@ -259,25 +276,38 @@ public final class UiDraw {
             gui.setTooltipForNextFrame(title, mouseX, mouseY);
     }
 
-    /** Cabecera de pagina a escala aumentada, seguida por la descripcion a escala nativa. */
-    public static void pageTitle(GuiGraphicsExtractor gui, Font font, int x,
-                                 Component accent, int accentColor, Component rest) {
-        int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-        int available = Math.max(1, screenWidth - x - UiTheme.contentMargin(screenWidth));
+    public static void pageHeader(GuiGraphicsExtractor gui, Font font, int screenWidth, int screenHeight,
+                                   Component accent, int accentColor, Component rest, Component description,
+                                   int mouseX, int mouseY) {
+        int right = UiTheme.headerLayout(screenWidth, screenHeight).textRight();
+        pageHeader(gui, font, screenWidth, screenHeight, accent, accentColor, rest, description,
+                right, right, mouseX, mouseY);
+    }
+
+    /** Exact shared origin, common title baseline, and room for optional header controls. */
+    public static void pageHeader(GuiGraphicsExtractor gui, Font font, int screenWidth, int screenHeight,
+                                   Component accent, int accentColor, Component rest, Component description,
+                                   int titleRight, int descriptionRight, int mouseX, int mouseY) {
+        var header = UiTheme.headerLayout(screenWidth, screenHeight);
+        int x = header.textX();
+        int available = Math.max(1, Math.min(titleRight, header.textRight()) - x);
         float scale = Math.min(UiTheme.TITLE_SCALE,
                 (float) available / Math.max(1, font.width(accent) + font.width(rest) + 4));
+        int titleHeight = (int) Math.ceil(font.lineHeight * scale);
+        int titleBoxHeight = (int) Math.ceil(font.lineHeight * UiTheme.TITLE_SCALE);
+        int y = UiTheme.headerTitleY(screenHeight, font.lineHeight) + (titleBoxHeight - titleHeight) / 2;
         gui.pose().pushMatrix();
+        gui.pose().translate(x, y);
         gui.pose().scale(scale, scale);
-
-        int scaledX = (int) (x / scale);
-        int scaledY = (int) (UiTheme.TITLE_Y / scale);
-
-        String accentText = accent.getString();
-        gui.text(font, accentText, scaledX, scaledY, accentColor, false);
-        gui.text(font, rest.getString(),
-                scaledX + font.width(accentText) + 4, scaledY, UiTheme.HEADER_TEXT, false);
-
+        gui.text(font, accent, 0, 0, accentColor, false);
+        gui.text(font, rest, font.width(accent) + 4, 0, UiTheme.HEADER_TEXT, false);
         gui.pose().popMatrix();
+        if (description != null && !UiTheme.compact(screenHeight)) {
+            int descriptionWidth = Math.min(descriptionRight, header.textRight()) - x;
+            if (descriptionWidth > 0)
+                clippedText(gui, font, description, x, UiTheme.headerDescriptionY(screenHeight, font.lineHeight),
+                        descriptionWidth, UiTheme.HEADER_TEXT_MUTED, mouseX, mouseY);
+        }
     }
 
     /** Fila etiqueta/valor con la columna de valores alineada. */

@@ -161,11 +161,10 @@ public class EventsPage implements Page {
     @Override
     public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font,
                        int screenWidth, int screenHeight) {
-        UiDraw.pageTitle(gui, font, contentX,
+        UiDraw.pageHeader(gui, font, screenWidth, screenHeight,
                 Component.translatable("gui.serialcraft.events.title"), UiTheme.ACCENT_EVENTS,
-                Component.translatable("gui.serialcraft.events.subtitle"));
-        UiDraw.pageDescription(gui, font, Component.translatable("gui.serialcraft.events.description"),
-                contentX, contentWidth, screenHeight, mouseX, mouseY);
+                Component.translatable("gui.serialcraft.events.subtitle"),
+                Component.translatable("gui.serialcraft.events.description"), mouseX, mouseY);
 
         int mx = view.contains(mouseX, mouseY) ? mouseX : -1;
         int my = mx == -1 ? -1 : mouseY;

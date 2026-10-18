@@ -29,7 +29,7 @@ public record IoEditorLayout(Rect panel, Rect viewport, Rect status, Rect save, 
         }
         int groupWidth = firstWidth + tabGap + secondWidth;
         boolean tabsBesideTitle = titleWidth + groupWidth + 16 <= width;
-        int tabsY = tabsBesideTitle ? 18 : compact ? 40 : 62;
+        int tabsY = tabsBesideTitle ? (screenHeight < 280 ? 9 : 20) : compact ? 40 : 62;
         Rect configurationTab = new Rect(panel.right() - groupWidth, tabsY, firstWidth, 24);
         Rect diagnosticsTab = new Rect(panel.right() - secondWidth, tabsY, secondWidth, 24);
         int headerHeight = tabsBesideTitle ? compact ? 44 : 54 : compact ? 62 : 88;
