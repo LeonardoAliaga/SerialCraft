@@ -2,12 +2,12 @@ name: Validate VitePress documentation
 
 on:
   push:
-    branches: [test]
+    branches: [main, test]
     paths:
       - 'docs/**'
       - '.github/workflows/validate-docs.yml'
   pull_request:
-    branches: [test]
+    branches: [main, test]
     paths:
       - 'docs/**'
       - '.github/workflows/validate-docs.yml'
