@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { registerMediaSlots } from './media-slots.mts'
+import { seoHead } from './seo.mts'
 
 export default defineConfig({
   // Configuración compartida
@@ -7,31 +8,14 @@ export default defineConfig({
   sitemap: { hostname: 'https://serialcraft.xyz' },
   lastUpdated: true,
   title: "SerialCraft",
-  description: "Arduino to Minecraft Bridge",
+  description: "Conecta Arduino y ESP32 con Minecraft: instalación, circuitos, código y tutoriales de SerialCraft.",
   base: "/",
+  // Keep .html URLs consistent with GitHub Pages, internal links and sitemap.
+  cleanUrls: false,
+  transformHead: seoHead,
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],
-    [
-      'script',
-      { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-DNHRBCWGDX' }
-    ],
-    [
-      'script',
-      {},
-      `window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-DNHRBCWGDX');`
-    ],
-    // Google AdSense
-    [
-      'script',
-      {
-        async: '',
-        src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9305749497490512',
-        crossorigin: 'anonymous'
-      }
-    ]
+    ['meta', { name: 'google-adsense-account', content: 'ca-pub-9305749497490512' }]
   ],
 
   // Configuración de Idiomas

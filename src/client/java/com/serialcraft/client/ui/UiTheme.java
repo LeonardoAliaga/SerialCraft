@@ -37,14 +37,14 @@ public final class UiTheme {
     public static final int WELCOME_TOKEN      = 0x90304F35;
     public static final int WELCOME_ERROR      = 0xFFFFB7AE;
 
-    public static final int BG_HEADER = 0xA6E1EEFA;
-    public static final int HEADER_BRAND = 0xB0007894;
+    public static final int BG_HEADER = 0xCF101C29;
+    public static final int HEADER_BRAND = 0xD0007894;
     public static final int HEADER_BORDER = 0xA088DDF3;
     public static final int HEADER_BRAND_BORDER = 0xC443DFED;
     public static final int HEADER_GLINT = 0x30FFFFFF;
     public static final int HEADER_DETAIL = 0xA326D8EB;
-    public static final int HEADER_TEXT = 0xFF10212C;
-    public static final int HEADER_TEXT_MUTED = 0xFF334E5E;
+    public static final int HEADER_TEXT = 0xFFF4F8FC;
+    public static final int HEADER_TEXT_MUTED = 0xFFBBD9E8;
 
     // ── Lineas y sombras ──────────────────────────────────────────────────────
     public static final int LINE          = 0x507DADC2;
@@ -120,9 +120,7 @@ public final class UiTheme {
     // ── Metricas ──────────────────────────────────────────────────────────────
     public static final int SECTION_GAP = 12;
     public static final int CARD_PADDING = 12;
-    /** Ancho de la barra lateral, en porcentaje del ancho de pantalla. */
-    public static final int NAV_WIDTH_PERCENT = 18;
-    /** Margen entre la barra lateral y el contenido. */
+    /** Margen entre las superficies y los extremos de la pantalla. */
     public static final int CONTENT_MARGIN    = 20;
     /** Altura de una fila de tarjeta, incluido el hueco inferior. */
     public static final int CARD_ROW_HEIGHT   = 52;
@@ -130,34 +128,46 @@ public final class UiTheme {
     public static final float TITLE_SCALE     = 1.8f;
     /** Pagina 1.8x; tarjetas 1.2x en negrita; subtitulos 1x en negrita; datos 1x. */
     public static final float CARD_TITLE_SCALE = 1.2f;
-    public static final int CARD_HEADER_HEIGHT = 36;
+    public static final int CARD_HEADER_HEIGHT = 28;
     public static final int CARD_TITLE_INSET = 18;
 
     public static final int SCROLLBAR_WIDTH   = 6;
 
-    /** Both glass pieces and every page label use the same header geometry. */
-    public record HeaderLayout(int y, int height, int slant, int brandX, int brandWidth,
-                               int panelX, int panelWidth, int textX, int textRight) {
+    /** Page headings live below the navigation, outside the scrollable content. */
+    public record HeaderLayout(int y, int height, int textX, int textRight) {
         public int bottom() { return y + height; }
     }
 
-    public static HeaderLayout headerLayout(int screenWidth, int screenHeight) {
-        int height = contentTop(screenHeight) - 14;
-        int slant = Math.min(16, height / 3);
-        int brandRight = navWidth(screenWidth);
-        int panelX = brandRight - slant + 6;
-        return new HeaderLayout(8, height, slant, 10, Math.max(1, brandRight - 10),
-                panelX, Math.max(1, screenWidth - 10 - panelX),
-                brandRight + Math.max(16, contentMargin(screenWidth)),
-                screenWidth - (screenWidth >= 640 ? 44 : 22));
+    /** Symmetric groups keep the original brand exactly on the screen center. */
+    public record NavigationLayout(int height, int brandX, int brandWidth, int buttonWidth, int gap) {
+        public int buttonX(int index) {
+            return index < 2 ? brandX - (2 - index) * (buttonWidth + gap)
+                    : brandX + brandWidth + gap + (index - 2) * (buttonWidth + gap);
+        }
     }
 
-    /** The full title/description block is vertically centered inside the glass. */
+    public static int navigationHeight(int screenHeight) { return compact(screenHeight) ? 34 : 42; }
+
+    public static NavigationLayout navigationLayout(int screenWidth, int screenHeight) {
+        int height = navigationHeight(screenHeight);
+        int gap = screenWidth < 500 ? 4 : 8;
+        int brandWidth = Math.min(compact(screenHeight) ? 110 : 144, Math.max(80, screenWidth / 4));
+        // Match the screen parity so the logo and both groups have equal outside margins.
+        if ((brandWidth & 1) != (screenWidth & 1)) brandWidth--;
+        int buttonWidth = Math.max(24, Math.min(112,
+                (screenWidth - contentMargin(screenWidth) * 2 - brandWidth - gap * 4) / 4));
+        return new NavigationLayout(height, (screenWidth - brandWidth) / 2, brandWidth, buttonWidth, gap);
+    }
+
+    public static HeaderLayout headerLayout(int screenWidth, int screenHeight) {
+        int y = navigationHeight(screenHeight) + 8;
+        return new HeaderLayout(y, contentTop(screenHeight) - y - 8,
+                contentX(screenWidth), screenWidth - contentMargin(screenWidth));
+    }
+
+    /** Compact screens combine the eyebrow and title on one line. */
     public static int headerTitleY(int screenHeight, int lineHeight) {
-        int titleHeight = (int) Math.ceil(lineHeight * TITLE_SCALE);
-        int blockHeight = titleHeight + (compact(screenHeight) ? 0 : 5 + lineHeight);
-        int height = contentTop(screenHeight) - 14;
-        return 8 + (height - blockHeight) / 2;
+        return navigationHeight(screenHeight) + 8 + (compact(screenHeight) ? 0 : lineHeight + 4);
     }
 
     public static int headerDescriptionY(int screenHeight, int lineHeight) {
@@ -168,26 +178,21 @@ public final class UiTheme {
     public static boolean compact(int screenHeight) { return screenHeight < 280; }
 
     /** Y donde empieza el contenido de cualquier pagina del panel. */
-    public static int contentTop(int screenHeight) { return compact(screenHeight) ? 40 : 62; }
+    public static int contentTop(int screenHeight) { return navigationHeight(screenHeight) + (compact(screenHeight) ? 36 : 66); }
 
     /** X de la barra de desplazamiento, siempre pegada al borde derecho del contenido. */
     public static int scrollbarX(int screenWidth) {
         return screenWidth - contentMargin(screenWidth) - SCROLLBAR_WIDTH;
     }
 
-    /** Ancho util de la barra lateral para un ancho de pantalla dado. */
-    public static int navWidth(int screenWidth) {
-        return (screenWidth * NAV_WIDTH_PERCENT) / 100;
-    }
-
-    /** Margen horizontal responsivo entre barra lateral y contenido o extremos. */
+    /** Margen horizontal responsivo del contenido. */
     public static int contentMargin(int screenWidth) {
         return screenWidth < 500 ? 10 : 18;
     }
 
     /** Coordenada X donde empieza el contenido de cualquier pagina del panel. */
     public static int contentX(int screenWidth) {
-        return navWidth(screenWidth) + contentMargin(screenWidth);
+        return contentMargin(screenWidth);
     }
 
     /** Ancho maximo disponible para tarjetas y contenido en una pantalla dada. */

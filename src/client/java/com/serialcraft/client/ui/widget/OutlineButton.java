@@ -9,19 +9,23 @@ import net.minecraft.network.chat.Component;
 
 /** Secondary action with a dark glass surface and the application's accent outline. */
 public final class OutlineButton extends SolidButton {
+    private int accent = UiTheme.ACCENT_PRIMARY;
+
     public OutlineButton(int x, int y, int width, int height, Component label, OnPress onPress) {
         super(x, y, width, height, label, onPress, Variant.SOFT);
     }
 
+    public OutlineButton withAccent(int accent) { this.accent = accent; return this; }
+
     @Override
     public void extractWidgetRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
-        UiDraw.glassSurface(gui, x, y, w, h, active && isHoveredOrFocused() ? UiTheme.INFO_BG : UiTheme.BG_FIELD,
-                !active ? UiTheme.LINE : isFocused() ? UiTheme.TEXT_PRIMARY : UiTheme.ACCENT_PRIMARY, active && isHoveredOrFocused());
+        UiDraw.glassSurface(gui, x, y, w, h, active && isHoveredOrFocused() ? UiTheme.glassTint(accent) : UiTheme.BG_FIELD,
+                !active ? UiTheme.LINE : isFocused() ? UiTheme.TEXT_PRIMARY : accent, active && isHoveredOrFocused());
         if (active && isFocused()) gui.outline(x + 1, y + 1, w - 2, h - 2, UiTheme.TEXT_PRIMARY);
         var font = Minecraft.getInstance().font;
         String text = font.plainSubstrByWidth(getMessage().getString(), Math.max(1, w - 12));
         gui.text(font, text, x + (w - font.width(text)) / 2, y + (h - font.lineHeight) / 2 + 1,
-                active ? UiTheme.ACCENT_PRIMARY_DARK : UiTheme.TEXT_SECONDARY, false);
+                active ? UiTheme.TEXT_PRIMARY : UiTheme.TEXT_SECONDARY, false);
     }
 }

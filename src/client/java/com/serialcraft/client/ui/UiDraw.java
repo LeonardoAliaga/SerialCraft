@@ -284,24 +284,27 @@ public final class UiDraw {
                 right, right, mouseX, mouseY);
     }
 
-    /** Exact shared origin, common title baseline, and room for optional header controls. */
+    /** Small section eyebrow, a clear page title, then the supporting description. */
     public static void pageHeader(GuiGraphicsExtractor gui, Font font, int screenWidth, int screenHeight,
                                    Component accent, int accentColor, Component rest, Component description,
                                    int titleRight, int descriptionRight, int mouseX, int mouseY) {
         var header = UiTheme.headerLayout(screenWidth, screenHeight);
         int x = header.textX();
         int available = Math.max(1, Math.min(titleRight, header.textRight()) - x);
+        boolean compact = UiTheme.compact(screenHeight);
+        Component title = compact ? accent.copy().append(" · ").append(rest) : rest;
+        Component boldTitle = title.copy().withStyle(ChatFormatting.BOLD);
         float scale = Math.min(UiTheme.TITLE_SCALE,
-                (float) available / Math.max(1, font.width(accent) + font.width(rest) + 4));
+                (float) available / Math.max(1, font.width(boldTitle)));
         int titleHeight = (int) Math.ceil(font.lineHeight * scale);
         int titleBoxHeight = (int) Math.ceil(font.lineHeight * UiTheme.TITLE_SCALE);
         int y = UiTheme.headerTitleY(screenHeight, font.lineHeight) + (titleBoxHeight - titleHeight) / 2;
-        if (!UiTheme.compact(screenHeight)) y += 3;
+        if (!compact) clippedText(gui, font, accent.copy().withStyle(ChatFormatting.BOLD),
+                x, header.y(), available, accentColor, mouseX, mouseY);
         gui.pose().pushMatrix();
         gui.pose().translate(x, y);
         gui.pose().scale(scale, scale);
-        gui.text(font, accent, 0, 0, accentColor, false);
-        gui.text(font, rest, font.width(accent) + 4, 0, UiTheme.HEADER_TEXT, false);
+        gui.text(font, boldTitle, 0, 0, UiTheme.HEADER_TEXT, true);
         gui.pose().popMatrix();
         if (description != null && !UiTheme.compact(screenHeight)) {
             int descriptionWidth = Math.min(descriptionRight, header.textRight()) - x;
@@ -338,18 +341,15 @@ public final class UiDraw {
 
     public static final int STAT_TILE_HEIGHT = 30;
 
-    /**
-     * Aligned two-line status datum on the card's own white surface.
-     * No nested gray box, border or redundant colored rail.
-     */
+    /** Quiet inset fields make addresses and protocol values easy to scan. */
     public static void statTile(GuiGraphicsExtractor gui, Font font, int x, int y, int width,
                                 Component label, Component value, int accent, int valueColor,
                                 int mouseX, int mouseY) {
-        clippedText(gui, font, label, x, y + 3, Math.max(1, width - 4),
+        glassSurface(gui, x, y, width, STAT_TILE_HEIGHT, UiTheme.BG_FIELD, UiTheme.LINE_SOFT, false);
+        clippedText(gui, font, label, x + 7, y + 4, Math.max(1, width - 14),
                 UiTheme.TEXT_SECONDARY, mouseX, mouseY);
         clippedText(gui, font, value.copy().withStyle(ChatFormatting.BOLD),
-                x, y + 16, Math.max(1, width - 4), valueColor, mouseX, mouseY);
-        gui.fill(x, y + STAT_TILE_HEIGHT - 1, x + width - 4, y + STAT_TILE_HEIGHT, UiTheme.LINE);
+                x + 7, y + 17, Math.max(1, width - 14), valueColor, mouseX, mouseY);
     }
 
     /** Campo de texto hundido, con borde y fondo oscuro. */

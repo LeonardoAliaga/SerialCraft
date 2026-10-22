@@ -128,12 +128,12 @@ public class ScrollState {
         if (!hasScroll()) return;
 
         // Pista sutil
-        gui.fill(x, y, x + width, y + height, 0x14000000);
+        gui.fill(x, y, x + width, y + height, UiTheme.LINE_SOFT);
 
         // Pulgar redondeado / estilizado
         int thumbH = getThumbHeight(height);
         int thumbY = getThumbY(y, height);
-        int thumbColor = isDragging ? 0x99546E7A : 0x55546E7A;
+        int thumbColor = isDragging ? UiTheme.INFO_DARK : 0xB08FA7B6;
         gui.fill(x + 1, thumbY, x + width - 1, thumbY + thumbH, thumbColor);
     }
 }

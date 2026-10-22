@@ -1,6 +1,8 @@
 ---
 # Configuración de la portada estilo VitePress
 layout: home
+title: SerialCraft — Arduino y ESP32 para Minecraft Fabric
+description: SerialCraft de Leonardo Aliaga conecta Arduino y ESP32 con Minecraft. Documentación oficial, código fuente, descargas y tutoriales.
 
 hero:
   name: "SerialCraft"
@@ -75,3 +77,7 @@ La documentación técnica explica el protocolo, pero los [tutoriales de SerialC
 - [Aprender a ejecutar las pruebas del mod](/tutoriales/pruebas-automatizadas)
 
 **Más información:** [Acerca de SerialCraft](/acerca-de), [Contacto](/contacto) y [Política de privacidad](/privacidad). Las guías describen resultados esperados y el protocolo documentado, no pruebas físicas realizadas para cada configuración.
+
+## Enlaces del proyecto SerialCraft
+
+[Código fuente en GitHub](https://github.com/LeonardoAliaga/SerialCraft) · [Descargas en Modrinth](https://modrinth.com/mod/serialcraft) · [Acerca del creador](/acerca-de)

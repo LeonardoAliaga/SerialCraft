@@ -1,5 +1,7 @@
 package com.serialcraft.client.ui.io;
 
+import com.serialcraft.client.ui.UiTheme;
+
 /** GUI pixel layout, independent of rendering and Minecraft runtime state. */
 public record IoEditorLayout(Rect panel, Rect viewport, Rect status, Rect save, Rect cancel,
                              Rect configurationTab, Rect diagnosticsTab, boolean tabsBesideTitle) {
@@ -16,8 +18,8 @@ public record IoEditorLayout(Rect panel, Rect viewport, Rect status, Rect save, 
         int margin = 8;
         int x = Math.max(margin, Math.min(contentX, screenWidth - 180));
         int width = Math.min(640, screenWidth - x - margin);
-        int height = screenHeight - margin * 2;
-        int y = margin;
+        int y = UiTheme.navigationHeight(screenHeight) + margin;
+        int height = screenHeight - y - margin;
         Rect panel = new Rect(x, y, width, height);
         boolean compact = screenHeight < 220;
         int tabGap = 6;
@@ -29,13 +31,14 @@ public record IoEditorLayout(Rect panel, Rect viewport, Rect status, Rect save, 
         }
         int groupWidth = firstWidth + tabGap + secondWidth;
         boolean tabsBesideTitle = titleWidth + groupWidth + 16 <= width;
-        int tabsY = tabsBesideTitle ? (screenHeight < 280 ? 9 : 20) : compact ? 40 : 62;
+        int tabsY = tabsBesideTitle ? Math.max(y, UiTheme.headerTitleY(screenHeight, 9) - 4)
+                : UiTheme.contentTop(screenHeight);
         Rect configurationTab = new Rect(panel.right() - groupWidth, tabsY, firstWidth, 24);
         Rect diagnosticsTab = new Rect(panel.right() - secondWidth, tabsY, secondWidth, 24);
-        int headerHeight = tabsBesideTitle ? compact ? 44 : 54 : compact ? 62 : 88;
+        int contentTop = Math.max(UiTheme.contentTop(screenHeight), configurationTab.bottom() + 8);
         int footerHeight = compact ? 54 : 66;
         int footerY = panel.bottom() - footerHeight;
-        Rect viewport = new Rect(x, y + headerHeight, width, Math.max(1, footerY - y - headerHeight - 6));
+        Rect viewport = new Rect(x, contentTop, width, Math.max(1, footerY - contentTop - 6));
         Rect status = new Rect(x, footerY + 3, width, compact ? 18 : 30);
         int buttonWidth = (width - 6) / 2;
         return new IoEditorLayout(panel, viewport, status,

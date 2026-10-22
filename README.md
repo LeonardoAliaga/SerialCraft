@@ -1,4 +1,4 @@
-# 🔌 SerialCraft: el puente entre mundos
+# 🔌 SerialCraft — Arduino y ESP32 con Minecraft Fabric
 
 ### Lleva tu hardware del mundo real a tu mundo Survival.
 

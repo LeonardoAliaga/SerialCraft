@@ -4,7 +4,7 @@ description: Información sobre Google Analytics, AdSense, cookies, enlaces exte
 ---
 # Política de privacidad
 
-**Última actualización: 8 de octubre de 2026.**
+**Última actualización: 21 de octubre de 2026.**
 
 Esta política describe los servicios de terceros integrados en **serialcraft.xyz**, el sitio informativo y de documentación de SerialCraft.
 
@@ -20,13 +20,13 @@ El contenido se publica mediante **GitHub Pages**. Como proveedor de alojamiento
 
 ## Google Analytics
 
-El sitio incorpora una etiqueta de **Google Analytics** para analizar el uso de la web. Según la configuración y el consentimiento aplicables, este servicio puede tratar datos técnicos y de navegación, como páginas visitadas, información aproximada de ubicación, identificadores y características del navegador.
+Google Analytics permanece bloqueado hasta que seleccionas **Aceptar analítica** en el aviso de cookies. Rechazarlo no impide consultar la documentación. Puedes volver a abrir **Configurar cookies** desde cualquier página. Según la configuración y el consentimiento aplicables, este servicio puede tratar datos técnicos y de navegación, como páginas visitadas, información aproximada de ubicación, identificadores y características del navegador.
 
 Consulta las [políticas de privacidad de Google](https://policies.google.com/privacy?hl=es).
 
 ## Google AdSense y publicidad
 
-El sitio también incorpora una etiqueta de **Google AdSense** mientras se prepara su posible monetización. **Que exista esa etiqueta no significa que el sitio ya esté aprobado ni que se muestren anuncios.**
+La publicidad está desactivada actualmente. El sitio incluye una metaetiqueta de verificación de AdSense, que no carga anuncios ni su script publicitario. Antes de activar anuncios se configurará y comprobará el consentimiento publicitario mediante una CMP certificada de Google cuando corresponda. El aviso de analítica de esta web no recoge consentimiento para publicidad.
 
 Cuando se utilizan los servicios de publicidad de Google, Google y otros proveedores publicitarios pueden emplear cookies, identificadores y otras tecnologías para mostrar anuncios, medir su rendimiento y, donde esté permitido, personalizarlos.
 
@@ -36,7 +36,12 @@ Los proveedores externos, incluido Google, pueden usar cookies para mostrar anun
 
 Puedes restringir o eliminar cookies desde la configuración de tu navegador. Bloquearlas puede afectar algunas funcionalidades o mediciones del sitio. La disponibilidad de anuncios y mediciones también depende de las configuraciones de privacidad y consentimiento aplicables.
 
-Para visitantes de regiones donde se requiere consentimiento previo para determinadas tecnologías, el sitio deberá implementar el mecanismo de consentimiento apropiado **antes de activar los tratamientos correspondientes**. Esta página informativa no sustituye ese mecanismo.
+### Preferencia de analítica
+
+Guardamos tu elección de aceptar o rechazar analítica en el almacenamiento local de este navegador (`serialcraft.analytics-consent.v1`) durante **180 días**. Esta preferencia no se envía a un servidor propio. Si borras los datos del navegador o usas otro navegador, se solicitará de nuevo. Si el navegador no permite guardar la preferencia, puede volver a aparecer el aviso.
+
+Al rechazar analítica se bloquea su carga. Si retiras un permiso previo, se desactiva la medición, se eliminan las cookies de Analytics accesibles para este sitio y se recarga la página para descargar la etiqueta. La retirada no elimina datos ya enviados a Google. La configuración visual de la documentación también puede guardarse localmente para recordar el tema elegido.
+
 
 ## Enlaces externos y contenido incrustado
 

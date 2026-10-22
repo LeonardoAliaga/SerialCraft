@@ -29,20 +29,22 @@ public final class NavTabButton extends SolidButton {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
         boolean hot = isHoveredOrFocused();
         UiDraw.glassSurface(gui, x, y, w, h,
-                selected ? (accent & 0x00FFFFFF) | 0xB0000000 : UiTheme.TAB_INACTIVE_BG,
-                selected || hot ? accent : UiTheme.TAB_INACTIVE_BORDER, selected || hot);
+                selected ? UiTheme.glassTint(accent) : hot ? UiTheme.HOVER_TINT : 0,
+                hot ? (accent & 0x00FFFFFF) | 0x90000000 : 0, hot);
+        if (selected) UiDraw.pixelRounded(gui, x, y + h - 3, w, 3, accent);
         var font = Minecraft.getInstance().font;
         int iconSize = Math.min(20, Math.max(18, h - 10));
-        boolean iconOnly = w < 80;
-        int iconX = iconOnly ? x + (w - iconSize) / 2 : x + 8;
+        boolean iconOnly = w < 94 || w < font.width(getMessage()) + iconSize + 22;
+        int groupWidth = iconSize + 8 + font.width(getMessage());
+        int iconX = iconOnly ? x + (w - iconSize) / 2 : x + (w - groupWidth) / 2;
         int iconY = y + (h - iconSize) / 2;
         UiDraw.glassSurface(gui, iconX, iconY, iconSize, iconSize,
-                selected ? 0x20FFFFFF : (accent & 0x00FFFFFF) | 0xCC000000, 0, false);
+                (accent & 0x00FFFFFF) | 0xD0000000, 0x30FFFFFF, false);
         UiDraw.icon(gui, icon, iconX + (iconSize - 16) / 2, iconY + (iconSize - 16) / 2, 16);
         if (!iconOnly) {
-            int textX = iconX + iconSize + 10;
+            int textX = iconX + iconSize + 8;
             UiDraw.clippedText(gui, font, getMessage(), textX, y + (h - font.lineHeight) / 2 + 1,
-                    Math.max(1, x + w - textX - 10), UiTheme.TEXT_INVERSE, mouseX, mouseY);
+                    Math.max(1, x + w - textX - 4), UiTheme.TEXT_INVERSE, mouseX, mouseY);
         }
         if (isFocused()) gui.outline(x + 2, y + 2, w - 4, h - 4, UiTheme.TEXT_INVERSE);
     }
