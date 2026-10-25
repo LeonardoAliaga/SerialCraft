@@ -28,6 +28,14 @@ jobs:
       - name: Install VitePress dependencies
         working-directory: docs
         run: npm ci
+      - name: Setup Python for social previews and app icons
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate brand PNG assets
+        run: |
+          python -m pip install -r docs/scripts/requirements-brand.txt
+          python docs/scripts/generate_brand_assets.py
       - name: Verify media slots with a temporary fixture (never deployed)
         working-directory: docs
         run: |
@@ -77,3 +85,27 @@ jobs:
           done
           grep -q 'viewBox="850 350 2700 3900"' .vitepress/dist/media/serialcraft-mascot-v2.svg
           grep -q 'VPHero.has-image .image-src' .vitepress/theme/home.css
+
+          # Both localized social previews and mobile icons must exist in the build.
+          test -s .vitepress/dist/apple-touch-icon.png
+          test -s .vitepress/dist/icon-192.png
+          test -s .vitepress/dist/icon-512.png
+          test -s .vitepress/dist/og/serialcraft-es.png
+          test -s .vitepress/dist/og/serialcraft-en.png
+          test -s .vitepress/dist/site.webmanifest
+          test -s .vitepress/dist/media/serialcraft-mascot-dark.svg
+          grep -q 'serialcraft-mascot-dark.svg' .vitepress/dist/index.html
+          grep -q 'serialcraft-mascot-dark.svg' .vitepress/dist/en/index.html
+          grep -q 'https://serialcraft.xyz/og/serialcraft-es.png' .vitepress/dist/index.html
+          grep -q 'https://serialcraft.xyz/og/serialcraft-en.png' .vitepress/dist/en/index.html
+          grep -q 'summary_large_image' .vitepress/dist/index.html
+          grep -q 'apple-touch-icon.png' .vitepress/dist/en/index.html
+          grep -q 'site.webmanifest' .vitepress/dist/versiones/en/v0.3.6/index.html
+          python - <<'PY'
+          from PIL import Image
+          assert Image.open('.vitepress/dist/apple-touch-icon.png').size == (180, 180)
+          assert Image.open('.vitepress/dist/icon-192.png').size == (192, 192)
+          assert Image.open('.vitepress/dist/icon-512.png').size == (512, 512)
+          for lang in ('es', 'en'):
+              assert Image.open(f'.vitepress/dist/og/serialcraft-{lang}.png').size == (1200, 630)
+          PY

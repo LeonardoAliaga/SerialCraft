@@ -31,6 +31,11 @@ export function seoHead({ pageData, siteConfig }: TransformContext): HeadConfig[
     ? 'Learn to connect Arduino and ESP32 to Minecraft with SerialCraft: installation, circuits, code and troubleshooting.'
     : 'Aprende a conectar Arduino y ESP32 con Minecraft usando SerialCraft: instalación, circuitos, código y solución de problemas.')
   const canonical = url(path)
+  // Publicly available raster previews for social crawlers (SVG is not reliable here).
+  const socialImage = origin + '/og/serialcraft-' + (en ? 'en' : 'es') + '.png'
+  const socialImageAlt = en
+    ? 'SerialCraft: The Bridge Between Worlds — Arduino, ESP32 and Minecraft'
+    : 'SerialCraft: El puente entre mundos — Arduino, ESP32 y Minecraft'
   const tags: HeadConfig[] = [
     ['link', { rel: 'canonical', href: canonical }],
     ['meta', { property: 'og:type', content: 'website' }],
@@ -39,7 +44,16 @@ export function seoHead({ pageData, siteConfig }: TransformContext): HeadConfig[
     ['meta', { property: 'og:title', content: title }],
     ['meta', { property: 'og:description', content: description }],
     ['meta', { property: 'og:locale', content: en ? 'en_US' : 'es_PE' }],
-    ['meta', { name: 'twitter:card', content: 'summary' }],
+    ['meta', { property: 'og:locale:alternate', content: en ? 'es_PE' : 'en_US' }],
+    ['meta', { property: 'og:image', content: socialImage }],
+    ['meta', { property: 'og:image:secure_url', content: socialImage }],
+    ['meta', { property: 'og:image:type', content: 'image/png' }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { property: 'og:image:alt', content: socialImageAlt }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: socialImage }],
+    ['meta', { name: 'twitter:image:alt', content: socialImageAlt }],
     ['meta', { name: 'twitter:title', content: title }],
     ['meta', { name: 'twitter:description', content: description }]
   ]
