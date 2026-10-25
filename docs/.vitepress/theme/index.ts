@@ -1,6 +1,7 @@
 import DefaultTheme from 'vitepress/theme'
 import { h } from 'vue'
 import CookiePreferences from './CookiePreferences.vue'
+import './home.css'
 
 export default {
   extends: DefaultTheme,

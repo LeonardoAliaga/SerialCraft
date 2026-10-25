@@ -53,3 +53,15 @@ jobs:
             echo 'ERROR: internal media production instructions leaked to website HTML' >&2
             exit 1
           fi
+
+          # Las entradas historicas no pueden volver a devolver un 404.
+          for version in v0.3.6 v0.4.3; do
+            test -f ".vitepress/dist/versiones/${version}/index.html"
+            test -f ".vitepress/dist/versiones/en/${version}/index.html"
+          done
+          # Mantener el recurso del hero y los links SEO publicados en ambos idiomas.
+          test -s .vitepress/dist/media/serialcraft-mascot.webp
+          grep -q 'serialcraft-mascot.webp' .vitepress/dist/index.html
+          grep -q 'serialcraft-mascot.webp' .vitepress/dist/en/index.html
+          grep -q 'https://serialcraft.xyz/versiones/en/v0.3.6/' .vitepress/dist/versiones/en/v0.3.6/index.html
+          grep -q 'hreflang="en"' .vitepress/dist/versiones/v0.3.6/index.html

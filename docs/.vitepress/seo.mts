@@ -15,6 +15,8 @@ const pairs = [
   ['tutoriales/visualizador.md', 'en/tutorials/visualizer.md'],
   ['tutoriales/telemetria.md', 'en/tutorials/telemetry.md'],
   ['tutoriales/pruebas-automatizadas.md', 'en/tutorials/testing.md'],
+  ...['v0.3.6', 'v0.4.3'].map(v =>
+    [`versiones/${v}/index.md`, `versiones/en/${v}/index.md`]),
   ...['v0.3.6', 'v0.4.3'].flatMap(v => ['guide', 'protocol'].map(p =>
     [`versiones/${v}/${p}.md`, `versiones/en/${v}/${p}.md`])),
   ['versiones/v0.4.3/ejemplos.md', 'versiones/en/v0.4.3/examples.md']
