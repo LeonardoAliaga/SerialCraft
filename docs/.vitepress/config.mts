@@ -14,7 +14,7 @@ export default defineConfig({
   cleanUrls: false,
   transformHead: seoHead,
   head: [
-    ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['meta', { name: 'google-adsense-account', content: 'ca-pub-9305749497490512' }]
   ],
 

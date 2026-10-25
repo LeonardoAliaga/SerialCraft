@@ -7,7 +7,7 @@ description: SerialCraft de Leonardo Aliaga conecta Arduino y ESP32 con Minecraf
 hero:
   name: "SerialCraft"
   image:
-    src: /media/serialcraft-mascot.svg
+    src: /media/serialcraft-mascot-v2.svg
     alt: "Mascota de SerialCraft, gato de Minecraft"
   text: "El Puente entre Mundos"
   tagline: Conecta tu Arduino a Minecraft Java y lleva la electrónica al modo Survival.

@@ -60,12 +60,20 @@ jobs:
             test -f ".vitepress/dist/versiones/en/${version}/index.html"
           done
           # Mantener el recurso del hero y los links SEO publicados en ambos idiomas.
-          test -s .vitepress/dist/media/serialcraft-mascot.svg
-          grep -q 'serialcraft-mascot.svg' .vitepress/dist/index.html
-          grep -q 'serialcraft-mascot.svg' .vitepress/dist/en/index.html
+          test -s .vitepress/dist/media/serialcraft-mascot-v2.svg
+          test -s .vitepress/dist/favicon.svg
+          grep -q 'serialcraft-mascot-v2.svg' .vitepress/dist/index.html
+          grep -q 'serialcraft-mascot-v2.svg' .vitepress/dist/en/index.html
           grep -q 'https://serialcraft.xyz/versiones/en/v0.3.6/' .vitepress/dist/versiones/en/v0.3.6/index.html
           grep -q 'hreflang="en"' .vitepress/dist/versiones/v0.3.6/index.html
 
           # Verify route-aware version selection across languages and sections.
           node scripts/check-version-routes.mjs
           grep -q 'version-routing' .vitepress/dist/assets/*.js || true
+
+          # The uploaded favicon is shared by all locales and archived entries.
+          for page in index.html en/index.html versiones/v0.3.6/index.html versiones/en/v0.3.6/index.html versiones/v0.4.3/index.html versiones/en/v0.4.3/index.html; do
+            grep -q 'favicon.svg' ".vitepress/dist/$page"
+          done
+          grep -q 'viewBox="850 350 2700 3900"' .vitepress/dist/media/serialcraft-mascot-v2.svg
+          grep -q 'VPHero.has-image .image-src' .vitepress/theme/home.css
