@@ -1,42 +1,28 @@
-/* Hero personalizado de SerialCraft. No cambia el navbar de VitePress. */
+/* Ajustes SOLO del hero; la navegación principal continúa en VitePress. */
 .VPHomeHero .image-bg {
-  background: linear-gradient(135deg, #4995b6, #65ac85);
-  opacity: 0.16;
-  filter: blur(48px);
+  background: #f9f3ee;
+  opacity: .32;
+  filter: blur(38px);
 }
+.dark .VPHomeHero .image-bg { background: #4995b6; opacity: .16; }
 .VPHomeHero .image-src {
-  max-width: 290px;
-  max-height: 320px;
   width: auto;
   height: auto;
+  max-width: 350px;
+  max-height: 405px;
   object-fit: contain;
-  filter: drop-shadow(0 18px 23px rgba(24, 35, 39, 0.16));
+  filter: none;
 }
-.VPHomeHero .tagline {
-  line-height: 1.55;
-  max-width: 560px;
-}
+.VPHomeHero .tagline { line-height: 1.55; max-width: 560px; }
 @media (min-width: 960px) {
-  .VPHomeHero .container {
-    flex-direction: row;
-    align-items: center;
-    gap: 32px;
-  }
-  .VPHomeHero .image {
-    order: 0;
-    width: 38%;
-    flex: 0 0 38%;
-  }
-  .VPHomeHero .main {
-    order: 1;
-    width: auto;
-    flex: 1 1 62%;
-  }
+  .VPHomeHero .container { flex-direction: row; align-items: center; gap: 32px; }
+  .VPHomeHero .image { order: 0; width: 40%; flex: 0 0 40%; }
+  .VPHomeHero .main { order: 1; width: auto; flex: 1 1 60%; }
 }
 @media (max-width: 959px) {
   .VPHomeHero .image-src {
-    max-width: min(66vw, 235px);
-    max-height: 260px;
+    max-width: min(78vw, 285px);
+    max-height: 355px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

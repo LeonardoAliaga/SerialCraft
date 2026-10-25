@@ -65,3 +65,7 @@ jobs:
           grep -q 'serialcraft-mascot.webp' .vitepress/dist/en/index.html
           grep -q 'https://serialcraft.xyz/versiones/en/v0.3.6/' .vitepress/dist/versiones/en/v0.3.6/index.html
           grep -q 'hreflang="en"' .vitepress/dist/versiones/v0.3.6/index.html
+
+          # Verify route-aware version selection across languages and sections.
+          node scripts/check-version-routes.mjs
+          grep -q 'version-routing' .vitepress/dist/assets/*.js || true

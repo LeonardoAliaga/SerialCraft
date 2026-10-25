@@ -37,17 +37,7 @@ export default defineConfig({
           { text: 'Ejemplos', link: '/ejemplos/' },
           { text: 'Tutoriales', link: '/tutoriales/' },
           { text: 'Acerca de', link: '/acerca-de' },
-          // Menú Versiones (Español)
-          {
-            text: 'v0.4.6 (Beta)',
-            items: [
-              { text: 'v0.4.6 (Actual)', link: '/guide' },
-              { text: 'v0.4.3 (Antigua)', link: '/versiones/v0.4.3/guide' },
-              { text: 'v0.3.6 (Legado)', link: '/versiones/v0.3.6/guide' },
-              { text: 'Notas de Versión', link: 'https://github.com/leonardoaliaga/serialcraft/releases' },
-              { text: 'Reportar Bug', link: 'https://github.com/leonardoaliaga/serialcraft/issues' }
-            ]
-          }
+
         ],
         sidebar: {
           '/versiones/v0.4.3/': [
@@ -150,17 +140,7 @@ export default defineConfig({
           { text: 'Examples', link: '/en/examples/' },
           { text: 'Tutorials', link: '/en/tutorials/' },
           { text: 'About', link: '/en/about' },
-          // Version Menu (English)
-          {
-            text: 'v0.4.6 (Beta)',
-            items: [
-              { text: 'v0.4.6 (Current)', link: '/en/guide' },
-              { text: 'v0.4.3 (Legacy)', link: '/versiones/en/v0.4.3/guide' },
-              { text: 'v0.3.6 (Older)', link: '/versiones/en/v0.3.6/guide' },
-              { text: 'Release Notes', link: 'https://github.com/leonardoaliaga/serialcraft/releases' },
-              { text: 'Report Bug', link: 'https://github.com/leonardoaliaga/serialcraft/issues' }
-            ]
-          }
+
         ],
         sidebar: {
           '/versiones/en/v0.4.3/': [
