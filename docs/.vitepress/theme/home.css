@@ -8,8 +8,8 @@
 .VPHomeHero .image-src {
   width: auto;
   height: auto;
-  max-width: 350px;
-  max-height: 405px;
+  max-width: 405px;
+  max-height: 475px;
   object-fit: contain;
   filter: none;
 }
@@ -21,8 +21,8 @@
 }
 @media (max-width: 959px) {
   .VPHomeHero .image-src {
-    max-width: min(78vw, 285px);
-    max-height: 355px;
+    max-width: min(80vw, 320px);
+    max-height: 390px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

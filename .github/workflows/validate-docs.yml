@@ -60,9 +60,9 @@ jobs:
             test -f ".vitepress/dist/versiones/en/${version}/index.html"
           done
           # Mantener el recurso del hero y los links SEO publicados en ambos idiomas.
-          test -s .vitepress/dist/media/serialcraft-mascot.webp
-          grep -q 'serialcraft-mascot.webp' .vitepress/dist/index.html
-          grep -q 'serialcraft-mascot.webp' .vitepress/dist/en/index.html
+          test -s .vitepress/dist/media/serialcraft-mascot.svg
+          grep -q 'serialcraft-mascot.svg' .vitepress/dist/index.html
+          grep -q 'serialcraft-mascot.svg' .vitepress/dist/en/index.html
           grep -q 'https://serialcraft.xyz/versiones/en/v0.3.6/' .vitepress/dist/versiones/en/v0.3.6/index.html
           grep -q 'hreflang="en"' .vitepress/dist/versiones/v0.3.6/index.html
 
