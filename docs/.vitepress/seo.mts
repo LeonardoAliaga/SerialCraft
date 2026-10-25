@@ -32,17 +32,22 @@ export function seoHead({ pageData, siteConfig }: TransformContext): HeadConfig[
     : 'Aprende a conectar Arduino y ESP32 con Minecraft usando SerialCraft: instalación, circuitos, código y solución de problemas.')
   const canonical = url(path)
   // Publicly available raster previews for social crawlers (SVG is not reliable here).
-  const socialImage = origin + '/og/serialcraft-' + (en ? 'en' : 'es') + '.png'
+  const socialImage = origin + '/og/serialcraft-' + (en ? 'en' : 'es') + '-v2.png'
   const socialImageAlt = en
-    ? 'SerialCraft: The Bridge Between Worlds — Arduino, ESP32 and Minecraft'
-    : 'SerialCraft: El puente entre mundos — Arduino, ESP32 y Minecraft'
+    ? 'SerialCraft: The Bridge Between Worlds — Arduino, ESP32, Raspberry Pi Pico and Minecraft Java'
+    : 'SerialCraft: El puente entre mundos — Arduino, ESP32, Raspberry Pi Pico y Minecraft Java'
+  const socialDescription = (path === 'index.md' || path === 'en/index.md')
+    ? (en
+      ? 'Connect Arduino, ESP32, Raspberry Pi Pico and more hardware to Minecraft Java. Guides, examples and tutorials.'
+      : 'Conecta Arduino, ESP32, Raspberry Pi Pico y más hardware con Minecraft Java. Guías, ejemplos y tutoriales.')
+    : description
   const tags: HeadConfig[] = [
     ['link', { rel: 'canonical', href: canonical }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'SerialCraft' }],
     ['meta', { property: 'og:url', content: canonical }],
     ['meta', { property: 'og:title', content: title }],
-    ['meta', { property: 'og:description', content: description }],
+    ['meta', { property: 'og:description', content: socialDescription }],
     ['meta', { property: 'og:locale', content: en ? 'en_US' : 'es_PE' }],
     ['meta', { property: 'og:locale:alternate', content: en ? 'es_PE' : 'en_US' }],
     ['meta', { property: 'og:image', content: socialImage }],
@@ -55,7 +60,7 @@ export function seoHead({ pageData, siteConfig }: TransformContext): HeadConfig[
     ['meta', { name: 'twitter:image', content: socialImage }],
     ['meta', { name: 'twitter:image:alt', content: socialImageAlt }],
     ['meta', { name: 'twitter:title', content: title }],
-    ['meta', { name: 'twitter:description', content: description }]
+    ['meta', { name: 'twitter:description', content: socialDescription }]
   ]
   const pair = pairs.find(p => p.includes(path))
   if (pair && pair.every(p => existsSync(resolve(siteConfig.srcDir, p)))) {

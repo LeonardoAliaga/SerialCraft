@@ -17,7 +17,7 @@ export default defineConfig({
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }],
     ['link', { rel: 'manifest', href: '/site.webmanifest' }],
-    ['meta', { name: 'theme-color', content: '#1b1b1f' }],
+    ['meta', { name: 'theme-color', content: '#4995b6' }],
     ['meta', { name: 'apple-mobile-web-app-title', content: 'SerialCraft' }],
     ['meta', { name: 'apple-mobile-web-app-capable', content: 'yes' }],
     ['meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }],
