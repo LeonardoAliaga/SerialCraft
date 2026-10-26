@@ -28,6 +28,14 @@ jobs:
       - name: Install VitePress dependencies
         working-directory: docs
         run: npm ci
+      - name: Setup Python for social previews and app icons
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate brand PNG assets
+        run: |
+          python -m pip install -r docs/scripts/requirements-brand.txt
+          python docs/scripts/generate_brand_assets.py
       - name: Verify media slots with a temporary fixture (never deployed)
         working-directory: docs
         run: |
@@ -53,3 +61,58 @@ jobs:
             echo 'ERROR: internal media production instructions leaked to website HTML' >&2
             exit 1
           fi
+
+          # Las entradas historicas no pueden volver a devolver un 404.
+          for version in v0.3.6 v0.4.3; do
+            test -f ".vitepress/dist/versiones/${version}/index.html"
+            test -f ".vitepress/dist/versiones/en/${version}/index.html"
+          done
+          # Mantener el recurso del hero y los links SEO publicados en ambos idiomas.
+          test -s .vitepress/dist/media/serialcraft-mascot-v2.svg
+          test -s .vitepress/dist/favicon.svg
+          grep -q 'serialcraft-mascot-v2.svg' .vitepress/dist/index.html
+          grep -q 'serialcraft-mascot-v2.svg' .vitepress/dist/en/index.html
+          grep -q 'https://serialcraft.xyz/versiones/en/v0.3.6/' .vitepress/dist/versiones/en/v0.3.6/index.html
+          grep -q 'hreflang="en"' .vitepress/dist/versiones/v0.3.6/index.html
+
+          # Verify route-aware version selection across languages and sections.
+          node scripts/check-version-routes.mjs
+          grep -q 'version-routing' .vitepress/dist/assets/*.js || true
+
+          # The uploaded favicon is shared by all locales and archived entries.
+          for page in index.html en/index.html versiones/v0.3.6/index.html versiones/en/v0.3.6/index.html versiones/v0.4.3/index.html versiones/en/v0.4.3/index.html; do
+            grep -q 'favicon.svg' ".vitepress/dist/$page"
+          done
+          grep -q 'viewBox="850 350 2700 3900"' .vitepress/dist/media/serialcraft-mascot-v2.svg
+          grep -q 'VPHero.has-image .image-src' .vitepress/theme/home.css
+
+          # Both localized social previews and mobile icons must exist in the build.
+          test -s .vitepress/dist/apple-touch-icon.png
+          test -s .vitepress/dist/icon-192.png
+          test -s .vitepress/dist/icon-512.png
+          test -s .vitepress/dist/og/serialcraft-es-v2.png
+          test -s .vitepress/dist/og/serialcraft-en-v2.png
+          test -s .vitepress/dist/site.webmanifest
+          test -s .vitepress/dist/brand/serialcraft-wordmark.svg
+          test -s .vitepress/dist/brand/serialcraft-cat.svg
+          grep -q 'theme-color.*#4995b6' .vitepress/dist/index.html
+          test -s .vitepress/dist/media/serialcraft-mascot-dark.svg
+          grep -q 'serialcraft-mascot-dark.svg' .vitepress/dist/index.html
+          grep -q 'serialcraft-mascot-dark.svg' .vitepress/dist/en/index.html
+          grep -q 'https://serialcraft.xyz/og/serialcraft-es-v2.png' .vitepress/dist/index.html
+          grep -q 'https://serialcraft.xyz/og/serialcraft-en-v2.png' .vitepress/dist/en/index.html
+          grep -q 'summary_large_image' .vitepress/dist/index.html
+          grep -q 'apple-touch-icon.png' .vitepress/dist/en/index.html
+          grep -q 'site.webmanifest' .vitepress/dist/versiones/en/v0.3.6/index.html
+          python - <<'PY'
+          from PIL import Image
+          assert Image.open('.vitepress/dist/apple-touch-icon.png').size == (180, 180)
+          assert Image.open('.vitepress/dist/icon-192.png').size == (192, 192)
+          assert Image.open('.vitepress/dist/icon-512.png').size == (512, 512)
+          for lang in ('es', 'en'):
+              p = f'.vitepress/dist/og/serialcraft-{lang}-v2.png'
+              im = Image.open(p).convert('RGB')
+              assert im.size == (1200, 630)
+              assert im.getpixel((0, 0)) == (73, 149, 182), 'Brand background differs from #4995B6'
+              assert len(im.getcolors(maxcolors=10_000_000) or []) > 100, 'Social image looks blank'
+          PY

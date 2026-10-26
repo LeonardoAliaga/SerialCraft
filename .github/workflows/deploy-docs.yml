@@ -41,6 +41,16 @@ jobs:
       - name: Install dependencies
         run: cd docs && npm ci
 
+      - name: Setup Python for social previews and app icons
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate PNG brand assets
+        run: |
+          python -m pip install -r docs/scripts/requirements-brand.txt
+          python docs/scripts/generate_brand_assets.py
+
       - name: Build with VitePress
         run: cd docs && npm run docs:build
 
