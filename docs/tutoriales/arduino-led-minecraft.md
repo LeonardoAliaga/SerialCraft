@@ -6,7 +6,7 @@ description: Monta un LED con resistencia en un Arduino Uno R3 y controla su bri
 
 Una palanca de Minecraft puede controlar un LED conectado a una placa Arduino. En este ejercicio recorrerás el camino completo: **redstone → Módulo de E/S → USB serial → Arduino → LED**.
 
-El ejemplo es deliberadamente pequeño para que puedas diagnosticar cada etapa. La versión de desarrollo de referencia es SerialCraft **0.5.0-beta.1**.
+El ejemplo es deliberadamente pequeño para que puedas diagnosticar cada etapa. La versión de desarrollo de referencia es SerialCraft **0.5.0-beta**.
 
 ## Materiales
 

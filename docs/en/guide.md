@@ -1,6 +1,6 @@
-# SerialCraft Guide — v0.5.0-beta.1 (Beta)
+# SerialCraft Guide — v0.5.0-beta (Beta)
 
-Welcome to the official **SerialCraft** guide. **0.5.0-beta.1** integrates the translucent interface developed on `test` and adds Simplified Chinese. It preserves the existing bidirectional hardware protocol, telemetry and Minecraft 26.2 / Java 25 compatibility.
+Welcome to the official **SerialCraft** guide. **0.5.0-beta** integrates the translucent interface developed on `test` and adds Simplified Chinese. It preserves the existing bidirectional hardware protocol, telemetry and Minecraft 26.2 / Java 25 compatibility.
 
 ## About the project
 
@@ -17,7 +17,7 @@ AI tools are used strategically. **The project does not depend on AI to exist.**
 - **Shared panel styling:** updated headers, borders, padding and layout across Boards, Events, Visualize and the IO editor, preserving existing functionality.
 - **Simplified Chinese:** 402 translation keys, including dynamic states, help and the IO editor. Thanks to [@SK-Xiaohan](https://github.com/SK-Xiaohan) for [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) and the Chinese name **串连世界**.
 
-This is a **pre-release**. Back up worlds and update clients and servers together. See the [English release notes](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.0-beta.1.en.md).
+This is a **pre-release**. Back up worlds and update clients and servers together. See the [English release notes](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.0-beta.en.md).
 
 ## Features retained from v0.4.6 (Beta)
 
@@ -66,7 +66,7 @@ This is a **pre-release**. Back up worlds and update clients and servers togethe
 ## Installation
 
 1. Install [Fabric Loader](https://fabricmc.net/) for **Minecraft 26.2** (requires **Java 25**).
-2. Download `Fabric API` and the SerialCraft v0.5.0-beta.1 `.jar`.
+2. Download `Fabric API` and the SerialCraft v0.5.0-beta `.jar`.
 3. Drop both into your `mods` folder.
 4. Launch the game.
 

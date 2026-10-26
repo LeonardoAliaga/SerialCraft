@@ -4,7 +4,7 @@ description: Configura las direcciones, los cinco conectores, las compuertas y e
 ---
 # Módulo de E/S: puente entre redstone y hardware
 
-En **SerialCraft 0.5.0-beta.1 (Beta)**, el antiguo Bloque IO evoluciona a **Módulo de E/S**. Sus clases Java ahora se llaman `HardwareIOBlock` y `HardwareIOBlockEntity`, pero su identificador registrado sigue siendo `serialcraft:io_block` para conservar mundos existentes.
+En **SerialCraft 0.5.0-beta (Beta)**, el antiguo Bloque IO evoluciona a **Módulo de E/S**. Sus clases Java ahora se llaman `HardwareIOBlock` y `HardwareIOBlockEntity`, pero su identificador registrado sigue siendo `serialcraft:io_block` para conservar mundos existentes.
 
 El módulo tiene un nombre para identificarlo y un **canal** como `pot_val` o `led_verde`. El canal debe coincidir exactamente con el mensaje del firmware.
 

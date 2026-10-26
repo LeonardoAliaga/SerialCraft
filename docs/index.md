@@ -68,7 +68,7 @@ Eres libre de estudiar el código, modificarlo o usarlo en tus modpacks.
 
 ## Empieza aprendiendo: tutoriales prácticos
 
-La documentación técnica explica el protocolo, pero los [tutoriales de SerialCraft](/tutoriales/) lo convierten en experimentos que puedes estudiar paso a paso. Esta sección corresponde a **0.5.0-beta.1 (Beta)**, Minecraft **26.2** y Java **25**.
+La documentación técnica explica el protocolo, pero los [tutoriales de SerialCraft](/tutoriales/) lo convierten en experimentos que puedes estudiar paso a paso. Esta sección corresponde a **0.5.0-beta (Beta)**, Minecraft **26.2** y Java **25**.
 
 - [Módulo de E/S: dirección y conectores](/tutoriales/bloque-io)
 - [Encender un LED físico desde Minecraft](/tutoriales/arduino-led-minecraft)

@@ -15,9 +15,9 @@ class PublishTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
-        self.jar = Path(self.directory.name) / "serialcraft-0.5.0-beta.1.jar"
+        self.jar = Path(self.directory.name) / "serialcraft-0.5.0-beta.jar"
         self.jar.write_bytes(b"verified-build-artifact")
-        self.args = (self.jar, "0.5.0-beta.1", "26.2", "beta", "Spanish notes", "English notes")
+        self.args = (self.jar, "0.5.0-beta", "26.2", "beta", "Spanish notes", "English notes")
         self.calls = []
         self.env = patch.dict(os.environ, {
             "GH_TOKEN": "test-token", "GITHUB_REPOSITORY": "owner/repo", "GITHUB_SHA": "abc123"
@@ -28,7 +28,7 @@ class PublishTests(unittest.TestCase):
     def draft(self):
         return {"id": 1, "draft": True, "prerelease": True, "assets": [],
                 "upload_url": "https://uploads.github.com/repos/owner/repo/releases/1/assets{?name,label}",
-                "html_url": "https://github.com/owner/repo/releases/tag/v0.5.0-beta.1"}
+                "html_url": "https://github.com/owner/repo/releases/tag/v0.5.0-beta"}
 
     def request(self, url, token, **kwargs):
         self.calls.append((url, kwargs))
@@ -47,7 +47,7 @@ class PublishTests(unittest.TestCase):
         create = next(kw["data"] for url, kw in self.calls if url.endswith("/releases") and kw.get("method") == "POST")
         self.assertTrue(create["prerelease"])
         self.assertTrue(create["draft"])
-        self.assertEqual(create["tag_name"], "v0.5.0-beta.1")
+        self.assertEqual(create["tag_name"], "v0.5.0-beta")
         self.assertEqual(create["target_commitish"], "abc123")
         self.assertTrue(create["body"].startswith("English notes"))
         uploaded = next(kw["data"] for url, kw in self.calls if "uploads.github.com" in url)

@@ -1,6 +1,6 @@
-# Guía SerialCraft — v0.5.0-beta.1 (Beta)
+# Guía SerialCraft — v0.5.0-beta (Beta)
 
-Bienvenido a la guía oficial de **SerialCraft**. **0.5.0-beta.1** integra la interfaz translúcida desarrollada en `test` y añade chino simplificado. Conserva el protocolo bidireccional, la telemetría y la compatibilidad con Minecraft 26.2 y Java 25.
+Bienvenido a la guía oficial de **SerialCraft**. **0.5.0-beta** integra la interfaz translúcida desarrollada en `test` y añade chino simplificado. Conserva el protocolo bidireccional, la telemetría y la compatibilidad con Minecraft 26.2 y Java 25.
 
 ## Sobre el proyecto y su filosofía
 
@@ -17,7 +17,7 @@ El uso de herramientas de inteligencia artificial es estratégico. **El proyecto
 - **Estilo compartido:** mejoras de cabeceras, bordes, padding y distribución en Placas, Eventos, Visualizar y el editor IO, conservando sus funciones.
 - **Chino simplificado:** 402 claves, incluidos estados dinámicos, ayudas y editor IO. Gracias a [@SK-Xiaohan](https://github.com/SK-Xiaohan) por el [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) y el nombre chino **串连世界**.
 
-Es una **versión preliminar**. Respalda tus mundos y actualiza cliente y servidor juntos. Consulta las [notas de lanzamiento en español](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.0-beta.1.es.md).
+Es una **versión preliminar**. Respalda tus mundos y actualiza cliente y servidor juntos. Consulta las [notas de lanzamiento en español](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.0-beta.es.md).
 
 ## Funciones conservadas de v0.4.6 (Beta)
 
@@ -66,7 +66,7 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 ## Instalación
 
 1. Instala [Fabric Loader](https://fabricmc.net/) para **Minecraft 26.2** (requiere **Java 25**).
-2. Descarga `Fabric API` y el `.jar` de SerialCraft v0.5.0-beta.1.
+2. Descarga `Fabric API` y el `.jar` de SerialCraft v0.5.0-beta.
 3. Coloca ambos en tu carpeta `mods`.
 4. Inicia el juego.
 
@@ -221,7 +221,7 @@ Si hay un servo o un motor conectado, empieza con la amplitud al 25 %.
 
 Vale la pena conocerlos antes de montar algo grande:
 
-* La lista de módulos y el editor usan una distribución adaptable y desplazamiento, pero conviene comprobar visualmente su legibilidad en tu resolución y escala GUI reales. El editor de v0.5.0-beta.1 todavía **no incluye una vista gráfica interactiva de los cinco conectores**; se configuran en el propio mundo.
+* La lista de módulos y el editor usan una distribución adaptable y desplazamiento, pero conviene comprobar visualmente su legibilidad en tu resolución y escala GUI reales. El editor de v0.5.0-beta todavía **no incluye una vista gráfica interactiva de los cinco conectores**; se configuran en el propio mundo.
 * No existe un modo en el que **el servidor** sea dueño del hardware. El puerto serie vive en el ordenador de cada jugador, así que el modelo es "cada jugador controla sus propias placas desde su PC". Esto es una decisión de arquitectura, no un olvido.
 * El canal Wi-Fi no está cifrado.
 * La pestaña Visualizar guarda las últimas ~4000 muestras de hasta 16 señales a la vez. Es un registro de **mensajes**, no un osciloscopio: no ve nada que ocurra entre dos mensajes.

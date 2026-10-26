@@ -26,7 +26,7 @@ Su creador, **Leonardo Aliaga**, desarrolla el proyecto como parte de su interé
 
 SerialCraft se distribuye como software en desarrollo. No es un controlador industrial ni una solución para sistemas críticos. La compatibilidad, la seguridad de una conexión y el comportamiento de un circuito dependen también del firmware y del montaje físico.
 
-Esta web distingue las características de la **versión de desarrollo 0.5.0-beta.1** del trabajo experimental en otras ramas. No se publican resultados de pruebas físicas que no se hayan realizado.
+Esta web distingue las características de la **versión de desarrollo 0.5.0-beta** del trabajo experimental en otras ramas. No se publican resultados de pruebas físicas que no se hayan realizado.
 
 ## Cómo participar
 

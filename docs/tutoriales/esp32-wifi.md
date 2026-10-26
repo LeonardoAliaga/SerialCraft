@@ -6,7 +6,7 @@ description: Aprende la arquitectura TCP de SerialCraft, la conexión por token 
 
 Con Arduino Uno R3 el cable USB une directamente el juego con la placa. Un **ESP32** permite estudiar una ruta diferente: el mod escucha conexiones TCP y el microcontrolador se conecta por Wi-Fi.
 
-En SerialCraft **0.5.0-beta.1 (Beta)**, Minecraft actúa como **servidor TCP** y el ESP32 como **cliente**. Este cambio de dirección es importante si conoces ejemplos anteriores de SerialCraft.
+En SerialCraft **0.5.0-beta (Beta)**, Minecraft actúa como **servidor TCP** y el ESP32 como **cliente**. Este cambio de dirección es importante si conoces ejemplos anteriores de SerialCraft.
 
 ## Requisitos
 

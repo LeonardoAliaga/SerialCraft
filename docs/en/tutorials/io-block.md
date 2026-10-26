@@ -1,10 +1,10 @@
 ---
 title: SerialCraft Hardware I/O Module — modes, signals and diagnostics
-description: Learn the channel and connector directions in SerialCraft 0.5.0-beta.1, including OR AND XOR and RX/TX.
+description: Learn the channel and connector directions in SerialCraft 0.5.0-beta, including OR AND XOR and RX/TX.
 ---
 # I/O Module: connecting redstone and physical hardware
 
-In **0.5.0-beta.1 (Beta)**, the old Arduino IO Block is renamed the **Hardware I/O Module**. Its registry ID remains `serialcraft:io_block` to preserve existing worlds.
+In **0.5.0-beta (Beta)**, the old Arduino IO Block is renamed the **Hardware I/O Module**. Its registry ID remains `serialcraft:io_block` to preserve existing worlds.
 
 A module has a display name and a Channel such as `pot_val` or `led_verde`. The channel must exactly match a firmware message.
 

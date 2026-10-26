@@ -4,7 +4,7 @@ description: Learn Minecraft redstone and physical electronics with Arduino and 
 ---
 # Tutorials: Minecraft meets electronics
 
-SerialCraft connects real-world microcontrollers to Minecraft Java. These guides explain what each side of that connection does, with concrete examples for the **0.5.0-beta.1 (Beta)** development version.
+SerialCraft connects real-world microcontrollers to Minecraft Java. These guides explain what each side of that connection does, with concrete examples for the **0.5.0-beta (Beta)** development version.
 
 ## Start here
 
