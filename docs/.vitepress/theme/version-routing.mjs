@@ -1,26 +1,26 @@
 /* Single source of truth for the version visible in the browser URL.
    Works for both current /en/... pages and historical /versiones/en/... URLs. */
-const versions = ['v0.4.6', 'v0.4.3', 'v0.3.6']
+const versions = ['v0.5.0-beta.1', 'v0.4.3', 'v0.3.6']
 export { versions }
 
 export function getVersionContext(input = '/') {
   const path = input.replace(/[?#].*$/, '').replace(/\.html$/, '').replace(/\/index$/, '/')
   const english = /^\/(?:en(?:\/|$)|versiones\/en(?:\/|$))/.test(path)
   const archive = path.match(/^\/versiones\/(?:en\/)?(v0\.4\.3|v0\.3\.6)(?:\/|$)/)
-  const version = archive ? archive[1] : 'v0.4.6'
+  const version = archive ? archive[1] : 'v0.5.0-beta.1'
   const last = path.split('/').filter(Boolean).pop() || ''
   let section = 'guide'
   if (!last || last === version) section = 'index'
   else if (last === 'guide' || last === 'protocol') section = last
   else if (last === 'examples' || last === 'ejemplos') section = 'examples'
   else if ((path === '/en/' || path === '/') || path.endsWith('/index')) section = 'index'
-  return { version, english, section, archived: version !== 'v0.4.6' }
+  return { version, english, section, archived: version !== 'v0.5.0-beta.1' }
 }
 
 export function linkForVersion(input, targetVersion) {
   if (!versions.includes(targetVersion)) throw new Error('Unknown version: ' + targetVersion)
   const { english, section } = getVersionContext(input)
-  if (targetVersion === 'v0.4.6') {
+  if (targetVersion === 'v0.5.0-beta.1') {
     if (section === 'index') return english ? '/en/' : '/'
     if (section === 'examples') return english ? '/en/examples/' : '/ejemplos/'
     return (english ? '/en/' : '/') + section + '.html'

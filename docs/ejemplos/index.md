@@ -1,4 +1,4 @@
-# Ejemplos y pruebas (v0.4.6)
+# Ejemplos y pruebas (v0.5.0-beta.1)
 
 Tres montajes equivalentes del **mismo circuito** sobre plataformas distintas: un potenciómetro que controla un nivel de redstone dentro de Minecraft, y un LED físico cuyo brillo lo decide la redstone del juego.
 

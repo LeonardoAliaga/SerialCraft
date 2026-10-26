@@ -1,7 +1,7 @@
 # Bidirectional Protocol and Hardware (v0.4.3)
 
 ::: warning Legacy Version (Beta 0.4.3)
-This technical documentation corresponds to **Beta 0.4.3**. If you are looking for the standardized protocol with event channels, see the [Current Reference (v0.4.6)](/en/protocol).
+This technical documentation corresponds to **Beta 0.4.3**. If you are looking for the standardized protocol with event channels, see the [Current Reference (v0.5.0-beta.1)](/en/protocol).
 :::
 
 ## 1. Communication specification

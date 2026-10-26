@@ -4,7 +4,7 @@ description: Understand how SerialCraft sends health, hunger, time and game even
 ---
 # Game telemetry: Minecraft data on physical hardware
 
-**SerialCraft 0.4.6-beta** can send game state and events to a connected device using reserved channels beginning with `mc_`. They are independent of a specific I/O Module and can be switched on in the Laptop **Events** tab.
+**SerialCraft 0.5.0-beta.1** can send game state and events to a connected device using reserved channels beginning with `mc_`. They are independent of a specific I/O Module and can be switched on in the Laptop **Events** tab.
 
 ~~~text
 mc_health:18

@@ -10,11 +10,11 @@ const details = ref<HTMLDetailsElement | null>(null)
 const context = computed(() => getVersionContext(route.path))
 const current = computed(() => context.value.version)
 const english = computed(() => context.value.english)
-const buttonLabel = computed(() => current.value + (current.value === 'v0.4.6' ? ' (Beta)' : (english.value ? ' (Archive)' : ' (Archivo)')))
+const buttonLabel = computed(() => current.value + (current.value === 'v0.5.0-beta.1' ? ' (Beta)' : (english.value ? ' (Archive)' : ' (Archivo)')))
 const entries = computed(() => versions.map(version => ({
   version,
   href: withBase(linkForVersion(route.path, version)),
-  text: version === 'v0.4.6'
+  text: version === 'v0.5.0-beta.1'
     ? (english.value ? 'Current · Beta' : 'Actual · Beta')
     : (english.value ? 'Archived documentation' : 'Documentación histórica'),
   active: version === current.value

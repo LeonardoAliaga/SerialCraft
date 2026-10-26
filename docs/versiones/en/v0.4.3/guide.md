@@ -1,7 +1,7 @@
 # SerialCraft Guide — v0.4.3 (Beta)
 
 ::: warning Legacy Version (Beta 0.4.3)
-This documentation corresponds to **Beta 0.4.3** of SerialCraft. For the current standardized version, see the [Current Guide (v0.4.6)](/en/guide).
+This documentation corresponds to **Beta 0.4.3** of SerialCraft. For the current standardized version, see the [Current Guide (v0.5.0-beta.1)](/en/guide).
 :::
 
 Welcome to the official **SerialCraft** guide. 0.4.3 is the release with the most internal work so far: a new interface, a unified protocol, and a full review of the networking layer with multiplayer servers in mind.

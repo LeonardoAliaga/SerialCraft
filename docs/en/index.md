@@ -68,7 +68,7 @@ You are free to study the code, modify it, or use it in your modpacks.
 
 ## Learn electronics with Minecraft
 
-The [SerialCraft tutorials](/en/tutorials/) take you from reading a signal to driving a physical circuit. This content follows **0.4.6-beta (development branch)**, Minecraft **26.2** and Java **25**.
+The [SerialCraft tutorials](/en/tutorials/) take you from reading a signal to driving a physical circuit. This content follows **0.5.0-beta.1 (Beta)**, Minecraft **26.2** and Java **25**.
 
 - [Understand the I/O Module](/en/tutorials/io-block)
 - [Drive an Arduino LED from Minecraft](/en/tutorials/arduino-led)

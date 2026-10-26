@@ -2,12 +2,12 @@
 
 ### Lleva tu hardware del mundo real a tu mundo Survival.
 
-- [Documentación](https://serialcraft.xyz) · [Descargar en Modrinth](https://modrinth.com/mod/serialcraft) · [Novedades de 0.4.6-beta](changelogs/0.4.6-beta.es.md)
+- [Documentación](https://serialcraft.xyz) · [Descargar la Beta en GitHub](https://github.com/LeonardoAliaga/SerialCraft/releases/tag/v0.5.0-beta.1) · [Novedades de 0.5.0-beta.1](changelogs/0.5.0-beta.1.es.md)
 
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge)](https://adoptium.net/)
-[![Versión](https://img.shields.io/badge/Versión-0.4.6--beta-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
+[![Versión](https://img.shields.io/badge/Versión-0.5.0--beta.1-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
 [![Licencia](https://img.shields.io/badge/Licencia-MIT-8a9a7b?style=for-the-badge)](LICENSE)
 
 **SerialCraft** es un mod experimental y educativo que rompe la cuarta pared: permite comunicación bidireccional en tiempo real entre un **Arduino** (o cualquier dispositivo serial) y **Minecraft**, escrito en Java sobre Fabric.
@@ -47,8 +47,8 @@ Y en el sentido contrario, ya funcionando:
 * **Visualizar:** observa mensajes RX/TX en una línea de tiempo, compara sensores con su conversión a redstone y prueba un actuador con el generador de ondas en un canal dedicado.
 * La Laptop mantiene el mundo en marcha mientras usas su interfaz, incluso en un jugador.
 
-### 🌍 Cuatro localizaciones
-Inglés y español, con localizaciones reales para España, México y Argentina (con voseo). El juego utiliza la localización elegida por el jugador.
+### 🌍 Cinco localizaciones
+Inglés, español de España, México y Argentina (con voseo), y **chino simplificado**. Gracias a [@SK-Xiaohan](https://github.com/SK-Xiaohan) por la traducción y el nombre chino **串连世界**, aportados en el [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4). El juego utiliza la localización elegida por el jugador.
 
 ---
 
@@ -144,11 +144,23 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 
 ### Publicación automática
 
-Al integrar una versión nueva en `main`, GitHub Actions compila, ejecuta las pruebas unitarias y los GameTests, y publica el mismo JAR en GitHub Releases y Modrinth. Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` para GitHub y `changelogs/<mod_version>.en.md` para Modrinth.
+Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba el JAR y publica **GitHub Releases**. `0.5.0-beta.1` se publica como **Pre-release**, no como versión estable. El JAR conserva Minecraft 26.2, Fabric Loader 0.19.3 y Java 25.
 
-La descripción inglesa de Modrinth se mantiene en [MODRINTH.md](MODRINTH.md) y se sincroniza al publicar desde `main`, también en cambios que conservan la versión. El secreto `MODRINTH_TOKEN` necesita **Read versions** y **Create versions**; para actualizar la descripción también necesita **Write projects** (`PROJECT_WRITE`). Si falla solo esa sincronización, el workflow muestra una advertencia y conserva la publicación.
+Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` y `changelogs/<mod_version>.en.md`. Las notas oficiales de GitHub se publican en inglés; ambas versiones se conservan en el repositorio. La misma versión se inserta automáticamente en `fabric.mod.json` al compilar.
 
-Las versiones `alpha`/`beta` se marcan como prerelease en GitHub; una versión ya publicada se conserva sin duplicarla. Si una publicación queda a medias, usa **Re-run failed jobs** en la ejecución original para conservar el mismo JAR. El workflow también permite ejecución manual en `main`; si recompila un JAR distinto al de una publicación parcial, detiene el reintento para evitar mezclar archivos.
+**Modrinth requiere una acción explícita:** ejecuta manualmente **Build and test** en `main` y activa `publish_modrinth` para publicar allí y sincronizar [MODRINTH.md](MODRINTH.md). Los pushes normales no publican en Modrinth. Esa opción requiere `MODRINTH_TOKEN` con **Read versions** y **Create versions**, y **Write projects** (`PROJECT_WRITE`) para la descripción.
+
+Una versión publicada se conserva sin duplicarla. Para reintentar una publicación parcial, usa **Re-run failed jobs** en la ejecución original, conservando el mismo JAR. El publicador rechaza un archivo diferente si ya hay un asset en el borrador o un tag que apunta a otro commit.
+
+### Probar desde IntelliJ IDEA
+
+1. Abre el repositorio y selecciona el tag `v0.5.0-beta.1` para reproducir esta Beta, o `test` para continuar el desarrollo.
+2. Usa **JDK 25** como SDK del proyecto y como **Gradle JVM**. Importa `build.gradle` usando el wrapper incluido, **Gradle 9.7.1**.
+3. Ejecuta `build` desde el panel de Gradle (Windows: `.\gradlew.bat build`). El JAR queda en `build/libs/serialcraft-0.5.0-beta.1.jar`.
+4. Ejecuta la tarea `runClient`. En el juego, selecciona **简体中文（中国大陆）** para comprobar chino simplificado.
+5. Revisa Welcome, Home, las cuatro pestañas, las ayudas y ambas secciones del editor IO a varias escalas de GUI. Comprueba USB y Wi-Fi con tu placa; esas pruebas físicas y visuales no las sustituye la CI.
+
+Para las comprobaciones adicionales: `python scripts/validate_locales.py`, `python -m unittest discover -s scripts -p 'test_*.py'` y, después de compilar, `python scripts/publish_release.py --check`.
 
 ---
 

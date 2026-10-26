@@ -14,6 +14,8 @@ on:
 
 jobs:
   notify:
+    # A GitHub-only beta must not announce an unrelated older Modrinth version.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-latest
 
     steps:
