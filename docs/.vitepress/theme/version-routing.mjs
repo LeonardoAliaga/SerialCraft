@@ -23,13 +23,13 @@ export function linkForVersion(input, targetVersion) {
   if (targetVersion === 'v0.5.0-beta') {
     if (section === 'index') return english ? '/en/' : '/'
     if (section === 'examples') return english ? '/en/examples/' : '/ejemplos/'
-    return (english ? '/en/' : '/') + section + '.html'
+    return (english ? '/en/' : '/') + section
   }
   const base = '/versiones/' + (english ? 'en/' : '') + targetVersion + '/'
   if (section === 'index') return base
   if (section === 'examples') {
-    if (targetVersion === 'v0.4.3') return base + (english ? 'examples.html' : 'ejemplos.html')
-    return base + 'guide.html' // v0.3.6 has no archive examples page.
+    if (targetVersion === 'v0.4.3') return base + (english ? 'examples' : 'ejemplos')
+    return base + 'guide' // v0.3.6 has no archive examples page.
   }
-  return base + section + '.html'
+  return base + section
 }
