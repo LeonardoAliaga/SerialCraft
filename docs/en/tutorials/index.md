@@ -15,9 +15,11 @@ SerialCraft connects real-world microcontrollers to Minecraft Java. These guides
 | [I/O Module: directions and channels](/en/tutorials/io-block) | Distinguish hardware-to-game direction from redstone input and output faces |
 | [Arduino LED tutorial](/en/tutorials/arduino-led) | Drive an LED from a Minecraft redstone lever |
 | [Potentiometer tutorial](/en/tutorials/potentiometer) | Send an analog reading to Minecraft |
+| [Digital and analog signals](/en/tutorials/digital-analog) | Understand 0–15, 0–255 and PWM |
 | [Visualizer and signal generator](/en/tutorials/visualizer) | Inspect RX/TX and waveforms |
 | [Game telemetry](/en/tutorials/telemetry) | Send game states and events |
 | [Testing the mod](/en/tutorials/testing) | JUnit, GameTests and CI |
+| [Connection troubleshooting](/en/tutorials/troubleshooting) | Check USB, Wi-Fi, channels and redstone one layer at a time |
 
 See also the detailed [official examples](/en/examples/) with Uno R3, ESP32 and Uno Q sketches, and the [protocol reference](/en/protocol) for baud rates, TCP port and signal conversions.
 

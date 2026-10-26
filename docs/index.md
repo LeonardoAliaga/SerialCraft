@@ -1,6 +1,7 @@
 ---
 # Configuración de la portada estilo VitePress
 layout: home
+titleTemplate: false
 title: SerialCraft — Arduino y ESP32 para Minecraft Fabric
 description: SerialCraft de Leonardo Aliaga conecta Arduino y ESP32 con Minecraft. Documentación oficial, código fuente, descargas y tutoriales.
 
@@ -28,10 +29,12 @@ features:
   - title: Código como Redstone
     details: Controla la Redstone con sensores reales o activa LEDs físicos con eventos del juego.
   - title: Multi-Idioma Nativo
-    details: El mod detecta automáticamente tu región. Disponible en Inglés y Español (con localizaciones para España, Argentina y México).
+    details: El mod detecta automáticamente tu región. Disponible en inglés, español (España, Argentina y México) y chino simplificado.
 ---
 
 # ¿Qué es SerialCraft?
+
+Esta es la documentación oficial de **SerialCraft**, el mod de Minecraft Fabric de **Leonardo Aliaga**. La versión actual es **0.5.0-beta**, para Minecraft 26.2 y Java 25. [Descarga oficial en Modrinth](https://modrinth.com/mod/serialcraft) · [Código y lanzamientos en GitHub](https://github.com/LeonardoAliaga/SerialCraft).
 
 **SerialCraft** es un mod para **Minecraft (Fabric)** que rompe la cuarta pared, permitiendo una comunicación bidireccional en tiempo real entre el juego y dispositivos electrónicos externos.
 
@@ -62,7 +65,7 @@ El mod utiliza protocolos seriales (USB) y sockets TCP (Wi-Fi) para abrir un can
 SerialCraft es un proyecto de **Código Abierto** (Open Source).
 Eres libre de estudiar el código, modificarlo o usarlo en tus modpacks.
 
-* **Idiomas Soportados:** English (US), Español (España, Argentina, México).
+* **Idiomas soportados:** English (US), Español (España, Argentina, México) y 简体中文 (chino simplificado).
 * **¿Encontraste un error?** [Repórtalo en GitHub](https://github.com/leonardoaliaga/serialcraft/issues).
 ---
 

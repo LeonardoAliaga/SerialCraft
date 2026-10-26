@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 import { registerMediaSlots } from './media-slots.mts'
 import { seoHead } from './seo.mts'
+import { writeLegacyRedirects } from './seo-build.mjs'
 
 export default defineConfig({
   // Configuración compartida
@@ -10,9 +11,12 @@ export default defineConfig({
   title: "SerialCraft",
   description: "Conecta Arduino y ESP32 con Minecraft: instalación, circuitos, código y tutoriales de SerialCraft.",
   base: "/",
-  // Keep .html URLs consistent with GitHub Pages, internal links and sitemap.
-  cleanUrls: false,
+  // Match the extensionless URLs already selected by Google and linked by the site.
+  cleanUrls: true,
   transformHead: seoHead,
+  transformHtml: (html, _id, { pageData }) => html.replace(/<html lang="[^"]*"/,
+    `<html lang="${/^(?:en\/|versiones\/en\/)/.test(pageData.relativePath) ? 'en' : 'es'}"`),
+  buildEnd: writeLegacyRedirects,
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }],
@@ -185,9 +189,11 @@ export default defineConfig({
                 { text: 'I/O Module', link: '/en/tutorials/io-block' },
                 { text: 'Arduino LED', link: '/en/tutorials/arduino-led' },
                 { text: 'Potentiometer', link: '/en/tutorials/potentiometer' },
+                { text: 'Digital and analog', link: '/en/tutorials/digital-analog' },
                 { text: 'Visualizer', link: '/en/tutorials/visualizer' },
                 { text: 'Telemetry', link: '/en/tutorials/telemetry' },
-                { text: 'Automated tests', link: '/en/tutorials/testing' }
+                { text: 'Automated tests', link: '/en/tutorials/testing' },
+                { text: 'Troubleshooting', link: '/en/tutorials/troubleshooting' }
               ]
             },
             {
@@ -231,6 +237,8 @@ export default defineConfig({
   },
 
   themeConfig: {
+    // The custom language switcher maps translated filenames explicitly.
+    i18nRouting: false,
     socialLinks: [
       { icon: 'github', link: 'https://github.com/leonardoaliaga/serialcraft' },
       { icon: 'instagram', link: 'https://instagram.com/aliaga1924' }

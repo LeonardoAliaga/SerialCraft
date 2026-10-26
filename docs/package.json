@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
+    "docs:build": "node scripts/check-seo-routes.mjs && node scripts/check-version-routes.mjs && vitepress build && python3 scripts/check-seo-output.py",
     "docs:preview": "vitepress preview"
   },
   "keywords": [],

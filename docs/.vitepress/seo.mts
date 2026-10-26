@@ -2,31 +2,13 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { HeadConfig, TransformContext } from 'vitepress'
 
-const origin = 'https://serialcraft.xyz'
-const pairs = [
-  ['index.md', 'en/index.md'], ['guide.md', 'en/guide.md'],
-  ['protocol.md', 'en/protocol.md'], ['io-module.md', 'en/io-module.md'],
-  ['ejemplos/index.md', 'en/examples/index.md'], ['acerca-de.md', 'en/about.md'],
-  ['contacto.md', 'en/contact.md'], ['privacidad.md', 'en/privacy.md'],
-  ['tutoriales/index.md', 'en/tutorials/index.md'],
-  ['tutoriales/arduino-led-minecraft.md', 'en/tutorials/arduino-led.md'],
-  ['tutoriales/bloque-io.md', 'en/tutorials/io-block.md'],
-  ['tutoriales/sensor-redstone.md', 'en/tutorials/potentiometer.md'],
-  ['tutoriales/visualizador.md', 'en/tutorials/visualizer.md'],
-  ['tutoriales/telemetria.md', 'en/tutorials/telemetry.md'],
-  ['tutoriales/pruebas-automatizadas.md', 'en/tutorials/testing.md'],
-  ...['v0.3.6', 'v0.4.3'].map(v =>
-    [`versiones/${v}/index.md`, `versiones/en/${v}/index.md`]),
-  ...['v0.3.6', 'v0.4.3'].flatMap(v => ['guide', 'protocol'].map(p =>
-    [`versiones/${v}/${p}.md`, `versiones/en/${v}/${p}.md`])),
-  ['versiones/v0.4.3/ejemplos.md', 'versiones/en/v0.4.3/examples.md']
-]
-const url = (path: string) => origin + '/' + path.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '.html')
+import { origin, pairs, canonicalUrl as url } from './routes.mjs'
+
 export function seoHead({ pageData, siteConfig }: TransformContext): HeadConfig[] {
   const path = pageData.relativePath
   if (path === '404.md') return [['meta', { name: 'robots', content: 'noindex' }]]
   const en = path.startsWith('en/') || path.startsWith('versiones/en/')
-  const title = `${pageData.title || 'SerialCraft'} | SerialCraft`
+  const title = /SerialCraft/i.test(pageData.title || '') ? pageData.title : `${pageData.title || 'Documentation'} | SerialCraft`
   const description = pageData.description || (en
     ? 'Learn to connect Arduino and ESP32 to Minecraft with SerialCraft: installation, circuits, code and troubleshooting.'
     : 'Aprende a conectar Arduino y ESP32 con Minecraft usando SerialCraft: instalación, circuitos, código y solución de problemas.')
@@ -74,10 +56,10 @@ export function seoHead({ pageData, siteConfig }: TransformContext): HeadConfig[
       '@context': 'https://schema.org',
       '@graph': [
         { '@type': 'WebSite', '@id': origin + '/#website', name: 'SerialCraft',
-          url: origin + '/', inLanguage: ['es', 'en'], sameAs: [repository, 'https://modrinth.com/mod/serialcraft'] },
+          url: origin + '/', alternateName: 'SerialCraft Mod', inLanguage: ['es', 'en'], sameAs: [repository, 'https://modrinth.com/mod/serialcraft'] },
         { '@type': 'SoftwareSourceCode', '@id': origin + '/#project', name: 'SerialCraft',
           description: 'Open-source Minecraft Fabric mod connecting Arduino and ESP32 with Minecraft through USB serial and local TCP.',
-          url: origin + '/', codeRepository: repository, programmingLanguage: 'Java',
+          url: origin + '/', codeRepository: repository, programmingLanguage: 'Java', version: '0.5.0-beta', inLanguage: ['es', 'en', 'zh-CN'],
           license: 'https://github.com/LeonardoAliaga/SerialCraft/blob/main/LICENSE',
           author: { '@type': 'Person', name: 'Leonardo Aliaga', url: 'https://github.com/LeonardoAliaga' },
           sameAs: [repository, 'https://modrinth.com/mod/serialcraft'] }
