@@ -6,7 +6,7 @@ description: Diagnostica conexiones USB y Wi-Fi, canales incorrectos, redstone y
 
 Cuando un circuito de SerialCraft no funciona, conviene evitar la tentación de reescribir todo el sketch. En un puente bidireccional hay varias capas: **hardware, transporte, protocolo, enrutamiento y redstone**. Comprueba cada una por separado.
 
-Esta guía corresponde al protocolo de la versión en desarrollo **0.4.6-beta**.
+Esta guía corresponde al protocolo de la versión en desarrollo **0.5.0-beta**.
 
 ## El método de cinco capas
 

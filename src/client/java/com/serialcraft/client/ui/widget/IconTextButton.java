@@ -36,6 +36,7 @@ public class IconTextButton extends AbstractWidget {
     private int backgroundColor;
     private int borderColor;
     private int textColor;
+    private boolean glassStyle;
 
     public IconTextButton(int x, int y, int width, int height,
                           @Nullable SpriteIcon icon, Component text, OnPress onPress,
@@ -60,6 +61,12 @@ public class IconTextButton extends AbstractWidget {
         this.backgroundColor = background;
         this.borderColor     = border;
         this.textColor       = text;
+    }
+
+    /** Opt-in Welcome styling; dashboard buttons keep their existing appearance. */
+    public IconTextButton withGlassStyle() {
+        glassStyle = true;
+        return this;
     }
 
     @Override
@@ -91,18 +98,23 @@ public class IconTextButton extends AbstractWidget {
         int x = getX();
         int y = getY();
 
-        if (icon == SpriteIcon.QUEST) {
-            UiDraw.pixelRounded(gui, x, y, width, height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
-            UiDraw.pixelRounded(gui, x + 1, y + 1, width - 2, height - 2,
-                    active ? backgroundColor : UiTheme.LINE);
+        if (glassStyle) {
+            UiDraw.glassSurface(gui, x, y, width, height,
+                    active ? backgroundColor : UiTheme.WELCOME_FIELD,
+                    isHoveredOrFocused() ? UiTheme.WELCOME_TEXT : borderColor, isHoveredOrFocused());
         } else {
-            gui.fill(x, y, x + width, y + height, active ? backgroundColor : UiTheme.LINE);
-            gui.outline(x, y, width, height, isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor);
+            int background = (backgroundColor >>> 24) == 255 ? UiTheme.glassTint(backgroundColor) : backgroundColor;
+            UiDraw.glassSurface(gui, x, y, width, height, active ? background : UiTheme.BG_FIELD,
+                    isHoveredOrFocused() ? UiTheme.TEXT_PRIMARY : borderColor, active && isHoveredOrFocused());
         }
-        if (isFocused()) gui.outline(x + 1, y + 1, width - 2, height - 2, UiTheme.TEXT_PRIMARY);
+        if (isFocused()) {
+            int inset = glassStyle ? 2 : 1;
+            gui.outline(x + inset, y + inset, width - inset * 2, height - inset * 2,
+                    glassStyle ? UiTheme.WELCOME_CYAN : UiTheme.TEXT_PRIMARY);
+        }
 
         Font font = Minecraft.getInstance().font;
-        int textColorNow = active ? textColor : UiTheme.TEXT_SECONDARY;
+        int textColorNow = active ? textColor : glassStyle ? UiTheme.WELCOME_MUTED : UiTheme.TEXT_SECONDARY;
         String full = getMessage().getString();
         int iconSpace = icon != null ? SpriteIcon.DRAW_SIZE + PADDING : 0;
         int available = width - PADDING * 2 - iconSpace;
@@ -111,6 +123,10 @@ public class IconTextButton extends AbstractWidget {
         boolean clipped = font.width(full) > available;
 
         int textX = x + PADDING;
+        if (glassStyle && !iconOnly) {
+            int contentWidth = iconSpace + Math.min(font.width(full), Math.max(0, available));
+            textX = x + Math.max(PADDING, (width - contentWidth) / 2);
+        }
         if (icon != null) {
             int iconX = iconOnly ? x + (width - SpriteIcon.DRAW_SIZE) / 2 : textX;
             int iconY = y + (height - SpriteIcon.DRAW_SIZE) / 2;

@@ -1,7 +1,7 @@
-# Bidirectional Protocol and Hardware (v0.4.6)
+# Bidirectional Protocol and Hardware (v0.5.0-beta)
 
-::: warning Beta 0.4.6
-This specification describes 0.4.6-beta. The [IO module](./io-module) documents the new connector and logic rules. Historical changes to the 0.3.x scale and Wi-Fi direction remain below.
+::: warning Beta 0.5.0-beta
+This specification describes 0.5.0-beta. The [IO module](./io-module) documents the new connector and logic rules. Historical changes to the 0.3.x scale and Wi-Fi direction remain below.
 :::
 
 ## 1. Communication specification

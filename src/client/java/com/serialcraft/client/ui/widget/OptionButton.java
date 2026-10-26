@@ -61,13 +61,12 @@ public final class OptionButton extends SolidButton {
     private void renderCompact(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
         boolean hot = active && isHoveredOrFocused();
-        int background = selected ? (active ? semanticColor : UiTheme.LINE_SOFT)
+        int background = selected ? (active ? UiTheme.glassTint(semanticColor) : UiTheme.LINE_SOFT)
                 : hot ? UiTheme.INFO_BG : UiTheme.BG_CARD;
         int border = hot ? UiTheme.TEXT_PRIMARY : active && selected ? semanticColor
                 : active ? UiTheme.LINE_STRONG : UiTheme.LINE;
         int text = !active ? UiTheme.TEXT_SECONDARY : selected ? UiTheme.TEXT_INVERSE : UiTheme.TEXT_PRIMARY;
-        gui.fill(x, y, x + w, y + h, background);
-        gui.outline(x, y, w, h, border);
+        UiDraw.glassSurface(gui, x, y, w, h, background, border, hot);
         if (active && isFocused()) gui.outline(x + 1, y + 1, w - 2, h - 2, UiTheme.TEXT_INVERSE);
         var font = Minecraft.getInstance().font;
         int textWidth = Math.min(font.width(label), Math.max(1, w - 12));

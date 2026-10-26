@@ -1,10 +1,10 @@
 ---
 title: Visualize sensor data and generate test signals with SerialCraft
-description: Learn how the SerialCraft 0.4.6-beta Visualize tab displays signal traces, sensor readings and test waveforms.
+description: Learn how the SerialCraft 0.5.0-beta Visualize tab displays signal traces, sensor readings and test waveforms.
 ---
 # Visualize: a signal test bench inside Minecraft
 
-The Laptop's **Visualize** tab in **0.4.6-beta** lets you inspect channels over time, compare incoming sensor samples and send test waveforms to supported hardware.
+The Laptop's **Visualize** tab in **0.5.0-beta** lets you inspect channels over time, compare incoming sensor samples and send test waveforms to supported hardware.
 
 It is **not a high-frequency electronic oscilloscope**. It records application-level protocol messages, so the view is useful for understanding channel values, debugging sensor mappings and checking telemetry.
 

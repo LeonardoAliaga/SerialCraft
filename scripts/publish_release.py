@@ -12,6 +12,8 @@ import urllib.request
 import uuid
 import zipfile
 
+from validate_locales import validate
+
 
 def release_inputs(jar_dir):
     properties = dict(re.findall(r"^([a-z_]+)=(.+)$", Path("gradle.properties").read_text(), re.M))
@@ -30,13 +32,19 @@ def release_inputs(jar_dir):
         if not changelog:
             raise ValueError(f"Empty changelog: {notes}")
         changelogs.append(changelog)
-    modrinth_readme()
     with zipfile.ZipFile(jar) as package:
         metadata = json.loads(package.read("fabric.mod.json"))
         if metadata["id"] != "serialcraft" or metadata["version"] != version:
             raise ValueError("JAR metadata does not match gradle.properties")
         if metadata["depends"]["minecraft"] != f"~{minecraft}":
             raise ValueError("JAR Minecraft version does not match gradle.properties")
+        if metadata["depends"]["java"] != ">=25":
+            raise ValueError("JAR Java requirement changed unexpectedly")
+        if metadata["depends"]["fabricloader"] != f'>={properties["loader_version"].strip()}':
+            raise ValueError("JAR Fabric Loader requirement does not match gradle.properties")
+        if metadata["icon"] not in package.namelist():
+            raise ValueError("JAR icon is missing")
+    validate(jar=jar)
     kind = "alpha" if "alpha" in version.lower() else "beta" if "beta" in version.lower() else "release"
     return jar, version, minecraft, kind, *changelogs
 
@@ -92,26 +100,29 @@ def sync_modrinth_readme():
     print("Modrinth description synchronized with MODRINTH.md.")
 
 
-def publish(jar, version, minecraft, kind, changelog_es, changelog_en):
+def publish(jar, version, minecraft, kind, changelog_es, changelog_en, *, include_modrinth=False):
     github_token = os.environ.get("GH_TOKEN", "")
     modrinth_token = os.environ.get("MODRINTH_TOKEN", "")
-    if not github_token or not modrinth_token:
-        raise ValueError("GH_TOKEN and the MODRINTH_TOKEN repository secret are required")
+    if not github_token:
+        raise ValueError("GH_TOKEN is required")
+    if include_modrinth and not modrinth_token:
+        raise ValueError("Explicit Modrinth publication requires the MODRINTH_TOKEN repository secret")
     repository = os.environ["GITHUB_REPOSITORY"]
     commit = os.environ["GITHUB_SHA"]
-    project = os.environ["MODRINTH_PROJECT_ID"]
+    project = os.environ["MODRINTH_PROJECT_ID"] if include_modrinth else None
     tag = "v" + version
     github_url = f"https://api.github.com/repos/{repository}"
     modrinth_url = "https://api.modrinth.com/v2"
     gh = lambda path, **kw: request(github_url + path, "Bearer " + github_token, **kw)
     mr = lambda path, **kw: request(modrinth_url + path, modrinth_token, **kw)
     release = gh("/releases/tags/" + urllib.parse.quote(tag, safe=""), missing_ok=True)
-    modrinth = mr(f"/project/{project}/version/" + urllib.parse.quote(version, safe=""), missing_ok=True)
+    modrinth = (mr(f"/project/{project}/version/" + urllib.parse.quote(version, safe=""), missing_ok=True)
+                if include_modrinth else None)
     asset = next((a for a in (release or {}).get("assets", []) if a["name"] == jar.name), None)
 
     # A later push with an unchanged version must leave the published files alone.
-    if release and not release["draft"] and asset and modrinth:
-        print(f"{version} is already published on both platforms; nothing to upload.")
+    if release and not release["draft"] and asset and (not include_modrinth or modrinth):
+        print(f"{version} is already published on the requested platforms; nothing to upload.")
         return
 
     # Retry a partial publication using the original build artifact. Never replace an existing file.
@@ -125,7 +136,7 @@ def publish(jar, version, minecraft, kind, changelog_es, changelog_en):
         raise ValueError("Existing published GitHub release has no matching JAR; review it before retrying.")
 
     source = f"https://github.com/{repository}/commit/{commit}"
-    github_body = changelog_es + f"\n\n---\n[Commit de origen]({source})"
+    github_body = changelog_en + f"\n\n---\n[Source commit]({source})"
     modrinth_body = changelog_en + f"\n\n---\n[Source commit]({source})"
     if not release:
         ref = gh("/git/ref/tags/" + urllib.parse.quote(tag, safe=""), missing_ok=True)
@@ -142,7 +153,7 @@ def publish(jar, version, minecraft, kind, changelog_es, changelog_en):
         upload = release["upload_url"].split("{", 1)[0] + "?name=" + urllib.parse.quote(jar.name)
         request(upload, "Bearer " + github_token, method="POST", data=jar.read_bytes(), content_type="application/java-archive")
 
-    if not modrinth:
+    if include_modrinth and not modrinth:
         data, content_type = multipart({
             "project_id": project, "name": f"SerialCraft {version}", "version_number": version,
             "changelog": modrinth_body, "version_type": kind, "loaders": ["fabric"],
@@ -152,8 +163,9 @@ def publish(jar, version, minecraft, kind, changelog_es, changelog_en):
         modrinth = mr("/version", method="POST", data=data, content_type=content_type)
     if release["draft"]:
         release = gh(f'/releases/{release["id"]}', method="PATCH", data={"draft": False})
-    links = (f'GitHub: {release["html_url"]}\n'
-             f'Modrinth: https://modrinth.com/mod/{project}/version/{modrinth["id"]}\n')
+    links = f'GitHub: {release["html_url"]}\n'
+    if include_modrinth:
+        links += f'Modrinth: https://modrinth.com/mod/{project}/version/{modrinth["id"]}\n'
     print(links)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
@@ -166,15 +178,18 @@ def main():
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--publish", action="store_true")
     mode.add_argument("--sync-readme", action="store_true")
+    parser.add_argument("--modrinth", action="store_true", help="Explicitly opt into Modrinth publication with --publish")
     parser.add_argument("--jar-dir", type=Path, default=Path("build/libs"))
     args = parser.parse_args()
+    if args.modrinth and not args.publish:
+        parser.error("--modrinth requires --publish")
     if args.sync_readme:
         sync_modrinth_readme()
         return
     inputs = release_inputs(args.jar_dir)
     print(f"Validated {inputs[0].name}: Minecraft {inputs[2]}, channel {inputs[3]}")
     if args.publish:
-        publish(*inputs)
+        publish(*inputs, include_modrinth=args.modrinth)
 
 
 if __name__ == "__main__":

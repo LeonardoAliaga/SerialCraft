@@ -5,6 +5,11 @@ on:
   pull_request:
     branches: [test, main]
   workflow_dispatch:
+    inputs:
+      publish_modrinth:
+        description: Also publish to Modrinth and synchronize its description (main only)
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -17,6 +22,10 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Validate localization keys, Unicode and format arguments
+        run: python3 scripts/validate_locales.py
+      - name: Test release publication safeguards
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
       - run: chmod +x gradlew
       - run: ./gradlew build --console=plain
       - name: Validate release JAR and Spanish/English changelogs
@@ -41,7 +50,7 @@ jobs:
             build/run/gameTest/logs/
 
   publish:
-    name: Publish GitHub Release and Modrinth
+    name: Publish GitHub Release
     needs: build
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
@@ -56,14 +65,20 @@ jobs:
         with:
           name: serialcraft-jar
           path: release-dist
-      - name: Publish the verified JAR
+      - name: Publish the verified JAR to GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish_release.py --publish --jar-dir release-dist
+      - name: Publish to Modrinth only when explicitly requested
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_modrinth
         env:
           GH_TOKEN: ${{ github.token }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           MODRINTH_PROJECT_ID: hLV9sPrg
-        run: python3 scripts/publish_release.py --publish --jar-dir release-dist
+        run: python3 scripts/publish_release.py --publish --modrinth --jar-dir release-dist
       - name: Sync English Modrinth description
         id: modrinth-readme
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_modrinth
         continue-on-error: true
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}

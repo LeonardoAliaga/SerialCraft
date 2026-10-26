@@ -1,7 +1,7 @@
-# Protocolo Bidireccional y Hardware (v0.4.6)
+# Protocolo Bidireccional y Hardware (v0.5.0-beta)
 
-::: warning Versión Beta 0.4.6
-Esta especificación corresponde a **SerialCraft v0.4.6-beta**. Si vienes de la versión 0.4.3 o 0.3.x, consulta las secciones [Cambios respecto a 0.4.3](#_9-cambios-respecto-a-0-4-3) y [Cambios respecto a 0.3.x](#_8-cambios-respecto-a-0-3-x) para conocer las diferencias en el cable y la reserva del prefijo `mc_`.
+::: warning Versión Beta 0.5.0-beta
+Esta especificación corresponde a **SerialCraft v0.5.0-beta**. Si vienes de la versión 0.4.3 o 0.3.x, consulta las secciones [Cambios respecto a 0.4.3](#_9-cambios-respecto-a-0-4-3) y [Cambios respecto a 0.3.x](#_8-cambios-respecto-a-0-3-x) para conocer las diferencias en el cable y la reserva del prefijo `mc_`.
 :::
 
 ## 1. Especificaciones de comunicación

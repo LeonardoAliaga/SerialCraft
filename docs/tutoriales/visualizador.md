@@ -4,7 +4,7 @@ description: Aprende a explorar señales recibidas y enviadas, interpretar RX/TX
 ---
 # Visualizar: el banco de pruebas de SerialCraft
 
-Una de las novedades de **0.4.6-beta** es la pestaña **Visualizar** de la Laptop. Sirve para comprender qué información llega del dispositivo, qué información envía el mod y cómo cambian los valores con el tiempo.
+Una de las novedades de **0.5.0-beta** es la pestaña **Visualizar** de la Laptop. Sirve para comprender qué información llega del dispositivo, qué información envía el mod y cómo cambian los valores con el tiempo.
 
 No es un osciloscopio electrónico de alta velocidad: registra muestras del protocolo y representa su evolución. Esto es suficiente para diagnosticar sensores lentos, señales de redstone o telemetría del juego.
 

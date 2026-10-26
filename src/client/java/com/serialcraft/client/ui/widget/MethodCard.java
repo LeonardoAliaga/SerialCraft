@@ -1,17 +1,21 @@
 package com.serialcraft.client.ui.widget;
 
 import com.serialcraft.client.ui.SpriteIcon;
+import com.serialcraft.client.ui.UiDraw;
 import com.serialcraft.client.ui.UiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Tarjeta grande de "metodo de conexion": icono, titulo fijo y una linea de
@@ -37,11 +41,12 @@ public class MethodCard extends AbstractWidget {
     private final int backgroundColor;
     private final int borderColor;
     private final int statusColor;
+    private final boolean highlighted;
     private final OnPress onPress;
 
     public MethodCard(int x, int y, int width, int height, SpriteIcon icon,
                       Component title, Component status, int statusColor,
-                      int backgroundColor, int borderColor, OnPress onPress) {
+                      int backgroundColor, int borderColor, boolean highlighted, OnPress onPress) {
         super(x, y, width, height, title);
         this.icon            = icon;
         this.title           = title;
@@ -49,7 +54,9 @@ public class MethodCard extends AbstractWidget {
         this.statusColor     = statusColor;
         this.backgroundColor = backgroundColor;
         this.borderColor     = borderColor;
+        this.highlighted     = highlighted;
         this.onPress         = onPress;
+        setTooltip(Tooltip.create(title.copy().append("\n").append(status)));
     }
 
     @Override
@@ -58,12 +65,25 @@ public class MethodCard extends AbstractWidget {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (active && visible && isFocused() && (event.key() == GLFW.GLFW_KEY_ENTER
+                || event.key() == GLFW.GLFW_KEY_KP_ENTER || event.key() == GLFW.GLFW_KEY_SPACE)) {
+            onPress.onPress();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
     protected void extractWidgetRenderState(GuiGraphicsExtractor gui, int mouseX, int mouseY, float delta) {
         int x = getX();
         int y = getY();
 
-        gui.fill(x, y, x + width, y + height, backgroundColor);
-        gui.outline(x, y, width, height, isHoveredOrFocused() ? UiTheme.TEXT_INVERSE : borderColor);
+        int edge = isHoveredOrFocused() ? UiTheme.WELCOME_TEXT : borderColor;
+        UiDraw.glassSurface(gui, x, y, width, height, backgroundColor, edge,
+                highlighted || isHoveredOrFocused());
+        gui.fill(x + 1, y + 5, x + 3, y + height - 5, edge);
+        if (isFocused()) gui.outline(x + 4, y + 4, width - 8, height - 8, UiTheme.WELCOME_CYAN);
 
         int iconSize = SpriteIcon.DRAW_SIZE;
         int iconX = x + 8;
@@ -77,9 +97,9 @@ public class MethodCard extends AbstractWidget {
         int textX = iconX + iconSize + 8;
         int available = x + width - 8 - textX;
 
-        int titleY = y + 8;
+        int titleY = y + (height - (font.lineHeight * 2 + 3)) / 2;
         gui.text(font, font.plainSubstrByWidth(title.getString(), available),
-                textX, titleY, UiTheme.TEXT_INVERSE, false);
+                textX, titleY, UiTheme.WELCOME_TEXT, false);
 
         int statusY = titleY + font.lineHeight + 3;
         gui.text(font, font.plainSubstrByWidth(status.getString(), available),

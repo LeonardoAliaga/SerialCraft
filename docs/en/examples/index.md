@@ -1,4 +1,4 @@
-# Examples and testing (v0.4.6)
+# Examples and testing (v0.5.0-beta)
 
 Three equivalent builds of the **same circuit** on different platforms: a potentiometer that drives a redstone level inside Minecraft, and a physical LED whose brightness is decided by in-game redstone.
 

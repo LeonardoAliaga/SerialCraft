@@ -23,13 +23,11 @@ public final class UiDraw {
     }
 
     /**
-     * Tarjeta blanca con sombra y linea inferior.
+     * Tarjeta de cristal con borde tenue.
      * @return la Y donde termina la tarjeta, sombra incluida.
      */
     public static int card(GuiGraphicsExtractor gui, int x, int y, int width, int height) {
-        gui.fill(x + 2, y + height + 1, x + width + 2, y + height + 3, UiTheme.SHADOW);
-        gui.fill(x, y, x + width, y + height, UiTheme.BG_CARD);
-        gui.fill(x, y + height, x + width, y + height + 2, UiTheme.LINE);
+        glassSurface(gui, x, y, width, height, UiTheme.BG_CARD, UiTheme.LINE, false);
         return y + height + 3;
     }
 
@@ -51,20 +49,77 @@ public final class UiDraw {
     /** Soft, stepped corners drawn with native GUI primitives (no added textures). */
     public static void pixelRounded(GuiGraphicsExtractor gui, int x, int y, int width, int height, int color) {
         if (width < 10 || height < 10) { gui.fill(x, y, x + width, y + height, color); return; }
-        gui.fill(x + 4, y, x + width - 4, y + height, color);
-        gui.fill(x + 2, y + 1, x + width - 2, y + height - 1, color);
-        gui.fill(x + 1, y + 2, x + width - 1, y + height - 2, color);
+        gui.fill(x + 4, y, x + width - 4, y + 1, color);
+        gui.fill(x + 2, y + 1, x + width - 2, y + 2, color);
+        gui.fill(x + 1, y + 2, x + width - 1, y + 4, color);
         gui.fill(x, y + 4, x + width, y + height - 4, color);
+        gui.fill(x + 1, y + height - 4, x + width - 1, y + height - 2, color);
+        gui.fill(x + 2, y + height - 2, x + width - 2, y + height - 1, color);
+        gui.fill(x + 4, y + height - 1, x + width - 4, y + height, color);
+    }
+
+    /** Glass uses disjoint fill bands so translucent pixels are blended only once. */
+    public static void glassSurface(GuiGraphicsExtractor gui, int x, int y, int width, int height,
+                                     int background, int border, boolean glow) {
+        if (width < 6 || height < 6) return;
+        if (glow && (border >>> 24) != 0) {
+            glassOutline(gui, x - 2, y - 2, width + 4, height + 4, (border & 0x00FFFFFF) | 0x12000000);
+            glassOutline(gui, x - 1, y - 1, width + 2, height + 2, (border & 0x00FFFFFF) | 0x28000000);
+        }
+        if ((background >>> 24) != 0) {
+            gui.fill(x + 2, y, x + width - 2, y + 1, background);
+            gui.fill(x + 1, y + 1, x + width - 1, y + 2, background);
+            gui.fill(x, y + 2, x + width, y + height - 2, background);
+            gui.fill(x + 1, y + height - 2, x + width - 1, y + height - 1, background);
+            gui.fill(x + 2, y + height - 1, x + width - 2, y + height, background);
+            gui.fillGradient(x + 2, y + 2, x + width - 2, y + height / 2, 0x10FFFFFF, 0x00FFFFFF);
+        }
+        if ((border >>> 24) != 0) glassOutline(gui, x, y, width, height, border);
+    }
+
+    private static void glassOutline(GuiGraphicsExtractor gui, int x, int y, int width, int height, int color) {
+        gui.fill(x + 2, y, x + width - 2, y + 1, color);
+        gui.fill(x + 2, y + height - 1, x + width - 2, y + height, color);
+        gui.fill(x, y + 2, x + 1, y + height - 2, color);
+        gui.fill(x + width - 1, y + 2, x + width, y + height - 2, color);
+        gui.fill(x + 1, y + 1, x + 2, y + 2, color);
+        gui.fill(x + width - 2, y + 1, x + width - 1, y + 2, color);
+        gui.fill(x + 1, y + height - 2, x + 2, y + height - 1, color);
+        gui.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, color);
+    }
+
+    /** Parallel diagonal cuts; each translucent pixel belongs to a single fill band. */
+    public static void angledGlassSurface(GuiGraphicsExtractor gui, int x, int y, int width, int height,
+                                           int leftSlant, int rightSlant, int background, int border) {
+        if (width < 6 || height < 6) return;
+        for (int row = 0; row < height; row++) {
+            int corner = row == 0 || row == height - 1 ? 3 : row == 1 || row == height - 2 ? 1 : 0;
+            int left = x + (leftSlant == 0 ? corner : leftSlant - row * leftSlant / (height - 1));
+            int right = x + width - (rightSlant == 0 ? corner : row * rightSlant / (height - 1));
+            if (right <= left) continue;
+            if (row == 0 || row == height - 1 || right - left <= 2) {
+                gui.fill(left, y + row, right, y + row + 1, border);
+                continue;
+            }
+            int lift = Math.max(0, 22 - row * 44 / height);
+            if (row == 3) lift += 18;
+            int color = (background & 0xFF000000)
+                    | Math.min(255, ((background >> 16) & 255) + lift) << 16
+                    | Math.min(255, ((background >> 8) & 255) + lift) << 8
+                    | Math.min(255, (background & 255) + lift);
+            gui.fill(left, y + row, left + 1, y + row + 1, border);
+            gui.fill(left + 1, y + row, right - 1, y + row + 1, color);
+            gui.fill(right - 1, y + row, right, y + row + 1, border);
+        }
     }
 
     /** Shared card surface; a zero-height header leaves a quiet background for details. */
     public static void dashboardCard(GuiGraphicsExtractor gui, int x, int y, int width, int height,
                                      int headerHeight, int background, int accent) {
-        pixelRounded(gui, x + 1, y + 2, width, height, 0x0C000000);
-        pixelRounded(gui, x, y, width, height, UiTheme.LINE);
-        pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, background);
+        glassSurface(gui, x, y, width, height, background, UiTheme.LINE_STRONG, false);
         if (headerHeight <= 0) return;
         int bottom = y + Math.min(Math.max(28, headerHeight), height - 4);
+        gui.fill(x + 4, y + 4, x + width - 4, bottom, (accent & 0x00FFFFFF) | 0x18000000);
         gui.fill(x + 5, y + 8, x + 8, bottom - 7, accent);
         gui.fill(x + 12, bottom, x + width - 12, bottom + 1, UiTheme.LINE);
     }
@@ -72,9 +127,9 @@ public final class UiDraw {
     /** Mitad superior de pixelRounded: cabeceras tintadas que respetan las esquinas. */
     public static void pixelRoundedTop(GuiGraphicsExtractor gui, int x, int y, int width, int height, int color) {
         if (width < 10 || height < 5) { gui.fill(x, y, x + width, y + height, color); return; }
-        gui.fill(x + 4, y, x + width - 4, y + height, color);
-        gui.fill(x + 2, y + 1, x + width - 2, y + height, color);
-        gui.fill(x + 1, y + 2, x + width - 1, y + height, color);
+        gui.fill(x + 4, y, x + width - 4, y + 1, color);
+        gui.fill(x + 2, y + 1, x + width - 2, y + 2, color);
+        gui.fill(x + 1, y + 2, x + width - 1, y + 4, color);
         gui.fill(x, y + 4, x + width, y + height, color);
     }
 
@@ -86,19 +141,11 @@ public final class UiDraw {
     public static void surface(GuiGraphicsExtractor gui, int x, int y, int width, int height,
                                int accent, int tint, int headerHeight, boolean hovered) {
         if (width < 18 || height < 18) { card(gui, x, y, width, height, accent, hovered); return; }
-        pixelRounded(gui, x + 1, y + 2, width, height, 0x0C000000);
-        pixelRounded(gui, x, y, width, height, hovered ? UiTheme.LINE_STRONG : UiTheme.LINE);
-        pixelRounded(gui, x + 1, y + 1, width - 2, height - 2, UiTheme.BG_CARD);
+        glassSurface(gui, x, y, width, height, UiTheme.BG_CARD,
+                hovered ? UiTheme.LINE_STRONG : UiTheme.LINE, hovered);
         if (tint != 0 && headerHeight >= 5)
             pixelRoundedTop(gui, x + 1, y + 1, width - 2, Math.min(headerHeight, height - 6), tint);
         if ((accent >>> 24) != 0) gui.fill(x + 5, y + 9, x + 8, y + height - 9, accent);
-    }
-
-    /** Descripcion de pagina bajo el titulo. Se omite en pantallas compactas. */
-    public static void pageDescription(GuiGraphicsExtractor gui, Font font, Component text,
-                                       int x, int width, int screenHeight, int mouseX, int mouseY) {
-        if (UiTheme.compact(screenHeight)) return;
-        clippedText(gui, font, text, x, UiTheme.DESCRIPTION_Y, width, UiTheme.TEXT_SECONDARY, mouseX, mouseY);
     }
 
     /** Color de una linea de consola segun su prefijo; misma regla en Inicio y Eventos. */
@@ -210,6 +257,11 @@ public final class UiDraw {
     /** All dashboard card titles share the same size, weight and clipping behavior. */
     public static void dashboardTitle(GuiGraphicsExtractor gui, Font font, Component title,
                                       int x, int y, int width, int mouseX, int mouseY) {
+        dashboardTitle(gui, font, title, x, y, width, mouseX, mouseY, UiTheme.TEXT_PRIMARY);
+    }
+
+    public static void dashboardTitle(GuiGraphicsExtractor gui, Font font, Component title,
+                                      int x, int y, int width, int mouseX, int mouseY, int color) {
         float scale = UiTheme.CARD_TITLE_SCALE;
         int available = Math.max(1, (int) (width / scale));
         Component label = title.copy().withStyle(ChatFormatting.BOLD);
@@ -217,29 +269,49 @@ public final class UiDraw {
         gui.pose().pushMatrix();
         gui.pose().translate(x, y);
         gui.pose().scale(scale, scale);
-        clippedText(gui, font, label, 0, 0, available, UiTheme.TEXT_PRIMARY, -1, -1);
+        clippedText(gui, font, label, 0, 0, available, color, -1, -1);
         gui.pose().popMatrix();
         if (clipped && mouseX >= x && mouseX < x + width
                 && mouseY >= y && mouseY < y + Math.ceil(font.lineHeight * scale))
             gui.setTooltipForNextFrame(title, mouseX, mouseY);
     }
 
-    /** Cabecera de pagina a escala aumentada, seguida por la descripcion a escala nativa. */
-    public static void pageTitle(GuiGraphicsExtractor gui, Font font, int x,
-                                 Component accent, int accentColor, Component rest) {
-        float scale = UiTheme.TITLE_SCALE;
+    public static void pageHeader(GuiGraphicsExtractor gui, Font font, int screenWidth, int screenHeight,
+                                   Component accent, int accentColor, Component rest, Component description,
+                                   int mouseX, int mouseY) {
+        int right = UiTheme.headerLayout(screenWidth, screenHeight).textRight();
+        pageHeader(gui, font, screenWidth, screenHeight, accent, accentColor, rest, description,
+                right, right, mouseX, mouseY);
+    }
+
+    /** Small section eyebrow, a clear page title, then the supporting description. */
+    public static void pageHeader(GuiGraphicsExtractor gui, Font font, int screenWidth, int screenHeight,
+                                   Component accent, int accentColor, Component rest, Component description,
+                                   int titleRight, int descriptionRight, int mouseX, int mouseY) {
+        var header = UiTheme.headerLayout(screenWidth, screenHeight);
+        int x = header.textX();
+        int available = Math.max(1, Math.min(titleRight, header.textRight()) - x);
+        boolean compact = UiTheme.compact(screenHeight);
+        Component title = compact ? accent.copy().append(" · ").append(rest) : rest;
+        Component boldTitle = title.copy().withStyle(ChatFormatting.BOLD);
+        float scale = Math.min(UiTheme.TITLE_SCALE,
+                (float) available / Math.max(1, font.width(boldTitle)));
+        int titleHeight = (int) Math.ceil(font.lineHeight * scale);
+        int titleBoxHeight = (int) Math.ceil(font.lineHeight * UiTheme.TITLE_SCALE);
+        int y = UiTheme.headerTitleY(screenHeight, font.lineHeight) + (titleBoxHeight - titleHeight) / 2;
+        if (!compact) clippedText(gui, font, accent.copy().withStyle(ChatFormatting.BOLD),
+                x, header.y(), available, accentColor, mouseX, mouseY);
         gui.pose().pushMatrix();
+        gui.pose().translate(x, y);
         gui.pose().scale(scale, scale);
-
-        int scaledX = (int) (x / scale);
-        int scaledY = (int) (UiTheme.TITLE_Y / scale);
-
-        String accentText = accent.getString();
-        gui.text(font, accentText, scaledX, scaledY, accentColor, false);
-        gui.text(font, rest.getString(),
-                scaledX + font.width(accentText) + 4, scaledY, UiTheme.TEXT_PRIMARY, false);
-
+        gui.text(font, boldTitle, 0, 0, UiTheme.HEADER_TEXT, true);
         gui.pose().popMatrix();
+        if (description != null && !UiTheme.compact(screenHeight)) {
+            int descriptionWidth = Math.min(descriptionRight, header.textRight()) - x;
+            if (descriptionWidth > 0)
+                clippedText(gui, font, description, x, UiTheme.headerDescriptionY(screenHeight, font.lineHeight),
+                        descriptionWidth, UiTheme.HEADER_TEXT_MUTED, mouseX, mouseY);
+        }
     }
 
     /** Fila etiqueta/valor con la columna de valores alineada. */
@@ -253,34 +325,31 @@ public final class UiDraw {
 
     /** Narrow cards stack the label and value; wider cards align the value column. */
     public static int labelledRowHeight(Font font, Component label, int width) {
-        int labelWidth = width < 260 ? width : width * 2 / 5;
+        int labelWidth = width < 220 ? width : width * 2 / 5;
         return font.split(label, Math.max(1, labelWidth)).size() * font.lineHeight
-                + (width < 260 ? font.lineHeight + 4 : 0) + 8;
+                + (width < 220 ? font.lineHeight + 4 : 0) + 8;
     }
 
     public static void labelledRow(GuiGraphicsExtractor gui, Font font, int x, int y, int width,
                                    Component label, Component value, int color, int mouseX, int mouseY) {
-        int labelWidth = width < 260 ? width : width * 2 / 5;
+        int labelWidth = width < 220 ? width : width * 2 / 5;
         wrappedText(gui, font, label, x, y, labelWidth, UiTheme.TEXT_SECONDARY);
-        int valueX = width < 260 ? x : x + labelWidth + 8;
-        int valueY = width < 260 ? y + font.split(label, Math.max(1, labelWidth)).size() * font.lineHeight + 4 : y;
+        int valueX = width < 220 ? x : x + labelWidth + 8;
+        int valueY = width < 220 ? y + font.split(label, Math.max(1, labelWidth)).size() * font.lineHeight + 4 : y;
         clippedText(gui, font, value, valueX, valueY, width - (valueX - x), color, mouseX, mouseY);
     }
 
     public static final int STAT_TILE_HEIGHT = 30;
 
-    /**
-     * Aligned two-line status datum on the card's own white surface.
-     * No nested gray box, border or redundant colored rail.
-     */
+    /** Quiet inset fields make addresses and protocol values easy to scan. */
     public static void statTile(GuiGraphicsExtractor gui, Font font, int x, int y, int width,
                                 Component label, Component value, int accent, int valueColor,
                                 int mouseX, int mouseY) {
-        clippedText(gui, font, label, x, y + 3, Math.max(1, width - 4),
+        glassSurface(gui, x, y, width, STAT_TILE_HEIGHT, UiTheme.BG_FIELD, UiTheme.LINE_SOFT, false);
+        clippedText(gui, font, label, x + 7, y + 4, Math.max(1, width - 14),
                 UiTheme.TEXT_SECONDARY, mouseX, mouseY);
         clippedText(gui, font, value.copy().withStyle(ChatFormatting.BOLD),
-                x, y + 16, Math.max(1, width - 4), valueColor, mouseX, mouseY);
-        gui.fill(x, y + STAT_TILE_HEIGHT - 1, x + width - 4, y + STAT_TILE_HEIGHT, UiTheme.LINE);
+                x + 7, y + 17, Math.max(1, width - 14), valueColor, mouseX, mouseY);
     }
 
     /** Campo de texto hundido, con borde y fondo oscuro. */

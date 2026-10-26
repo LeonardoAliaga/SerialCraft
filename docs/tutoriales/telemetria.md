@@ -4,7 +4,7 @@ description: Descubre cómo enviar salud, hambre, tiempo y eventos de Minecraft 
 ---
 # Telemetría: enviar datos del juego a un dispositivo físico
 
-Además de controlar redstone, **SerialCraft 0.4.6-beta** puede transmitir algunos estados del juego a Arduino o ESP32. Así puedes construir, por ejemplo, un indicador LED que reaccione a la salud del jugador o una pantalla que represente el nivel de hambre.
+Además de controlar redstone, **SerialCraft 0.5.0-beta** puede transmitir algunos estados del juego a Arduino o ESP32. Así puedes construir, por ejemplo, un indicador LED que reaccione a la salud del jugador o una pantalla que represente el nivel de hambre.
 
 La diferencia clave con el Módulo de E/S es que la telemetría usa **canales reservados** que empiezan por `mc_` y se gestionan desde la pestaña **Eventos** de la Laptop.
 

@@ -7,6 +7,14 @@
   "authors": [
     "Leonardo Aliaga"
   ],
+  "contributors": [
+    {
+      "name": "SK-Xiaohan",
+      "contact": {
+        "homepage": "https://github.com/SK-Xiaohan"
+      }
+    }
+  ],
   "contact": {
     "homepage": "https://github.com/LeonardoAliaga/serialcraft",
     "sources": "https://github.com/LeonardoAliaga/serialcraft",
