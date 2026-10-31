@@ -8,12 +8,12 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
-/** Horizontal glass navigation, with two tabs on each side of the original brand. */
+/** Horizontal glass navigation, with two tabs on each side of the SerialCraft brand. */
 public class NavBar {
     private static final Identifier LOGO_TEXTURE = Identifier.fromNamespaceAndPath(
             SerialCraft.MOD_ID, "textures/gui/logo-txt.png");
-    private static final int LOGO_SRC_W = 779;
-    private static final int LOGO_SRC_H = 261;
+    private static final int LOGO_SRC_W = 1038;
+    private static final int LOGO_SRC_H = 446;
 
     private record TabStyle(SpriteIcon icon, String key, int accent) {}
 

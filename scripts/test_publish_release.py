@@ -40,7 +40,7 @@ class PublishTests(unittest.TestCase):
             return {**self.draft(), "draft": False}
         return {}
 
-    def test_default_publishes_english_github_prerelease_without_modrinth(self):
+    def test_default_publishes_spanish_github_prerelease_without_modrinth(self):
         with patch("publish_release.request", side_effect=self.request):
             publish(*self.args)
         self.assertTrue(all("modrinth" not in url for url, _ in self.calls))
@@ -49,7 +49,7 @@ class PublishTests(unittest.TestCase):
         self.assertTrue(create["draft"])
         self.assertEqual(create["tag_name"], "v0.5.0-beta")
         self.assertEqual(create["target_commitish"], "abc123")
-        self.assertTrue(create["body"].startswith("English notes"))
+        self.assertTrue(create["body"].startswith("Spanish notes"))
         uploaded = next(kw["data"] for url, kw in self.calls if "uploads.github.com" in url)
         self.assertEqual(uploaded, self.jar.read_bytes())
         self.assertEqual(self.calls[-1][1]["data"], {"draft": False})
@@ -95,7 +95,9 @@ class PublishTests(unittest.TestCase):
             return self.request(url, token, **kwargs)
         with patch("publish_release.request", side_effect=request):
             publish(*self.args, include_modrinth=True)
-        self.assertTrue(any(url == "https://api.modrinth.com/v2/version" for url, _ in self.calls))
+        payload = next(kw["data"] for url, kw in self.calls if url == "https://api.modrinth.com/v2/version")
+        self.assertIn(b'"changelog": "English notes', payload)
+        self.assertNotIn(b"Spanish notes", payload)
 
 
 class LocaleValidationTests(unittest.TestCase):

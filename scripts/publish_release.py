@@ -136,7 +136,7 @@ def publish(jar, version, minecraft, kind, changelog_es, changelog_en, *, includ
         raise ValueError("Existing published GitHub release has no matching JAR; review it before retrying.")
 
     source = f"https://github.com/{repository}/commit/{commit}"
-    github_body = changelog_en + f"\n\n---\n[Source commit]({source})"
+    github_body = changelog_es + f"\n\n---\n[Commit de origen]({source})"
     modrinth_body = changelog_en + f"\n\n---\n[Source commit]({source})"
     if not release:
         ref = gh("/git/ref/tags/" + urllib.parse.quote(tag, safe=""), missing_ok=True)

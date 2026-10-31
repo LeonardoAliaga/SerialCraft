@@ -7,18 +7,24 @@
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge)](https://adoptium.net/)
-[![Version](https://img.shields.io/badge/Version-0.5.0--beta-c96f4a?style=for-the-badge)](https://modrinth.com/mod/serialcraft/versions)
+[![Version](https://img.shields.io/badge/Version-0.5.1--beta-c96f4a?style=for-the-badge)](https://modrinth.com/mod/serialcraft/versions)
 [![License](https://img.shields.io/badge/License-MIT-8a9a7b?style=for-the-badge)](https://github.com/LeonardoAliaga/SerialCraft/blob/main/LICENSE)
 
 **SerialCraft** is an experimental, educational Fabric mod that connects **Arduino, ESP32, and other serial or TCP devices** to Minecraft. Send real sensor readings into redstone circuits and use your world to control physical LEDs, buzzers, and other components.
 
 The Laptop, Connector, and Hardware I/O Module have crafting recipes, so your electronics can become part of a Survival playthrough.
 
-## What's new in v0.5.0 Beta
+## What's new in v0.5.1 Beta
+
+**0.5.1-beta** replaces the navigation logo with the new SerialCraft image supplied by Leonardo Aliaga and renders it with the correct aspect ratio and transparency. Hardware behavior and Minecraft 26.2 / Java 25 compatibility are unchanged.
+
+An [image and trademark audit](https://github.com/LeonardoAliaga/SerialCraft/blob/v0.5.1-beta/maintenance/asset-audit-0.5.1-beta.md) identifies previous branding still present in other textures and screenshots. This header update does not replace every image or certify rights to the remaining assets.
+
+### Interface and languages introduced in 0.5.0
 
 **0.5.0-beta** brings the updated translucent interface and the community's Simplified Chinese translation together. It keeps the existing hardware protocol and Minecraft 26.2 / Java 25 compatibility.
 
-- **Horizontal navigation:** Home and Boards sit to the left of the original centered SerialCraft logo; Events and Visualize sit to the right. The existing icons, page accents and visual identity are preserved.
+- **Horizontal navigation:** Home and Boards sit to the left of the centered SerialCraft logo; Events and Visualize sit to the right. The existing icons and page accents are preserved.
 - **Home:** connection properties scroll independently beside the bidirectional terminal, keeping the message history and command controls accessible. The connected-device card displays a randomly selected cat from the new sprite atlas.
 - **Welcome:** vertically centered translucent panels, USB and Wi-Fi connection cards, clearer spacing, and a separate remembered-board notice. Pairing controls and connection help remain available.
 - **Consistent panel styling:** glass headers, borders, button padding, margins and text alignment across Home, Boards, Events, Visualize and the IO module editor. Configuration, diagnostics and contextual help retain their existing functions.
@@ -31,7 +37,7 @@ The translation covers Welcome, Home, navigation, Boards, Events, Visualize, the
 
 Select **简体中文（中国大陆）** in Minecraft's Language settings to use it.
 
-> **Beta / pre-release:** `0.5.0-beta` is not a stable release. Back up worlds and update clients and servers together. Automated Java tests, Minecraft GameTests, localization and JAR checks pass; graphical UI inspection and tests with physical USB/Wi-Fi boards remain manual checks.
+> **Beta / pre-release:** `0.5.1-beta` is not a stable release. Back up worlds and update clients and servers together. Graphical UI inspection and tests with physical USB/Wi-Fi boards remain manual checks.
 
 ## Main features
 

@@ -70,7 +70,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/publish_release.py --publish --jar-dir release-dist
       - name: Publish to Modrinth only when explicitly requested
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_modrinth
+        # A release commit can opt in without enabling Modrinth for later pushes.
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-modrinth]'))
         env:
           GH_TOKEN: ${{ github.token }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
@@ -78,7 +79,7 @@ jobs:
         run: python3 scripts/publish_release.py --publish --modrinth --jar-dir release-dist
       - name: Sync English Modrinth description
         id: modrinth-readme
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_modrinth
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-modrinth]'))
         continue-on-error: true
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
