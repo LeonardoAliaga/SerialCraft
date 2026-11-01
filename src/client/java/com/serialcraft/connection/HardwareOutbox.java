@@ -8,7 +8,7 @@ import java.util.Map;
 /** Shared bounded transport pacing. IO/manual transitions are FIFO; continuous samples coalesce. */
 public final class HardwareOutbox {
     public enum Kind { IO, TELEMETRY, SIGNAL, MANUAL }
-    public record Line(String text, Kind kind, boolean quiet) {}
+    public record Line(String text, Kind kind, boolean quiet, boolean safetyStop) {}
     public static final int MAX_CHANNELS = 64;
     public static final int PER_CHANNEL_CAPACITY = 8;
     private final Map<String, Deque<Line>> channels = new LinkedHashMap<>();
@@ -18,7 +18,7 @@ public final class HardwareOutbox {
 
     public synchronized boolean offer(String text, Kind kind, boolean quiet, boolean safetyStop) {
         if (text == null || text.length() > 256 || text.indexOf('\n') >= 0 || text.indexOf('\r') >= 0) return false;
-        Line line = new Line(text, kind, quiet);
+        Line line = new Line(text, kind, quiet, safetyStop);
         int colon = text.indexOf(':');
         String key = colon > 0 ? text.substring(0, colon) : "manual";
         if (safetyStop) {

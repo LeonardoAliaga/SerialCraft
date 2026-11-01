@@ -12,26 +12,27 @@ import net.minecraft.resources.Identifier;
  */
 public enum SpriteIcon {
 
-    BELL(5, 5),
-    CODE(79, 5),
-    CONNECT(153, 5),
-    TERMINAL(227, 5),
+    BELL(8, 8),
+    CODE(136, 8),
+    CONNECT(264, 8),
+    TERMINAL(392, 8),
 
-    DISCONNECT(5, 79),
-    DOWN(79, 79),
-    HOME(153, 79),
-    USB(227, 79),
+    DISCONNECT(8, 136),
+    DOWN(136, 136),
+    HOME(264, 136),
+    USB(392, 136),
 
-    LIST(5, 153),
-    MONITOR(79, 153),
-    QUEST(153, 153),
-    WIFI(227, 153);
+    LIST(8, 264),
+    MONITOR(136, 264),
+    QUEST(264, 264),
+    WIFI(392, 264),
+    SETTINGS(8, 392);
 
     /** Tamano de cada icono dentro de la hoja. */
-    public static final int SPRITE_SIZE = 64;
+    public static final int SPRITE_SIZE = 112;
     /** Dimensiones reales del PNG. */
-    public static final int SHEET_WIDTH  = 296;
-    public static final int SHEET_HEIGHT = 222;
+    public static final int SHEET_WIDTH  = 512;
+    public static final int SHEET_HEIGHT = 512;
     /** Tamano al que se dibujan los iconos en pantalla. */
     public static final int DRAW_SIZE = 16;
 

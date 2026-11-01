@@ -19,6 +19,9 @@ class PanelLayoutTest {
                 assertTrue(nav.brandX() + nav.brandWidth() < nav.buttonX(2));
                 assertTrue(nav.buttonX(2) + nav.buttonWidth() < nav.buttonX(3));
                 assertTrue(nav.buttonX(3) + nav.buttonWidth() <= width - UiTheme.contentMargin(width));
+                assertTrue(nav.buttonX(3) + nav.buttonWidth() < UiTheme.settingsButtonX(width, height));
+                assertTrue(UiTheme.settingsButtonX(width, height) + UiTheme.settingsButtonSize(height)
+                        <= width - UiTheme.contentMargin(width));
                 assertTrue(UiTheme.headerLayout(width, height).y() > nav.height());
                 assertTrue(UiTheme.headerTitleY(height, 9) + Math.ceil(9 * UiTheme.TITLE_SCALE)
                         < UiTheme.contentTop(height));

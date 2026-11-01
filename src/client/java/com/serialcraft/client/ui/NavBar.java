@@ -2,6 +2,7 @@ package com.serialcraft.client.ui;
 
 import com.serialcraft.SerialCraft;
 import com.serialcraft.client.ui.widget.NavTabButton;
+import com.serialcraft.client.ui.widget.IconTextButton;
 import com.serialcraft.screen.PanelUI;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -23,6 +24,7 @@ public class NavBar {
             case BOARDS -> new TabStyle(SpriteIcon.LIST, "gui.serialcraft.tab.boards", UiTheme.ACCENT_BOARDS);
             case EVENTS -> new TabStyle(SpriteIcon.BELL, "gui.serialcraft.tab.events", UiTheme.ACCENT_EVENTS);
             case VISUALIZE -> new TabStyle(SpriteIcon.MONITOR, "gui.serialcraft.tab.visualize", UiTheme.ACCENT_VISUALIZE);
+            case SETTINGS -> new TabStyle(SpriteIcon.SETTINGS, "gui.serialcraft.settings.title", 0xFF4995B6);
         };
     }
 
@@ -46,7 +48,7 @@ public class NavBar {
 
     public void init(PanelUI panel, int width, int height, PanelUI.Tab activeTab) {
         var layout = UiTheme.navigationLayout(width, height);
-        PanelUI.Tab[] tabs = PanelUI.Tab.values();
+        PanelUI.Tab[] tabs = {PanelUI.Tab.HOME, PanelUI.Tab.BOARDS, PanelUI.Tab.EVENTS, PanelUI.Tab.VISUALIZE};
         for (int i = 0; i < tabs.length; i++) {
             PanelUI.Tab tab = tabs[i];
             TabStyle style = styleOf(tab);
@@ -54,5 +56,16 @@ public class NavBar {
                     layout.height() - 8, style.icon(), Component.translatable(style.key()),
                     style.accent(), tab == activeTab, button -> panel.setTab(tab)));
         }
+        addSettingsButton(panel, width, height, activeTab == PanelUI.Tab.SETTINGS);
+    }
+
+    public static void addSettingsButton(PanelUI panel, int width, int height, boolean selected) {
+        int size = UiTheme.settingsButtonSize(height);
+        Component label = Component.translatable("gui.serialcraft.settings.title");
+        var button = new IconTextButton(UiTheme.settingsButtonX(width, height), 4, size, size,
+                SpriteIcon.SETTINGS, label, ignored -> panel.setTab(PanelUI.Tab.SETTINGS),
+                selected ? UiTheme.glassTint(0xFF4995B6) : UiTheme.BG_FIELD, UiTheme.LINE);
+        button.setTooltip(net.minecraft.client.gui.components.Tooltip.create(label));
+        panel.addWidget(button);
     }
 }

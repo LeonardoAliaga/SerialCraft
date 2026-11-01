@@ -83,7 +83,9 @@ public class SerialCraftClient implements ClientModInitializer {
     // ══════════════════════════════════════════════════════════════════════
 
     private void registerLifecycle() {
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ConnectionManager.disconnectAll());
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            ConnectionManager.onWorldJoined(client);
             SerialDebugHud.addLog("Mundo cargado. Servidor Wi-Fi en espera.");
             // Con placas recordadas, el servidor arranca solo y se reconectan sin token.
             BoardTrust.onWorldJoin();

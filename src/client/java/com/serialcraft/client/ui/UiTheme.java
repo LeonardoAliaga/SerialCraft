@@ -147,6 +147,10 @@ public final class UiTheme {
     }
 
     public static int navigationHeight(int screenHeight) { return compact(screenHeight) ? 34 : 42; }
+    public static int settingsButtonSize(int screenHeight) { return navigationHeight(screenHeight) - 8; }
+    public static int settingsButtonX(int screenWidth, int screenHeight) {
+        return screenWidth - contentMargin(screenWidth) - settingsButtonSize(screenHeight);
+    }
 
     public static NavigationLayout navigationLayout(int screenWidth, int screenHeight) {
         int height = navigationHeight(screenHeight);
@@ -155,7 +159,7 @@ public final class UiTheme {
         // Match the screen parity so the logo and both groups have equal outside margins.
         if ((brandWidth & 1) != (screenWidth & 1)) brandWidth--;
         int buttonWidth = Math.max(24, Math.min(112,
-                (screenWidth - contentMargin(screenWidth) * 2 - brandWidth - gap * 4) / 4));
+                (screenWidth - (contentMargin(screenWidth) + settingsButtonSize(screenHeight) + gap) * 2 - brandWidth - gap * 4) / 4));
         return new NavigationLayout(height, (screenWidth - brandWidth) / 2, brandWidth, buttonWidth, gap);
     }
 

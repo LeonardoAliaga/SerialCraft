@@ -7,6 +7,7 @@ import com.serialcraft.client.ui.pages.HomePage;
 import com.serialcraft.client.ui.pages.Page;
 import com.serialcraft.client.ui.pages.VisualizePage;
 import com.serialcraft.client.ui.pages.WelcomePage;
+import com.serialcraft.client.ui.pages.SettingsPage;
 import com.serialcraft.connection.ConnectionManager;
 import com.serialcraft.connection.ConnectionResult;
 import com.serialcraft.network.ConfigResultPayload;
@@ -36,7 +37,7 @@ public class PanelUI extends Screen {
 
     public enum AppState { WELCOME, DASHBOARD }
 
-    public enum Tab { HOME, BOARDS, EVENTS, VISUALIZE }
+    public enum Tab { HOME, BOARDS, EVENTS, VISUALIZE, SETTINGS }
 
     /** Descripcion del dispositivo que el jugador eligio conectar. */
     public record DeviceInfo(String name, String address, String type,
@@ -75,6 +76,8 @@ public class PanelUI extends Screen {
 
     private AppState appState  = AppState.WELCOME;
     private Tab      currentTab = Tab.HOME;
+    private Tab settingsReturnTab = Tab.HOME;
+    private boolean settingsFromWelcome;
 
     private final NavBar navBar = new NavBar();
     private final WelcomePage welcomePage = new WelcomePage();
@@ -92,6 +95,7 @@ public class PanelUI extends Screen {
         pages.put(Tab.BOARDS,    boardsPage);
         pages.put(Tab.EVENTS,    new EventsPage());
         pages.put(Tab.VISUALIZE, new VisualizePage());
+        pages.put(Tab.SETTINGS, new SettingsPage());
 
         resolveInitialState();
     }
@@ -130,6 +134,7 @@ public class PanelUI extends Screen {
 
         if (appState == AppState.WELCOME) {
             welcomePage.init(this, this.width, this.height);
+            NavBar.addSettingsButton(this, this.width, this.height, false);
             return;
         }
 
@@ -215,7 +220,9 @@ public class PanelUI extends Screen {
 
     @Override
     public void onClose() {
-        if (appState == AppState.DASHBOARD && currentTab == Tab.BOARDS)
+        if (appState == AppState.DASHBOARD && currentTab == Tab.SETTINGS)
+            ((SettingsPage) pages.get(Tab.SETTINGS)).requestLeave(() -> super.onClose());
+        else if (appState == AppState.DASHBOARD && currentTab == Tab.BOARDS)
             boardsPage.requestClosePanel(() -> super.onClose());
         else super.onClose();
     }
@@ -277,6 +284,25 @@ public class PanelUI extends Screen {
     public void refresh() { this.init(); }
 
     public void setTab(Tab tab) {
+        if (currentTab == Tab.SETTINGS && tab != currentTab) {
+            ((SettingsPage) pages.get(Tab.SETTINGS)).requestLeave(() -> changeTab(tab));
+            return;
+        }
+        changeTab(tab);
+    }
+
+    private void changeTab(Tab tab) {
+        if (tab == Tab.SETTINGS && currentTab != Tab.SETTINGS) {
+            settingsReturnTab = currentTab;
+            settingsFromWelcome = appState == AppState.WELCOME;
+            appState = AppState.DASHBOARD;
+        } else if (currentTab == Tab.SETTINGS && settingsFromWelcome && !ConnectionManager.isAnyConnected()) {
+            settingsFromWelcome = false;
+            appState = AppState.WELCOME;
+            currentTab = Tab.HOME;
+            this.init();
+            return;
+        }
         if (this.currentTab == tab && appState == AppState.DASHBOARD) {
             this.init();   // refresco explicito
             return;
@@ -284,6 +310,8 @@ public class PanelUI extends Screen {
         this.currentTab = tab;
         this.init();
     }
+
+    public void closeSettings() { setTab(settingsReturnTab); }
 
     public void connectDevice(DeviceInfo device) {
         ConnectionResult result = device.connectAction().get();

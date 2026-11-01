@@ -63,6 +63,15 @@ public class SerialHandler implements BoardLink {
     public BoardIdentity getIdentity() { return identity; }
     public String getUsbIdentifiers() { return usbIdentifiers; }
     public boolean canRememberSettings() { return !usbSettingsUid.isEmpty(); }
+    public String settingsUid() { return usbSettingsUid; }
+
+    /** Give the native USB buffer a bounded opportunity to drain before a normal close. */
+    public void finishWrites() {
+        long deadline = System.nanoTime() + 250_000_000L;
+        SerialPort p = port;
+        while (p != null && p.isOpen() && p.bytesAwaitingWrite() > 0 && System.nanoTime() < deadline)
+            java.util.concurrent.locks.LockSupport.parkNanos(2_000_000L);
+    }
     public long getConnectedSeconds() {
         return isConnected() && connectedAtNanos != 0
                 ? Math.max(0, (System.nanoTime() - connectedAtNanos) / 1_000_000_000L) : 0;

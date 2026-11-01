@@ -2,6 +2,7 @@ package com.serialcraft.connection;
 
 import com.serialcraft.client.SerialDebugHud;
 import com.serialcraft.config.SerialConfig;
+import com.serialcraft.config.OutputSettings;
 import com.serialcraft.identity.BannerSniffer;
 import com.serialcraft.identity.BoardHello;
 import com.serialcraft.identity.BoardIdentity;
@@ -80,6 +81,15 @@ public final class ConnectionManager {
     private static volatile int linkEpoch = 0;
     private static volatile long connectedAtNanos;
     private static final HardwareOutbox OUTBOX = new HardwareOutbox();
+    private static final Object OUTPUT_WRITE_LOCK = new Object();
+    private static final OutputSession OUTPUT_SESSION = new OutputSession();
+    private static final OutputValueStore OUTPUT_VALUES = new OutputValueStore(
+            net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("serialcraft-output-values.json"));
+    private static volatile boolean closingOutputs;
+    private static volatile String outputScope = "";
+    private static volatile String outputDimension = "";
+    private static volatile OutputSettings connectionSettings = OutputSettings.defaults();
+    private static long nextOutputSave;
     private static volatile boolean usbReconnecting;
     static { PROBES.scheduleWithFixedDelay(ConnectionManager::drainOutput, 25, 25, TimeUnit.MILLISECONDS); }
 
@@ -100,6 +110,9 @@ public final class ConnectionManager {
             connectedAtNanos = System.nanoTime();
             INBOX.clear();
             OUTBOX.clear();
+            OUTPUT_SESSION.clear();
+            connectionSettings = SerialConfig.get().outputSettings;
+            closingOutputs = false;
             epoch = ++linkEpoch;
         }
         if (!BoardTrust.store().probeBoards()) return;
@@ -160,11 +173,13 @@ public final class ConnectionManager {
             try {
                 if (WIFI.isConnected()) return new ConnectionResult(false,
                         Component.translatable("gui.serialcraft.home.usb.cancelled"));
+                finishOutputSession();
                 return SERIAL.reconnect(port, baud, epoch);
             } catch (RuntimeException e) {
                 com.serialcraft.SerialCraft.LOGGER.warn("No se pudo reconectar el puerto USB {}", port, e);
                 return new ConnectionResult(false, Component.translatable("message.serialcraft.error", String.valueOf(e.getMessage())));
             } finally {
+                closingOutputs = false;
                 usbReconnecting = false;
             }
         }, PROBES);
@@ -189,6 +204,7 @@ public final class ConnectionManager {
 
     private static void enqueueOutput(String message, HardwareOutbox.Kind kind, boolean safetyStop) {
         synchronized (OUTBOX) {
+            if (closingOutputs) return;
             if (usbReconnecting && !WIFI.isConnected()) return;
             if (!isAnyConnected()) {
                 SerialDebugHud.addLog("Sin placa conectada (USB/Wi-Fi).");
@@ -215,6 +231,7 @@ public final class ConnectionManager {
      */
     public static boolean sendTelemetry(String line, boolean quiet) {
         synchronized (OUTBOX) {
+            if (closingOutputs) return false;
             if (usbReconnecting && !WIFI.isConnected()) return false;
             return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.TELEMETRY, quiet, false);
         }
@@ -234,7 +251,9 @@ public final class ConnectionManager {
 
     public static boolean sendSignal(String line, boolean safetyStop) {
         synchronized (OUTBOX) {
+            if (closingOutputs) return false;
             if (usbReconnecting && !WIFI.isConnected()) return false;
+            SignalProtocol.parse(line).ifPresent(sample -> OUTPUT_SESSION.manualOverride(sample.channel()));
             return isAnyConnected() && OUTBOX.offer(line, HardwareOutbox.Kind.SIGNAL, true, safetyStop);
         }
     }
@@ -247,12 +266,27 @@ public final class ConnectionManager {
     public static void discardPending(String key) { OUTBOX.discard(key); }
 
     private static void drainOutput() {
+        synchronized (OUTPUT_WRITE_LOCK) { drainOutputLocked(); }
+    }
+
+    private static void drainOutputLocked() {
         try {
+            if (closingOutputs) return;
             if (usbReconnecting && !WIFI.isConnected()) return;
             if (!isAnyConnected()) { OUTBOX.clear(); return; }
+            // A firmware-declared ID often arrives after opening USB. Identification probes
+            // bypass this queue, so give RESTORE a bounded chance to identify the right board.
+            if (connectionSettings.onConnect() == OutputSettings.ConnectAction.RESTORE
+                    && persistentOutputKey().isEmpty() && connectedAtNanos != 0
+                    && System.nanoTime() - connectedAtNanos < 2_000_000_000L) return;
             int epoch = linkEpoch;
             HardwareOutbox.Line line = OUTBOX.poll();
-            if (line == null || !deliver(line.text(), epoch)) return;
+            if (line == null) return;
+            String message = line.kind() == HardwareOutbox.Kind.IO || line.kind() == HardwareOutbox.Kind.MANUAL
+                    ? prepareOutput(line.text(), line.kind(), line.safetyStop()) : line.text();
+            if (!deliver(message, epoch)) return;
+            line = new HardwareOutbox.Line(message, line.kind(), line.quiet(), line.safetyStop());
+            recordOutput(line);
             SignalRecorder.INSTANCE.record(Direction.TX, line.text(), System.nanoTime());
             if (!line.quiet()) {
                 String prefix = line.kind() == HardwareOutbox.Kind.TELEMETRY ? "TM: " : "TX: ";
@@ -261,6 +295,69 @@ public final class ConnectionManager {
             }
         } catch (RuntimeException e) {
             com.serialcraft.SerialCraft.LOGGER.warn("Error en la cola de salida", e);
+        }
+    }
+
+    private static String prepareOutput(String message, HardwareOutbox.Kind kind, boolean stop) {
+        var sample = SignalProtocol.parse(message);
+        if (sample.isEmpty()) return message;
+        var value = sample.get();
+        if (stop || kind == HardwareOutbox.Kind.MANUAL) {
+            OUTPUT_SESSION.manualOverride(value.channel());
+            return message;
+        }
+        String key = persistentOutputKey();
+        Integer remembered = key.isEmpty() ? null : OUTPUT_VALUES.get(key, value.channel());
+        return value.channel() + ':' + OUTPUT_SESSION.initialize(value.channel(), value.value(), remembered, connectionSettings);
+    }
+
+    private static void recordOutput(HardwareOutbox.Line line) {
+        if (line.kind() == HardwareOutbox.Kind.TELEMETRY) return;
+        SignalProtocol.parse(line.text()).ifPresent(sample -> {
+            OUTPUT_SESSION.written(sample.channel(), sample.value(), line.safetyStop());
+            String key = persistentOutputKey();
+            if (!line.safetyStop() && !key.isEmpty()) OUTPUT_VALUES.remember(key, sample.channel(), sample.value());
+        });
+    }
+
+    /** Stable device identity only: never restore another board just because it reused COM3/an IP. */
+    private static String persistentOutputKey() {
+        if (outputScope.isEmpty() || SERIAL.isConnected() == WIFI.isConnected()) return "";
+        String uid = SERIAL.isConnected() ? SERIAL.settingsUid() : "";
+        if (uid.isEmpty() && activeIdentity().hasUid()) uid = "declared:" + activeIdentity().uid();
+        return uid.isEmpty() ? "" : outputScope + '|' + outputDimension + '|' + uid;
+    }
+
+    public static void onWorldJoined(Minecraft client) {
+        var server = client.getSingleplayerServer();
+        String world = server != null
+                ? server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toAbsolutePath().normalize().toString()
+                : client.getCurrentServer() != null ? client.getCurrentServer().ip : "";
+        outputScope = world;
+        outputDimension = client.level == null ? "" : client.level.dimension().identifier().toString();
+    }
+
+    /** Final values bypass pending normal output and are written before either transport closes. */
+    private static void finishOutputSession() {
+        synchronized (OUTPUT_WRITE_LOCK) {
+            closingOutputs = true;
+            OUTBOX.clear();
+            Integer value = SerialConfig.get().outputSettings.finalValue();
+            if (value != null && isAnyConnected()) {
+                int epoch = linkEpoch;
+                for (String channel : OUTPUT_SESSION.activeValues().keySet()) {
+                    String line = channel + ':' + value;
+                    if (deliver(line, epoch)) {
+                        SignalRecorder.INSTANCE.record(Direction.TX, line, System.nanoTime());
+                        addHistory("TX: " + line);
+                    }
+                    java.util.concurrent.locks.LockSupport.parkNanos(25_000_000L);
+                }
+                SERIAL.finishWrites();
+            }
+            // Final reset values must never replace the saved normal values used by RESTORE.
+            OUTPUT_VALUES.flush();
+            OUTPUT_SESSION.clear();
         }
     }
 
@@ -304,6 +401,7 @@ public final class ConnectionManager {
     // ══════════════════════════════════════════════════════════════════════
 
     public static void disconnectAll() {
+        finishOutputSession();
         for (BoardLink link : LINKS) link.disconnect();
         synchronized (ConnectionManager.class) {
             INBOX.clear();
@@ -316,6 +414,7 @@ public final class ConnectionManager {
             announced = BoardIdentity.unknown();
             linkEpoch++;
         }
+        closingOutputs = false;
     }
 
     /** Etiqueta corta del transporte activo, para la UI. */
@@ -349,11 +448,17 @@ public final class ConnectionManager {
 
     /** Hardware session changes precede IO data. 2 lines/tick respects the server's 40/s budget. */
     public static void tick(Minecraft client) {
+        long now = System.nanoTime();
+        if (now >= nextOutputSave) { OUTPUT_VALUES.flush(); nextOutputSave = now + 2_000_000_000L; }
         if (client.level == null || !ClientPlayNetworking.canSend(HardwareLinkPayload.TYPE)) return;
         boolean connected = isAnyConnected();
         String dimension = client.level.dimension().identifier().toString();
         boolean dimensionChanged = !dimension.equals(reportedDimension);
         boolean previousDimension = !reportedDimension.isEmpty();
+        if (dimensionChanged) {
+            if (previousDimension) OUTPUT_SESSION.clear();
+            outputDimension = dimension;
+        }
         if (reportedEpoch != linkEpoch || reportedConnected != connected || dimensionChanged) {
             ClientPlayNetworking.send(new HardwareLinkPayload(connected, false));
             reportedEpoch = linkEpoch;

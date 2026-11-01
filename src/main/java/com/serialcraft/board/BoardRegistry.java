@@ -49,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class BoardRegistry {
 
     private BoardRegistry() {}
+    private static boolean stopping;
 
     /** dimension -> dueno -> placas. */
     private static final Map<ResourceKey<Level>, Map<UUID, List<HardwareIOBlockEntity>>> INDEX =
@@ -61,11 +62,13 @@ public final class BoardRegistry {
     // ── Registro de eventos ───────────────────────────────────────────────
 
     public static void initialize() {
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> stopping = false);
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> stopping = true);
         ServerBlockEntityEvents.BLOCK_ENTITY_LOAD.register((be, level) -> {
             if (be instanceof HardwareIOBlockEntity io) { remove(level, io); add(level, io); }
         });
         ServerBlockEntityEvents.BLOCK_ENTITY_UNLOAD.register((be, level) -> {
-            if (be instanceof HardwareIOBlockEntity io) { io.stopHardwareOutput(); remove(level, io); }
+            if (be instanceof HardwareIOBlockEntity io) { if (!stopping) io.stopHardwareOutput(); remove(level, io); }
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> { clear(); HardwareSessions.clear(); });
     }

@@ -25,6 +25,7 @@ public class SerialConfig {
     public int baudRate = 115200;
     public int analogUpdateRate = 1; // Legacy setting retained; IO now processes dirty inputs once per tick.
     private Map<String, Integer> usbBaudRates = new LinkedHashMap<>();
+    public volatile OutputSettings outputSettings = OutputSettings.defaults();
 
     // --- ENUM DE PERFILES ---
     public enum BoardProfile {
@@ -60,13 +61,16 @@ public class SerialConfig {
         if (instance == null) instance = new SerialConfig();
         if (instance.boardProfile == null) instance.boardProfile = BoardProfile.ARDUINO_UNO;
         if (instance.usbBaudRates == null) instance.usbBaudRates = new LinkedHashMap<>();
+        if (instance.outputSettings == null) instance.outputSettings = OutputSettings.defaults();
     }
 
-    public static void save() {
+    public static synchronized boolean save() {
         try (FileWriter writer = new FileWriter(CONFIG_PATH.toFile())) {
             GSON.toJson(instance, writer);
+            return true;
         } catch (IOException e) {
             SerialCraft.LOGGER.warn("No se pudo guardar serialcraft.json", e);
+            return false;
         }
     }
 

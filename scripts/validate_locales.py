@@ -62,7 +62,7 @@ def required_ui_keys(root, reference):
                 # A trailing dot identifies a dynamic namespace, not a complete key.
                 if not key.endswith("."):
                     required.add(key)
-            prefix = {"HomePage.java": "gui.serialcraft.home.",
+            prefix = {"HomePage.java": "gui.serialcraft.home.", "SettingsPage.java": "gui.serialcraft.settings.",
                       "IoEditor.java": "gui.serialcraft.io."}.get(path.name)
             if prefix:
                 for suffix in re.findall(r'\btr\("([\w.]+)"\s*[,)]', source):

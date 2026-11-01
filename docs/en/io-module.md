@@ -9,6 +9,18 @@ The module connects one hardware channel to redstone. The name is a label; **Cha
 
 Five terminals face north, south, east, west and down. The bottom terminal is on the board's top surface near its south edge, so it remains selectable while placed on a block. It communicates with the block below. There is no top port. Right-click a terminal toggles input/off; Shift + right-click toggles output/off. The current editor does **not** provide a connector selector. Colors indicate configured roles; LEDs indicate direction and enabled state.
 
+## Mod settings
+
+The top-right gear opens **Settings**, including before connecting hardware. **On connection** and **on normal disconnection** are independent: send zero, send a custom integer from 0 to 255, or restore the last saved value on connection / send nothing on disconnection. These settings apply to Minecraft → hardware I/O channels.
+
+Each active module initializes its channel when it first requests output; old channels without an active module are not replayed. USB boot resends retain the initial value until the world's input changes, then normal control resumes. Startup changes apply at the next connection.
+
+Restore uses the last successful normal write, scoped by world/server, dimension, stable device identity and channel. Missing values or an unavailable stable ID fall back to zero. Final closure writes never replace saved normal values. COM numbers and IP addresses are not treated as stable device identities.
+
+Normal panel disconnects, world exits and game shutdown cancel pending output and write final values before closing USB/Wi-Fi. Crashes and unplugged cables cannot guarantee delivery. Explicit generator stops and module removal/disable/reconfiguration retain their existing rules. Event telemetry (`mc_*`) and hardware → Minecraft input are unchanged.
+
+Preferences live in `serialcraft.json`; bounded last-write history is saved atomically in `serialcraft-output-values.json`. Custom fields validate their range and leaving warns before discarding unsaved changes.
+
 ## Examples and logic
 
 For **Hardware → Minecraft**, set `pot_val`, analog and one red output. `pot_val:128\n` emits level **8**; 0 and 255 produce 0 and 15. No green inputs means the sample passes directly. With inputs, their logic enables it. Closing the condition retains the received sample, so reopening does not require another message.

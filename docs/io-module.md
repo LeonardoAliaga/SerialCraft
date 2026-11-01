@@ -43,6 +43,18 @@ Al transmitir, estas reglas calculan la magnitud enviada. Al recibir, un resulta
 
 ## Diagnóstico y conexión
 
+### Configuración del mod
+
+El engranaje superior derecho abre **Configuración**, incluso antes de conectar hardware. Las preferencias de **al conectarse** y **al desconectarse normalmente** son independientes: enviar cero, enviar un entero personalizado entre 0 y 255, o restaurar el último valor al conectar / no enviar otro valor al cerrar. Se aplica a los canales E/S de Minecraft → hardware.
+
+El valor inicial se aplica cuando un módulo activo presenta su canal; no se reproducen canales históricos de módulos que ya no existen. Los reenvíos de arranque USB conservan ese valor hasta que cambia la entrada del mundo; después continúa el control normal. Los cambios de inicio afectan a la próxima conexión.
+
+La restauración utiliza el último envío normal correcto, separado por mundo/servidor, dimensión, identidad estable del dispositivo y canal. Sin un dato guardado o sin identidad estable disponible al inicializar el canal se utiliza cero. Los valores de cierre no sustituyen al valor guardado. No se usa una IP ni un número COM como identidad de la placa.
+
+Al desconectar desde el panel, salir del mundo o cerrar el juego normalmente, se cancelan mensajes pendientes y se escribe el valor final antes de cerrar USB/Wi-Fi. Un cierre forzado o cable desconectado no permite garantizar este envío. Las paradas explícitas del generador y de retirar/deshabilitar/reconfigurar módulos conservan sus reglas. No se modifica la telemetría `mc_*` ni el sentido hardware → Minecraft.
+
+Las preferencias se guardan en `serialcraft.json`; los últimos envíos se guardan de forma acotada y atómica en `serialcraft-output-values.json`. Guardar valida el rango y salir avisa antes de descartar cambios.
+
 **RX** es el último dato recibido para ese módulo; **TX** es el último valor remitido al cliente del propietario; **Lectura** es la combinación de las entradas; **Procesado** es el valor tras aplicar la lógica; y **Salida** la redstone emitida. El editor también presenta la antigüedad de RX. Los valores ausentes se representan como «Sin muestra» o «Sin envío»; en el protocolo interno, `-1` significa ausencia de muestra/envío. El estado de conexión es reportado por el cliente que posee el hardware. No hay confirmación física en el protocolo, así que TX no prueba que un LED haya cambiado.
 
 La desconexión observada invalida RX y apaga la redstone. El silencio por sí solo no implica desconexión: no existe un latido obligatorio. Al reiniciar o recargar una entidad, RX comienza sin muestra y requiere un dato nuevo. Al cambiar de dimensión se invalidan muestras; solamente los módulos de la dimensión actual del propietario intercambian datos. Reconectar reenvía los estados TX; USB hace otro reenvío a los dos segundos para cubrir el bootloader. Si el firmware reinicia internamente sin cerrar el transporte, el mod no puede detectar ese reinicio: reconecta o cambia la configuración para resincronizar.
