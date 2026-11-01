@@ -102,7 +102,6 @@ public final class SettingsPage implements Page {
             y = paragraph(tr("custom_value"), x + 12, y + 2, width - 24, UiTheme.TEXT_PRIMARY) + 5;
             EditBox field = new EditBox(font, x + 12, y, width - 24, 22, tr("custom_value"));
             field.setMaxLength(3);
-            field.setFilter(value -> value.matches("[0-9]{0,3}"));
             field.setValue(connecting ? connectValue : disconnectValue);
             field.setResponder(value -> {
                 if (connecting) connectValue = value; else disconnectValue = value;
