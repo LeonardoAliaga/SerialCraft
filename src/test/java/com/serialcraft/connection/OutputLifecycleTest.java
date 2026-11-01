@@ -35,8 +35,10 @@ class OutputLifecycleTest {
         new PrintWriter(peer.getOutputStream(), true, StandardCharsets.UTF_8).println("ABC234");
         assertEquals("OK", reader.readLine());
         long deadline = System.nanoTime() + 2_000_000_000L;
-        while (ConnectionManager.sessionEpoch() == epoch && System.nanoTime() < deadline) Thread.sleep(5);
+        while ((!wifi.isConnected() || ConnectionManager.sessionEpoch() == epoch)
+                && System.nanoTime() < deadline) Thread.sleep(5);
         assertNotEquals(epoch, ConnectionManager.sessionEpoch());
+        assertTrue(wifi.isConnected());
     }
 
     private String nextLamp() throws Exception {
