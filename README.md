@@ -2,23 +2,23 @@
 
 ### Lleva tu hardware del mundo real a tu mundo Survival.
 
-- [Documentación](https://serialcraft.xyz) · [Descargar la Beta en GitHub](https://github.com/LeonardoAliaga/SerialCraft/releases/tag/v0.5.1-beta) · [Novedades de 0.5.1-beta](changelogs/0.5.1-beta.es.md)
+- [Documentación](https://serialcraft.xyz) · [Descargar la Beta en GitHub](https://github.com/LeonardoAliaga/SerialCraft/releases/tag/v0.5.2-beta) · [Novedades de 0.5.2-beta](changelogs/0.5.2-beta.es.md)
 
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge)](https://adoptium.net/)
-[![Versión](https://img.shields.io/badge/Versión-0.5.1--beta-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
+[![Versión](https://img.shields.io/badge/Versión-0.5.2--beta-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
 [![Licencia](https://img.shields.io/badge/Licencia-MIT-8a9a7b?style=for-the-badge)](LICENSE)
 
 **SerialCraft** es un mod experimental y educativo que rompe la cuarta pared: permite comunicación bidireccional en tiempo real entre un **Arduino** (o cualquier dispositivo serial) y **Minecraft**, escrito en Java sobre Fabric.
 
 No es solo una demostración técnica. Está diseñado para encajar de forma natural en una partida **Survival**, convirtiendo la electrónica externa en una parte funcional de tu progresión.
 
-### Nuevo en 0.5.1-beta
+### Nuevo en 0.5.2-beta
 
-La barra de navegación utiliza la nueva imagen de SerialCraft proporcionada por Leonardo Aliaga, con su proporción y transparencia correctas. Se conservan las funciones de 0.5.0-beta y la compatibilidad con Minecraft 26.2 y Java 25.
+El rediseño de Leonardo Aliaga lleva los jumpers al encabezado, la pantalla de la Laptop, el módulo de E/S y el icono del mod. La bienvenida ahora muestra el logo con su proporción real de **1038 × 446**, sin comprimirlo. Se mantienen Minecraft 26.2, Java 25 y las funciones de USB/Wi-Fi.
 
-La revisión de imágenes detectó marcas anteriores en otras texturas y capturas. Consulta el [informe de recursos gráficos y marcas](maintenance/asset-audit-0.5.1-beta.md) para ver las rutas y las prioridades pendientes; este cambio del encabezado no sustituye todas las imágenes del proyecto.
+Las texturas principales de los modelos ya no muestran los logotipos explícitos anteriores de Arduino y Minecraft. La [revisión actualizada de imágenes](maintenance/asset-audit-0.5.2-beta.md) detalla los recursos web, las capturas y la textura histórica todavía pendientes.
 
 ---
 
@@ -150,7 +150,7 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 
 ### Publicación automática
 
-Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba el JAR y publica **GitHub Releases**. `0.5.1-beta` se publica como **Pre-release**, no como versión estable. El JAR conserva Minecraft 26.2, Fabric Loader 0.19.3 y Java 25.
+Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba el JAR y publica **GitHub Releases**. `0.5.2-beta` se publica como **Pre-release**, no como versión estable. El JAR conserva Minecraft 26.2, Fabric Loader 0.19.3 y Java 25.
 
 Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` y `changelogs/<mod_version>.en.md`. Las notas de GitHub se publican en español y las de Modrinth en inglés. La misma versión se inserta automáticamente en `fabric.mod.json` al compilar.
 
@@ -160,9 +160,9 @@ Una versión publicada se conserva sin duplicarla. Para reintentar una publicaci
 
 ### Probar desde IntelliJ IDEA
 
-1. Abre el repositorio y selecciona el tag `v0.5.1-beta` para reproducir esta Beta, o `test` para continuar el desarrollo.
+1. Abre el repositorio y selecciona el tag `v0.5.2-beta` para reproducir esta Beta, o `test` para continuar el desarrollo.
 2. Usa **JDK 25** como SDK del proyecto y como **Gradle JVM**. Importa `build.gradle` usando el wrapper incluido, **Gradle 9.7.1**.
-3. Ejecuta `build` desde el panel de Gradle (Windows: `.\gradlew.bat build`). El JAR queda en `build/libs/serialcraft-0.5.1-beta.jar`.
+3. Ejecuta `build` desde el panel de Gradle (Windows: `.\gradlew.bat build`). El JAR queda en `build/libs/serialcraft-0.5.2-beta.jar`.
 4. Ejecuta la tarea `runClient`. En el juego, selecciona **简体中文（中国大陆）** para comprobar chino simplificado.
 5. Revisa Welcome, Home, las cuatro pestañas, las ayudas y ambas secciones del editor IO a varias escalas de GUI. Comprueba USB y Wi-Fi con tu placa; esas pruebas físicas y visuales no las sustituye la CI.
 

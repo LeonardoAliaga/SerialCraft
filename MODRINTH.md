@@ -7,18 +7,18 @@
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge)](https://adoptium.net/)
-[![Version](https://img.shields.io/badge/Version-0.5.1--beta-c96f4a?style=for-the-badge)](https://modrinth.com/mod/serialcraft/versions)
+[![Version](https://img.shields.io/badge/Version-0.5.2--beta-c96f4a?style=for-the-badge)](https://modrinth.com/mod/serialcraft/versions)
 [![License](https://img.shields.io/badge/License-MIT-8a9a7b?style=for-the-badge)](https://github.com/LeonardoAliaga/SerialCraft/blob/main/LICENSE)
 
 **SerialCraft** is an experimental, educational Fabric mod that connects **Arduino, ESP32, and other serial or TCP devices** to Minecraft. Send real sensor readings into redstone circuits and use your world to control physical LEDs, buzzers, and other components.
 
 The Laptop, Connector, and Hardware I/O Module have crafting recipes, so your electronics can become part of a Survival playthrough.
 
-## What's new in v0.5.1 Beta
+## What's new in v0.5.2 Beta
 
-**0.5.1-beta** replaces the navigation logo with the new SerialCraft image supplied by Leonardo Aliaga and renders it with the correct aspect ratio and transparency. Hardware behavior and Minecraft 26.2 / Java 25 compatibility are unchanged.
+**0.5.2-beta** brings Leonardo Aliaga's jumper-cable branding to the interface header, Laptop screen texture, Hardware I/O Module texture, and mod icon. It also fixes the Welcome screen logo's aspect ratio using the PNG's actual **1038 × 446** dimensions. USB/Wi-Fi behavior and Minecraft 26.2 / Java 25 compatibility are unchanged.
 
-An [image and trademark audit](https://github.com/LeonardoAliaga/SerialCraft/blob/v0.5.1-beta/maintenance/asset-audit-0.5.1-beta.md) identifies previous branding still present in other textures and screenshots. This header update does not replace every image or certify rights to the remaining assets.
+The two main model textures no longer display the previous explicit Arduino and Minecraft logos. An updated [image review](https://github.com/LeonardoAliaga/SerialCraft/blob/v0.5.2-beta/maintenance/asset-audit-0.5.2-beta.md) (Spanish) documents remaining website assets, screenshots, and a legacy texture.
 
 ### Interface and languages introduced in 0.5.0
 
@@ -37,7 +37,7 @@ The translation covers Welcome, Home, navigation, Boards, Events, Visualize, the
 
 Select **简体中文（中国大陆）** in Minecraft's Language settings to use it.
 
-> **Beta / pre-release:** `0.5.1-beta` is not a stable release. Back up worlds and update clients and servers together. Graphical UI inspection and tests with physical USB/Wi-Fi boards remain manual checks.
+> **Beta / pre-release:** `0.5.2-beta` is not a stable release. Back up worlds and update clients and servers together. Graphical UI inspection and tests with physical USB/Wi-Fi boards remain manual checks.
 
 ## Main features
 

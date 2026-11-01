@@ -38,8 +38,9 @@ public class WelcomePage implements Page {
     private static final Identifier LOGO_TEXTURE =
             Identifier.fromNamespaceAndPath(SerialCraft.MOD_ID, "textures/gui/logo-txt.png");
 
-    private static final int LOGO_SRC_W = 779;
-    private static final int LOGO_SRC_H = 261;
+    // Native dimensions of logo-txt.png, shared with the navigation header.
+    private static final int LOGO_SRC_W = 1038;
+    private static final int LOGO_SRC_H = 446;
     private static final int LOGO_WIDTH = 190;
     private static final int LOGO_Y     = 10;
     private static final int DEFAULT_CARD_WIDTH = 360;
