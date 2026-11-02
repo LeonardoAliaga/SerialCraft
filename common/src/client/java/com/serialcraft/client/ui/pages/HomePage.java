@@ -1,0 +1,702 @@
+package com.serialcraft.client.ui.pages;
+
+import com.serialcraft.client.ui.ScrollState;
+import com.serialcraft.client.ui.CatSprite;
+import com.serialcraft.client.ui.SolidButton;
+import com.serialcraft.client.ui.SpriteIcon;
+import com.serialcraft.client.ui.UiDraw;
+import com.serialcraft.client.ui.UiTheme;
+import com.serialcraft.client.ui.io.IoEditorLayout.Rect;
+import com.serialcraft.client.ui.widget.IconTextButton;
+import com.serialcraft.client.ui.widget.OptionButton;
+import com.serialcraft.client.ui.widget.OutlineButton;
+import com.serialcraft.client.ui.widget.UiViewport;
+import com.serialcraft.config.SerialConfig;
+import com.serialcraft.connection.ConnectionManager;
+import com.serialcraft.connection.ConnectionResult;
+import com.serialcraft.connection.WifiHandler;
+import com.serialcraft.identity.BoardIdentity;
+import com.serialcraft.identity.WifiHandshake;
+import com.serialcraft.screen.PanelUI;
+import com.serialcraft.util.NetUtils;
+import net.minecraft.client.Minecraft;
+import com.serialcraft.platform.Platform;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+
+/** Native hardware dashboard with a pinned terminal beside scrollable device details. */
+public class HomePage implements Page {
+    private static final int PAD = 10;
+    private static final int GAP = UiTheme.SECTION_GAP;
+    private static final int HISTORY_LIMIT = 64;
+    private static final int LINE_HEIGHT = 11;
+    private static final int TILE_GAP = 8;
+    private static final int TILE_MIN_WIDTH = 76;
+    private static final int CHIP_HEIGHT = 20;
+    private static final int CHIP_GAP = 4;
+    private static final int TERMINAL_MIN_HEIGHT = 222;
+    /** Hueco entre la consola y el campo de comandos. */
+    private static final int COMMAND_GAP = 12;
+    private static final int COMMAND_HEIGHT = 22;
+
+    // Presentation snapshot only: the transports remain the owners of connection state.
+    private record LinkState(boolean wifi, boolean connected, int epoch, BoardIdentity identity,
+                             BoardIdentity.Bridge bridge, int baud, String endpoint, String identifiers,
+                             WifiHandler.State server, int serverPort, WifiHandshake.Method authentication, boolean remembered,
+                             boolean rememberable, boolean usbRememberable, boolean hasToken) {}
+    private record Surface(Rect bounds, int headerHeight, int background) {}
+    private record InlineHelp(Component body, int x, int y, int width) {}
+    private record Text(Component value, int x, int y, int width, int color, int background) {}
+    private record Property(Component label, Component value, int x, int y, int width, int height, int color) {}
+    private record Stat(Component label, Component value, int color) {}
+    private record Tile(Stat stat, int x, int y, int width) {}
+    private record Badge(Component text, int x, int y, int width, int background, int color) {}
+    private record Heading(Component title, int x, int y, int width, boolean cardTitle) {}
+    private final List<Surface> surfaces = new ArrayList<>();
+    private final List<Text> texts = new ArrayList<>();
+    private final List<Property> properties = new ArrayList<>();
+    private final List<Tile> tiles = new ArrayList<>();
+    private final List<Badge> badges = new ArrayList<>();
+    private final List<Heading> headings = new ArrayList<>();
+    private final List<InlineHelp> helpPanels = new ArrayList<>();
+    private final Map<String, AbstractWidget> focusWidgets = new LinkedHashMap<>();
+    private final List<AbstractWidget> terminalWidgets = new ArrayList<>();
+    private final CatSprite cat = CatSprite.random();
+    private final ScrollState scroll = new ScrollState();
+    private final ScrollState historyScroll = new ScrollState();
+    private List<String> history = List.of();
+    private PanelUI panel;
+    private Font font;
+    private UiViewport viewport;
+    private Rect view, scrollView, overview, summary, terminal, console, modelBadge, footer;
+    private LinkState state;
+    private EditBox commandBox;
+    private String expandedHelp = "";
+    private String focusKey = "", navigationFocus = "", usbPort = "", hostAddress = "";
+    private int contentX, contentWidth;
+    private int pendingBaud;
+    private boolean showToken, resultAccepted, columns;
+    private Component resultMessage;
+    private CompletableFuture<ConnectionResult> reconnect;
+    private static final String MOD_VERSION = Platform.get().modVersion();
+
+    @Override
+    public void init(PanelUI panel, int screenWidth, int screenHeight) {
+        this.panel = panel;
+        font = Minecraft.getInstance().font;
+        String commandDraft = commandBox == null ? "" : commandBox.getValue();
+        LinkState previous = state;
+        state = readState();
+        if (previous == null || previous.epoch() != state.epoch() || previous.wifi() != state.wifi()) showToken = false;
+        if (previous != null && previous.wifi() != state.wifi()) resultMessage = null;
+        if (!state.wifi() && !state.endpoint().isEmpty() && !usbPort.equals(state.endpoint())) {
+            usbPort = state.endpoint(); pendingBaud = 0; resultMessage = null;
+        }
+        if (pendingBaud == 0) pendingBaud = state.baud();
+        if (state.wifi()) hostAddress = NetUtils.findLocalIpv4();
+        surfaces.clear(); texts.clear(); properties.clear(); tiles.clear(); badges.clear(); headings.clear(); helpPanels.clear(); focusWidgets.clear();
+        terminalWidgets.clear();
+
+        contentX = UiTheme.contentX(screenWidth);
+        contentWidth = Math.max(80, screenWidth - contentX - UiTheme.contentMargin(screenWidth) - 10);
+        int top = UiTheme.contentTop(screenHeight);
+        view = new Rect(contentX - 2, top, contentWidth + 12,
+                Math.max(24, screenHeight - Math.max(24, UiTheme.contentMargin(screenWidth)) - top));
+        columns = contentWidth >= 600 && view.height() >= TERMINAL_MIN_HEIGHT;
+        int leftWidth = columns ? (contentWidth - GAP) * 44 / 100 : contentWidth;
+        scrollView = columns ? new Rect(view.x(), top, leftWidth + 10, view.height()) : view;
+        viewport = new UiViewport(scroll, scrollView);
+        int mainBottom = buildMain(contentX, top, leftWidth);
+        int detailsBottom = buildDetails(contentX, mainBottom + GAP, leftWidth);
+        int settingsY = detailsBottom + GAP;
+        int settingsBottom = state.wifi() ? buildWifi(contentX, settingsY, leftWidth)
+                : !state.endpoint().isEmpty() ? buildUsb(contentX, settingsY, leftWidth) : detailsBottom;
+        int terminalX = columns ? contentX + leftWidth + GAP : contentX;
+        int terminalY = columns ? top : settingsBottom + GAP;
+        int terminalWidth = columns ? contentWidth - leftWidth - GAP : contentWidth;
+        int terminalBottom = buildTerminal(terminalX, terminalY, terminalWidth,
+                columns ? view.height() : TERMINAL_MIN_HEIGHT, commandDraft);
+        int footerY = columns ? view.bottom() + 5 : terminalBottom + GAP;
+        footer = new Rect(contentX, footerY, contentWidth, 22);
+        viewport.size(columns ? settingsBottom - top + 8 : footer.bottom() - view.y() + 8);
+        updateHistory();
+        {
+            AbstractWidget focused = focusWidgets.get(focusKey);
+            if (focused != null && !focused.active) focused = focusWidgets.get(
+                    focusKey.equals("trust") ? "help.wifi" : focusKey.equals("apply") || focusKey.startsWith("baud.")
+                            ? "help.baud" : "help.identity");
+            if (focused == null && !navigationFocus.isEmpty())
+                for (var child : panel.children())
+                    if (child instanceof AbstractWidget widget && widget.getMessage().getString().equals(navigationFocus)) {
+                        focused = widget; break;
+                    }
+            if (focused != null && focused.active) {
+                viewport.prepareKeyboardFocus(); panel.setFocused(focused); viewport.revealFocus(focused);
+            }
+        }
+    }
+
+    private LinkState readState() {
+        var serial = ConnectionManager.getSerial();
+        var wifi = ConnectionManager.getWifi();
+        var device = PanelUI.getSelectedDevice();
+        boolean wireless = wifi.isConnected() || (!serial.isConnected() && device != null && device.isWifi());
+        boolean connected = wireless ? wifi.isConnected() : serial.isConnected();
+        String endpoint = connected ? wireless ? wifi.getRemoteIp() : serial.getPortName()
+                : device == null ? "" : device.address();
+        return new LinkState(wireless, connected, ConnectionManager.sessionEpoch(),
+                connected ? ConnectionManager.activeIdentity() : BoardIdentity.unknown(),
+                !wireless && connected ? serial.getIdentity().bridge() : BoardIdentity.Bridge.NONE,
+                wireless ? 0 : serial.getBaudRate(), endpoint, wireless ? "" : serial.getUsbIdentifiers(),
+                wifi.getState(), wifi.getServerPort(), wifi.getAuthenticationMethod(), wifi.isCurrentRemembered(), wifi.canRemember(),
+                !wireless && serial.canRememberSettings(), wireless && !wifi.getPairingToken().isEmpty());
+    }
+
+    /** The mascot belongs to this panel instance and stays on the active device card. */
+    private int buildMain(int x, int top, int width) {
+        int badgeWidth = Math.min(width / 3, font.width(connectionState()) + 8);
+        headings.add(new Heading(tr("main.title"), x + UiTheme.CARD_TITLE_INSET, cardTitleY(top),
+                Math.max(1, width - UiTheme.CARD_TITLE_INSET - PAD - badgeWidth - 12), true));
+        int summaryY = top + UiTheme.CARD_HEADER_HEIGHT + PAD;
+        int summaryBottom = buildSummary(x, summaryY, width);
+        int overviewBottom = summaryBottom + PAD;
+        overview = new Rect(x, top, width, overviewBottom - top);
+        surfaces.add(new Surface(overview, UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_CARD));
+        return overviewBottom;
+    }
+
+    private int buildDetails(int x, int top, int width) {
+        int y = sectionStart(tr("properties"), x, top, width, "identity");
+        int inner = width - PAD * 2;
+        y = buildIdentity(x + PAD, y, inner);
+        y = buildConnection(x + PAD, y + 10, inner);
+        int bottom = y + PAD;
+        surfaces.add(new Surface(new Rect(x, top, width, bottom - top),
+                UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_DETAILS));
+        return bottom;
+    }
+
+    private int buildSummary(int x, int top, int width) {
+        Component disconnect = tr("disconnect");
+        int buttonWidth = Math.min(width - PAD * 2 - mascotWidth(width), font.width(disconnect) + 24);
+        int buttonY = top + 52;
+        var button = new OutlineButton(x + PAD,
+                buttonY, buttonWidth, 22, disconnect, b -> panel.disconnectDevice()).withAccent(UiTheme.ACCENT_HOME);
+        button.active = !usbBusy() && (!state.endpoint().isEmpty() || state.wifi());
+        button.setTooltip(Tooltip.create(disconnect));
+        input("disconnect", button, buttonY);
+        summary = new Rect(x, top, width, 78);
+        return summary.bottom();
+    }
+
+    private int mascotWidth(int width) { return width >= 290 ? Math.min(96, width / 4) : 0; }
+
+    private int buildIdentity(int x, int top, int width) {
+        int y = heading(tr("detected"), x, top, width, "model");
+        y = inlineHelp("model", x, y, width);
+        y = property(tr("model"), modelName(), x, y, width, UiTheme.TEXT_PRIMARY);
+        modelBadge = new Rect(x, y, width, 14);
+        y += 18;
+        y = property(tr("platform"), family(), x, y, width, UiTheme.TEXT_PRIMARY);
+        if (state.bridge() != BoardIdentity.Bridge.NONE)
+            y = property(tr("bridge"), Component.literal(state.bridge().label()), x, y, width, UiTheme.TEXT_PRIMARY);
+        if (!state.identifiers().isEmpty())
+            y = property(tr("usb.identifiers"), Component.literal(state.identifiers()), x, y, width, UiTheme.TEXT_SECONDARY);
+        if (state.connected() && !confirmedModel() && state.bridge() != BoardIdentity.Bridge.NONE)
+            y = notice(tr("model.warning"), x, y + 5, width, UiTheme.WARN_BG, UiTheme.WARN_DARK) + 9;
+        return y;
+    }
+
+    private int buildConnection(int x, int top, int width) {
+        int y = heading(tr("connection_state"), x, top, width, "");
+        if (state.wifi()) {
+            y = tiles(x, y, width,
+                    new Stat(tr("board_ip"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.INFO_DARK),
+                    new Stat(tr("host_ip"), state.serverPort() > 0
+                            ? Component.literal(hostAddress + ":" + state.serverPort()) : unavailable(), UiTheme.INFO_DARK),
+                    new Stat(tr("server"), serverState(),
+                            state.connected() ? UiTheme.OK_DARK : UiTheme.INFO_DARK),
+                    new Stat(tr("protocol"), tr("protocol_wifi"), UiTheme.TEXT_PRIMARY));
+
+        } else {
+            y = tiles(x, y, width,
+                    new Stat(tr("port"), state.connected() ? value(state.endpoint()) : unavailable(), UiTheme.TEXT_PRIMARY),
+                    new Stat(tr("baud"), baud(), UiTheme.INFO_DARK),
+                    new Stat(tr("protocol"), tr("protocol_usb"), UiTheme.TEXT_PRIMARY),
+                    new Stat(tr("usb.state"), connectionState(), statusColor()));
+        }
+        return y;
+    }
+
+    private int buildUsb(int x, int top, int width) {
+        int left = x + PAD, inner = width - PAD * 2;
+        int y = sectionStart(tr("usb.settings"), x, top, width, "baud");
+        y = baudHeader(left, y, inner);
+        y = baudChips(left, y, inner) + 8;
+        y = paragraph(tr("usb.baud_hint"), left, y, inner, UiTheme.TEXT_SECONDARY) + 8;
+        if (pendingBaud > 0 && (pendingBaud != state.baud() || usbBusy())) {
+            y = notice(usbBusy() ? tr("usb.reconnecting") : tr("usb.pending", pendingBaud), left, y, inner,
+                    UiTheme.WARN_BG, UiTheme.WARN_DARK) + 8;
+        }
+        // La accion principal de la tarjeta solo se destaca cuando hay algo que aplicar.
+        boolean ready = state.connected() && !usbBusy() && pendingBaud > 0 && pendingBaud != state.baud();
+        Component applyLabel = tr(usbBusy() ? "usb.reconnecting" : "usb.apply");
+        SolidButton apply = ready ? SolidButton.primary(left, y, inner, 24, applyLabel, b -> applyBaud())
+                                  : new OutlineButton(left, y, inner, 24, applyLabel, b -> applyBaud());
+        apply.active = ready;
+        apply.setTooltip(Tooltip.create(applyLabel));
+        input("apply", apply, y); y += 32;
+        y = paragraph(tr(state.usbRememberable() ? "usb.remembered" : "usb.session_only"), left, y, inner, UiTheme.TEXT_SECONDARY) + 8;
+        if (resultMessage != null) y = notice(resultMessage, left, y, inner,
+                resultAccepted ? UiTheme.OK_BG : UiTheme.ERROR_BG, resultAccepted ? UiTheme.OK_DARK : UiTheme.ERROR_DARK) + 4;
+        surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_CARD));
+        return y + PAD;
+    }
+
+    /** Titulo del selector con la velocidad en uso a su lado, en lugar de una fila aparte. */
+    private int baudHeader(int left, int y, int inner) {
+        Component label = tr("usb.baud_selector");
+        boolean active = state.connected() && state.baud() > 0;
+        Component inUse = active ? tr("usb.in_use", state.baud()) : unavailable();
+        int badgeWidth = Math.min(inner, font.width(inUse) + 8);
+        boolean sameRow = font.width(label) + badgeWidth + 8 <= inner;
+        int background = active ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG;
+        int color = active ? UiTheme.OK_DARK : UiTheme.NEUTRAL_TX;
+        if (sameRow) {
+            texts.add(new Text(label, left, y + 3, inner - badgeWidth - 8, UiTheme.TEXT_PRIMARY, 0));
+            badges.add(new Badge(inUse, left + inner - badgeWidth, y, badgeWidth, background, color));
+            return y + 14 + 8;
+        }
+        int badgeY = y + textHeight(label, inner) + 4;
+        texts.add(new Text(label, left, y, inner, UiTheme.TEXT_PRIMARY, 0));
+        badges.add(new Badge(inUse, left, badgeY, badgeWidth, background, color));
+        return badgeY + 14 + 8;
+    }
+
+    /** Balance row lengths (e.g. 3/2/2), keeping equal button widths and centering shorter rows. */
+    private int baudChips(int left, int y, int inner) {
+        List<Integer> rates = SerialConfig.USB_BAUD_RATES;
+        int minCell = 0;
+        for (int rate : rates)
+            minCell = Math.max(minCell, font.width(Component.literal(Integer.toString(rate)).withStyle(ChatFormatting.BOLD)) + 14);
+        int maxColumns = Math.clamp((inner + CHIP_GAP) / (minCell + CHIP_GAP), 1, rates.size());
+        int rows = (rates.size() + maxColumns - 1) / maxColumns;
+        int columns = (rates.size() + rows - 1) / rows;
+        int cell = (inner - (columns - 1) * CHIP_GAP) / columns;
+        int index = 0;
+        for (int row = 0; row < rows; row++) {
+            int count = rates.size() / rows + (row < rates.size() % rows ? 1 : 0);
+            int rowX = left + (inner - count * cell - (count - 1) * CHIP_GAP) / 2;
+            int chipY = y + row * (CHIP_HEIGHT + CHIP_GAP);
+            for (int column = 0; column < count; column++) {
+                int baud = rates.get(index++);
+                var chip = OptionButton.compact(rowX + column * (cell + CHIP_GAP), chipY, cell, CHIP_HEIGHT,
+                        Component.literal(Integer.toString(baud)), pendingBaud == baud, UiTheme.ACCENT_HOME, b -> {
+                            pendingBaud = baud; resultMessage = null; focusKey = "baud." + baud; panel.refresh();
+                        });
+                chip.active = state.connected() && !usbBusy();
+                input("baud." + baud, chip, chipY);
+            }
+        }
+        return y + rows * (CHIP_HEIGHT + CHIP_GAP) - CHIP_GAP;
+    }
+
+    private int buildWifi(int x, int top, int width) {
+        int left = x + PAD, inner = width - PAD * 2;
+        int y = sectionStart(tr("wifi.session"), x, top, width, "wifi");
+        y = property(tr("wifi.authentication"), tr("wifi.auth." + state.authentication().name().toLowerCase(Locale.ROOT)),
+                left, y, inner, state.connected() ? UiTheme.OK_DARK : UiTheme.TEXT_SECONDARY);
+        y = property(tr("wifi.trust"), !state.connected() ? unavailable() : tr(state.remembered() ? "wifi.remembered" : "wifi.temporary"),
+                left, y, inner, state.remembered() ? UiTheme.OK_DARK : UiTheme.TEXT_PRIMARY);
+        // The pairing token is a Wi-Fi session control, not board identification.
+        if (state.hasToken()) {
+            y = property(tr("token"), showToken ? value(ConnectionManager.getWifi().getPairingToken())
+                    : tr("token.hidden"), left, y + 5, inner, UiTheme.TEXT_PRIMARY);
+            Component tokenLabel = tr(showToken ? "token.hide" : "token.show");
+            var tokenButton = new OutlineButton(left, y, Math.min(inner, font.width(tokenLabel) + 24),
+                    22, tokenLabel, b -> { showToken = !showToken; focusKey = "token"; panel.refresh(); });
+            input("token", tokenButton, y);
+            y += 30;
+        }
+        Component label = tr(state.remembered() ? "forget" : "remember");
+        var trust = new OutlineButton(left, y, inner, 24, label, b -> toggleRemember());
+        trust.active = state.connected() && (state.remembered() || state.rememberable());
+        trust.setTooltip(Tooltip.create(tr(state.remembered() ? "wifi.forget_hint" : "wifi.remember_hint")));
+        input("trust", trust, y); y += 32;
+        y = paragraph(tr(state.remembered() ? "wifi.forget_hint" : state.rememberable()
+                ? "wifi.remember_hint" : "wifi.unavailable"), left, y, inner, UiTheme.TEXT_SECONDARY) + 8;
+        if (resultMessage != null) y = notice(resultMessage, left, y, inner,
+                resultAccepted ? UiTheme.OK_BG : UiTheme.ERROR_BG, resultAccepted ? UiTheme.OK_DARK : UiTheme.ERROR_DARK) + 4;
+        surfaces.add(new Surface(new Rect(x, top, width, y + PAD - top), UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_CARD));
+        return y + PAD;
+    }
+
+    private int buildTerminal(int x, int top, int width, int height, String commandDraft) {
+        int consoleTop = top + UiTheme.CARD_HEADER_HEIGHT + PAD;
+        // Margen inferior = PAD, igual que el resto de tarjetas.
+        int commandY = Math.max(consoleTop + 100 + COMMAND_GAP, top + height - PAD - COMMAND_HEIGHT);
+        terminal = new Rect(x, top, width, commandY + COMMAND_HEIGHT + PAD - top);
+        console = new Rect(x + PAD, consoleTop, width - PAD * 2, commandY - COMMAND_GAP - consoleTop);
+        int sendWidth = font.width(tr("send")) + 20;
+        int commandWidth = width - PAD * 2 - sendWidth - 6;
+        commandBox = new EditBox(font, x + PAD, commandY, commandWidth, COMMAND_HEIGHT, tr("command"));
+        commandBox.setMaxLength(64); commandBox.setTextColor(UiTheme.TEXT_INVERSE);
+        commandBox.setValue(commandDraft); commandBox.setHint(tr("command"));
+        commandBox.setTooltip(Tooltip.create(tr("terminal.hint")));
+        input("command", commandBox, commandY);
+        var send = SolidButton.success(x + PAD + commandWidth + 6, commandY, sendWidth, COMMAND_HEIGHT, tr("send"), b -> submitCommand());
+        send.active = state.connected() && !usbBusy();
+        input("send", send, commandY);
+        surfaces.add(new Surface(terminal, UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_CARD));
+        return terminal.bottom();
+    }
+
+    private int sectionStart(Component title, int x, int y, int width, String help) {
+        int titleWidth = Math.max(1, width - UiTheme.CARD_TITLE_INSET - PAD - IconTextButton.HELP_WIDTH - 8);
+        headings.add(new Heading(title, x + UiTheme.CARD_TITLE_INSET, cardTitleY(y), titleWidth, true));
+        help(help, x + width - PAD - IconTextButton.HELP_WIDTH,
+                y + (UiTheme.CARD_HEADER_HEIGHT - IconTextButton.HELP_HEIGHT) / 2);
+        return inlineHelp(help, x + PAD, y + UiTheme.CARD_HEADER_HEIGHT + PAD, width - PAD * 2);
+    }
+    private int cardTitleY(int top) {
+        int textHeight = (int) Math.ceil(font.lineHeight * UiTheme.CARD_TITLE_SCALE);
+        return top + (UiTheme.CARD_HEADER_HEIGHT - textHeight) / 2;
+    }
+    private int heading(Component title, int x, int y, int width, String helpTopic) {
+        int textWidth = Math.max(1, width - (helpTopic.isEmpty() ? 0 : IconTextButton.HELP_WIDTH + 8));
+        int textHeight = textHeight(title.copy().withStyle(ChatFormatting.BOLD), textWidth);
+        int headerHeight = helpTopic.isEmpty() ? textHeight : Math.max(IconTextButton.HELP_HEIGHT, textHeight);
+        headings.add(new Heading(title, x, y + (headerHeight - textHeight) / 2, textWidth, false));
+        if (!helpTopic.isEmpty()) help(helpTopic, x + width - IconTextButton.HELP_WIDTH,
+                y + (headerHeight - IconTextButton.HELP_HEIGHT) / 2);
+        return y + headerHeight + 6;
+    }
+    private int paragraph(Component text, int x, int y, int width, int color) {
+        texts.add(new Text(text, x, y, width, color, 0));
+        return y + textHeight(text, width);
+    }
+    private int notice(Component text, int x, int y, int width, int background, int color) {
+        texts.add(new Text(text, x, y, width, color, background));
+        return y + UiDraw.noticeHeight(font, text, width);
+    }
+    private int property(Component label, Component value, int x, int y, int width, int color) {
+        int height = UiDraw.labelledRowHeight(font, label, width);
+        properties.add(new Property(label, value, x, y, width, height, color));
+        return y + height;
+    }
+    /** Fichas de dato clave en rejilla; la ultima de una fila incompleta ocupa el ancho sobrante. */
+    private int tiles(int x, int y, int width, Stat... stats) {
+        int columns = Math.clamp((width + TILE_GAP) / (TILE_MIN_WIDTH + TILE_GAP), 1, 2);
+        for (int i = 0; i < stats.length; i++) {
+            int row = i / columns, column = i % columns;
+            int inRow = Math.min(columns, stats.length - row * columns);
+            int tileWidth = (width - (inRow - 1) * TILE_GAP) / inRow;
+            tiles.add(new Tile(stats[i], x + column * (tileWidth + TILE_GAP),
+                    y + row * (UiDraw.STAT_TILE_HEIGHT + TILE_GAP), tileWidth));
+        }
+        int rows = (stats.length + columns - 1) / columns;
+        return y + rows * (UiDraw.STAT_TILE_HEIGHT + TILE_GAP) - TILE_GAP;
+    }
+    private int textHeight(Component text, int width) { return font.split(text, Math.max(1, width)).size() * font.lineHeight; }
+    private void input(String key, AbstractWidget widget, int y) {
+        focusWidgets.put(key, widget);
+        if (columns && (key.equals("command") || key.equals("send"))) terminalWidgets.add(widget);
+        else viewport.add(widget, y - scrollView.y());
+        panel.addInputWidget(widget);
+    }
+    private void help(String topic, int x, int y) {
+        var button = IconTextButton.help(x, y, tr("help." + topic + ".title"), b -> {
+            expandedHelp = expandedHelp.equals(topic) ? "" : topic;
+            focusKey = "help." + topic;
+            panel.refresh();
+        });
+        button.setColors(UiTheme.BG_FIELD,
+                expandedHelp.equals(topic) ? UiTheme.TEXT_PRIMARY : UiTheme.INFO,
+                UiTheme.TEXT_INVERSE);
+        button.withGlassStyle();
+        input("help." + topic, button, y);
+    }
+
+    private int inlineHelp(String topic, int x, int y, int width) {
+        if (!expandedHelp.equals(topic)) return y;
+        Component body = tr("help." + topic + ".body");
+        helpPanels.add(new InlineHelp(body, x, y, width));
+        return y + UiDraw.helpPanelHeight(font, body, width) + 9;
+    }
+
+    private boolean usbBusy() { return ConnectionManager.isUsbReconnecting() || reconnect != null; }
+    private void applyBaud() {
+        if (usbBusy()) return;
+        focusKey = "apply";
+        if (!ConnectionManager.getSerial().isConnected() || panel.isGeneratingSignal()) {
+            resultAccepted = false;
+            resultMessage = tr(panel.isGeneratingSignal() ? "usb.busy" : "usb.connection_lost");
+        } else {
+            resultMessage = null;
+            reconnect = ConnectionManager.reconnectUsb(usbPort, pendingBaud);
+        }
+        panel.refresh();
+    }
+    private void toggleRemember() {
+        var wifi = ConnectionManager.getWifi();
+        boolean forgetting = wifi.isCurrentRemembered();
+        if (!forgetting && !wifi.canRemember()) return;
+        resultAccepted = forgetting ? wifi.forgetCurrentBoard() : wifi.rememberCurrentBoard();
+        resultMessage = tr(resultAccepted ? forgetting ? "wifi.forgotten" : "wifi.saved" : "wifi.failed");
+        focusKey = "trust"; showToken = false; panel.refresh();
+    }
+    private void submitCommand() {
+        if (commandBox == null || !ConnectionManager.isAnyConnected() || usbBusy()) return;
+        String text = commandBox.getValue().trim();
+        if (text.isEmpty()) return;
+        ConnectionManager.sendMessageToBoard(text);
+        commandBox.setValue("");
+    }
+    @Override public void tick() { update(true); }
+    @Override public void backgroundTick() { showToken = false; update(false); }
+    private void update(boolean visible) {
+        if (state == null) return;
+        boolean changed = false;
+        if (reconnect != null && reconnect.isDone()) {
+            ConnectionResult result;
+            try { result = reconnect.join(); }
+            catch (CompletionException e) {
+                com.serialcraft.SerialCraft.LOGGER.warn("USB reconfiguration failed", e);
+                result = new ConnectionResult(false, tr("usb.connection_lost"));
+            }
+            reconnect = null;
+            var serial = ConnectionManager.getSerial();
+            resultAccepted = result.connected() && serial.isConnected()
+                    && serial.getPortName().equalsIgnoreCase(usbPort) && serial.getBaudRate() == pendingBaud;
+            resultMessage = resultAccepted ? tr("usb.applied", serial.getBaudRate())
+                    : result.connected() ? tr("usb.connection_lost") : result.message();
+            changed = true;
+        }
+        LinkState current = readState();
+        if (current.epoch() != state.epoch()) showToken = false;
+        changed |= !current.equals(state);
+        if (visible && changed) { captureFocus(); panel.refresh(); }
+        if (visible) updateHistory();
+    }
+    private void updateHistory() {
+        history = ConnectionManager.recentHistory(HISTORY_LIMIT);
+        boolean atEnd = historyScroll.getScrollAmount() >= historyScroll.getMaxScroll() - 1;
+        historyScroll.update(Math.max(1, console.height() - 28), history.size() * LINE_HEIGHT);
+        if (atEnd) historyScroll.setScrollAmount(historyScroll.getMaxScroll());
+    }
+
+    @Override
+    public void render(GuiGraphicsExtractor gui, int mouseX, int mouseY, Font font, int width, int height) {
+        UiDraw.pageHeader(gui, font, width, height, tr("title"), UiTheme.ACCENT_HOME,
+                tr("subtitle"), tr("description"), mouseX, mouseY);
+        int mx = view.contains(mouseX, mouseY) ? mouseX : -1;
+        int my = mx == -1 ? -1 : mouseY;
+        gui.enableScissor(scrollView.x(), scrollView.y(), scrollView.right() - 8, scrollView.bottom());
+        for (Surface surface : surfaces) {
+            Rect r = surface.bounds();
+            if (columns && r.equals(terminal)) continue;
+            int accent = r.equals(overview) ? statusColor() : r.equals(terminal) ? UiTheme.INFO : UiTheme.ACCENT_HOME;
+            UiDraw.dashboardCard(gui, r.x(), drawY(r.y()), r.width(), r.height(),
+                    surface.headerHeight(), surface.background(), accent);
+        }
+        renderSummary(gui, mx, my);
+        for (Heading h : headings) {
+            if (h.cardTitle())
+                UiDraw.dashboardTitle(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), mx, my,
+                        overview.contains(h.x(), h.y()) ? statusColor() : UiTheme.TEXT_PRIMARY);
+            else
+                UiDraw.dashboardSectionHeader(gui, font, h.title(), h.x(), drawY(h.y()), h.width(), UiTheme.INFO_DARK);
+        }
+        for (Text t : texts) {
+            if (t.background() == 0) UiDraw.wrappedText(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.color());
+            else UiDraw.notice(gui, font, t.value(), t.x(), drawY(t.y()), t.width(), t.background(), t.color());
+        }
+        for (InlineHelp h : helpPanels)
+            UiDraw.helpPanel(gui, font, h.body(), h.x(), drawY(h.y()), h.width(), UiTheme.ACCENT_HOME_BG, UiTheme.ACCENT_HOME);
+        for (int i = 0; i < properties.size(); i++) {
+            Property p = properties.get(i);
+            UiDraw.labelledRow(gui, font, p.x(), drawY(p.y()), p.width(), p.label(), p.value(), p.color(), mx, my);
+            // Hairline solo entre filas consecutivas del mismo grupo.
+            boolean continues = i + 1 < properties.size() && properties.get(i + 1).x() == p.x()
+                    && properties.get(i + 1).y() == p.y() + p.height();
+            if (continues) {
+                int ruleY = drawY(p.y() + p.height() - 4);
+                gui.fill(p.x(), ruleY, p.x() + p.width(), ruleY + 1, UiTheme.LINE);
+            }
+        }
+        for (Tile t : tiles)
+            UiDraw.statTile(gui, font, t.x(), drawY(t.y()), t.width(), t.stat().label(), t.stat().value(),
+                    UiTheme.ACCENT_HOME, t.stat().color(), mx, my);
+        for (Badge b : badges)
+            UiDraw.badge(gui, font, b.x(), drawY(b.y()), b.width(), b.text(), b.background(), b.color(), mx, my);
+        Component confidence = tr("confidence." + state.identity().confidence().name().toLowerCase(Locale.ROOT));
+        UiDraw.badge(gui, font, modelBadge.x(), drawY(modelBadge.y()), modelBadge.width(), confidence,
+                confirmedModel() ? UiTheme.OK_BG : UiTheme.NEUTRAL_BG,
+                confirmedModel() ? UiTheme.OK_DARK : UiTheme.NEUTRAL_TX, mx, my);
+        if (!columns) {
+            renderTerminal(gui, mx, my);
+            renderFooter(gui, mx, my);
+        }
+        gui.disableScissor();
+        viewport.render(gui, mx, my, 0);
+        if (columns) {
+            UiDraw.dashboardCard(gui, terminal.x(), terminal.y(), terminal.width(), terminal.height(),
+                    UiTheme.CARD_HEADER_HEIGHT, UiTheme.BG_CARD, UiTheme.INFO);
+            renderTerminal(gui, mx, my);
+            for (AbstractWidget widget : terminalWidgets) widget.extractRenderState(gui, mx, my, 0);
+            renderFooter(gui, mouseX, mouseY);
+        }
+    }
+
+    private void renderSummary(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
+        int x = summary.x(), y = drawY(summary.y()), width = summary.width();
+        UiDraw.glassSurface(gui, x + PAD, y + 4, 38, 38, 0xB00090AF, UiTheme.INFO, false);
+        UiDraw.icon(gui, state.wifi() ? SpriteIcon.WIFI : SpriteIcon.USB, x + PAD + 8, y + 12, 22);
+
+        int nameX = x + PAD + 50;
+        int mascot = mascotWidth(width);
+        int nameWidth = x + width - PAD - mascot - (mascot > 0 ? 8 : 0) - nameX;
+        if (mascot > 0) cat.render(gui, x + width - PAD - mascot, y, mascot, summary.height());
+        Component name = !state.connected() && state.endpoint().isEmpty() ? tr("no_device") : modelName();
+        UiDraw.clippedText(gui, font, name.copy().withStyle(ChatFormatting.BOLD), nameX, y + 7,
+                Math.max(1, nameWidth), UiTheme.TEXT_PRIMARY, mouseX, mouseY);
+        UiDraw.clippedText(gui, font, state.connected() ? family() : tr("device.disconnected"),
+                nameX, y + 23, Math.max(1, nameWidth), UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+
+        Component session = transport();
+        long seconds = ConnectionManager.getConnectedSeconds();
+        if (state.connected() && seconds >= 0) session = session.copy().append(" · ").append(duration(seconds));
+        gui.fill(nameX, y + 42, nameX + 4, y + 47, statusColor());
+        UiDraw.clippedText(gui, font, session, nameX + 10, y + 40,
+                Math.max(1, nameWidth - 10),
+                UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+        int badgeWidth = Math.min(width / 3, font.width(connectionState()) + 8);
+        UiDraw.badge(gui, font, x + width - PAD - badgeWidth,
+                drawY(overview.y()) + (UiTheme.CARD_HEADER_HEIGHT - 14) / 2,
+                badgeWidth, connectionState(), statusBackground(), statusColor(), mouseX, mouseY);
+    }
+
+    private void renderFooter(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
+        int x = footer.x(), y = columns ? footer.y() : drawY(footer.y()), width = footer.width();
+        Component brand = Component.literal("SerialCraft");
+        if (!MOD_VERSION.isEmpty()) brand = brand.copy().append(" v").append(MOD_VERSION);
+        Component link = transport().copy().append(" · ").append(connectionState());
+        int brandWidth = Math.min(width, font.width(brand));
+        UiDraw.clippedText(gui, font, brand, x + width - brandWidth, y + 3, brandWidth,
+                UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+        if (width - brandWidth > 120) UiDraw.clippedText(gui, font, link, x, y + 3, width - brandWidth - 18,
+                state.connected() ? UiTheme.OK_DARK : UiTheme.TEXT_SECONDARY, mouseX, mouseY);
+    }
+
+    private void renderTerminal(GuiGraphicsExtractor gui, int mouseX, int mouseY) {
+        int x = terminal.x(), y = terminalDrawY(terminal.y());
+        int iconX = x + UiTheme.CARD_TITLE_INSET;
+        int iconY = y + (UiTheme.CARD_HEADER_HEIGHT - 20) / 2;
+        UiDraw.glassSurface(gui, iconX, iconY, 20, 20, 0xB00090AF, UiTheme.INFO, false);
+        UiDraw.icon(gui, SpriteIcon.TERMINAL, iconX + 2, iconY + 2, 16);
+        UiDraw.dashboardTitle(gui, font, tr("terminal"), iconX + 28, cardTitleY(y),
+                terminal.width() - UiTheme.CARD_TITLE_INSET - PAD - 28, mouseX, mouseY);
+        int consoleY = terminalDrawY(console.y());
+        UiDraw.consolePanel(gui, font, console.x(), consoleY, console.width(), console.height(),
+                transport().copy().append(" · ").append(state.connected() ? value(state.endpoint()) : connectionState()),
+                mouseX, mouseY);
+        gui.enableScissor(console.x() + 4, consoleY + 24, console.right() - 8, consoleY + console.height() - 4);
+        int lineY = consoleY + 24 - (int) historyScroll.getScrollAmount();
+        if (history.isEmpty()) UiDraw.wrappedText(gui, font, tr("terminal.empty"), console.x() + 8, lineY, console.width() - 20, UiTheme.TEXT_ON_DARK);
+        for (String line : history) {
+            if (lineY + LINE_HEIGHT >= consoleY + 24 && lineY < consoleY + console.height() - 4) {
+                int color = UiDraw.consoleLineColor(line);
+                UiDraw.clippedText(gui, font, Component.literal(line), console.x() + 8, lineY, console.width() - 20,
+                        color, mouseY >= consoleY + 24 && mouseY < consoleY + console.height() - 4 ? mouseX : -1, mouseY);
+            }
+            lineY += LINE_HEIGHT;
+        }
+        gui.disableScissor();
+        historyScroll.renderScrollbar(gui, console.right() - 6, consoleY + 24, 5, console.height() - 28);
+    }
+
+    private int drawY(int y) { return y - (int) scroll.getScrollAmount(); }
+    private int terminalDrawY(int y) { return columns ? y : drawY(y); }
+    private boolean confirmedModel() { return state.identity().hasModel() && state.identity().confidence().ordinal() >= BoardIdentity.Confidence.MODEL.ordinal(); }
+    private Component modelName() { return confirmedModel() ? Component.literal(state.identity().model()) : tr("model.unconfirmed"); }
+    private Component family() { return tr("family." + state.identity().family().name().toLowerCase(Locale.ROOT)); }
+    private Component transport() { return tr(state.wifi() ? "transport.wifi" : "transport.usb"); }
+    private Component baud() { return state.baud() > 0 ? tr("usb.bps", state.baud()) : unavailable(); }
+    private Component serverState() {
+        return Component.translatable("gui.serialcraft.wifi.state." +
+                (state.connected() ? "connected" : state.serverPort() > 0 ? "listening" : "stopped"));
+    }
+    private Component connectionState() { return usbBusy() && !state.wifi() ? tr("usb.reconnecting") : Component.translatable(state.connected() ? "gui.serialcraft.status.connected" : "gui.serialcraft.status.disconnected"); }
+    private int statusColor() { return usbBusy() && !state.wifi() ? UiTheme.WARN_DARK : state.connected() ? UiTheme.OK_DARK : UiTheme.ERROR_DARK; }
+    private int statusBackground() { return usbBusy() && !state.wifi() ? UiTheme.WARN_BG : state.connected() ? UiTheme.OK_BG : UiTheme.ERROR_BG; }
+    private static Component value(String value) { return value.isEmpty() ? unavailable() : Component.literal(value); }
+    private static Component unavailable() { return tr("usb.unavailable"); }
+    private static MutableComponent tr(String key, Object... args) { return Component.translatable("gui.serialcraft.home." + key, args); }
+    private static Component duration(long seconds) {
+        return seconds < 60 ? tr("duration.seconds", seconds) : seconds < 3600
+                ? tr("duration.minutes", seconds / 60, seconds % 60) : tr("duration.hours", seconds / 3600, seconds % 3600 / 60);
+    }
+
+    @Override public boolean keyPressed(KeyEvent event) {
+        if (event.key() == GLFW.GLFW_KEY_TAB) viewport.prepareKeyboardFocus();
+        if (commandBox.isFocused() && (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER)) {
+            submitCommand(); return true;
+        }
+        if (event.key() == GLFW.GLFW_KEY_PAGE_UP || event.key() == GLFW.GLFW_KEY_PAGE_DOWN) {
+            boolean historyFocus = commandBox.isFocused() && historyScroll.hasScroll();
+            ScrollState target = historyFocus ? historyScroll : scroll;
+            int height = historyFocus ? console.height() - 28 : scrollView.height();
+            target.setScrollAmount(target.getScrollAmount() + (event.key() == GLFW.GLFW_KEY_PAGE_DOWN ? 1 : -1) * height * .8);
+            viewport.position(); return true;
+        }
+        return false;
+    }
+    private void captureFocus() {
+        for (var entry : focusWidgets.entrySet()) if (panel.getFocused() == entry.getValue()) {
+            focusKey = entry.getKey(); navigationFocus = ""; return;
+        }
+        if (panel.getFocused() instanceof AbstractWidget widget) {
+            focusKey = ""; navigationFocus = widget.getMessage().getString();
+        }
+    }
+    @Override public void afterKey() {
+        captureFocus(); viewport.revealFocus(panel.getFocused());
+    }
+    @Override public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
+        if (!view.contains(x, y)) return false;
+        if (console.contains(x, y + (columns ? 0 : scroll.getScrollAmount())) && historyScroll.mouseScrolled(vertical)) return true;
+        if (!scrollView.contains(x, y)) return columns && terminal.contains(x, y);
+        boolean moved = scroll.mouseScrolled(vertical); viewport.position(); return moved;
+    }
+    @Override public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        if (view.contains(event.x(), event.y()) && historyScroll.mouseClicked(event.x(), event.y(), event.button(),
+                console.right() - 6, terminalDrawY(console.y()) + 24, 5, console.height() - 28)) return true;
+        boolean handled = scroll.mouseClicked(event.x(), event.y(), event.button(), scrollView.right() - 6, scrollView.y(), 6, scrollView.height());
+        viewport.position(); return handled;
+    }
+    @Override public boolean mouseReleased(MouseButtonEvent event) {
+        return historyScroll.mouseReleased(event.button()) | scroll.mouseReleased(event.button());
+    }
+    @Override public boolean mouseDragged(MouseButtonEvent event, double x, double y) {
+        if (historyScroll.mouseDragged(event.y(), terminalDrawY(console.y()) + 24, console.height() - 28)) return true;
+        boolean handled = scroll.mouseDragged(event.y(), scrollView.y(), scrollView.height()); viewport.position(); return handled;
+    }
+    @Override public void onClose() { showToken = false; expandedHelp = ""; }
+}
