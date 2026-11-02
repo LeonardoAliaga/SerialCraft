@@ -1,4 +1,4 @@
-# 🔌 SerialCraft — Arduino y ESP32 con Minecraft Fabric
+# 🔌 SerialCraft — Arduino y ESP32 con Minecraft Fabric y NeoForge
 
 ### Lleva tu hardware del mundo real a tu mundo Survival.
 
@@ -10,7 +10,7 @@
 [![Versión](https://img.shields.io/badge/Versión-0.5.2--beta-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
 [![Licencia](https://img.shields.io/badge/Licencia-MIT-8a9a7b?style=for-the-badge)](LICENSE)
 
-**SerialCraft** es un mod experimental y educativo que rompe la cuarta pared: permite comunicación bidireccional en tiempo real entre un **Arduino** (o cualquier dispositivo serial) y **Minecraft**, escrito en Java sobre Fabric.
+**SerialCraft** es un mod experimental y educativo que rompe la cuarta pared: permite comunicación bidireccional en tiempo real entre un **Arduino** (o cualquier dispositivo serial) y **Minecraft**, escrito en Java para Fabric y NeoForge, con código compartido.
 
 No es solo una demostración técnica. Está diseñado para encajar de forma natural en una partida **Survival**, convirtiendo la electrónica externa en una parte funcional de tu progresión.
 
@@ -107,13 +107,13 @@ Este mod es un tributo a esa conexión: usar código para cerrar el circuito ent
 
 * **Minecraft:** 26.2
 * **Java:** 25 o superior
-* **Loader:** Fabric 0.19.3 o superior
-* **Dependencia:** [Fabric API](https://modrinth.com/mod/fabric-api) para Minecraft 26.2
+* **Loader:** Fabric 0.19.3 o NeoForge 26.2.0.93 (o una versión compatible para Minecraft 26.2)
+* **Dependencia en Fabric:** [Fabric API](https://modrinth.com/mod/fabric-api) para Minecraft 26.2
 * **Hardware:** Arduino Uno R3, Uno Q, ESP32, o cualquier microcontrolador con comunicación serial o TCP.
 
 ### Primeros pasos
 
-1. Instala el mod y la Fabric API en tu carpeta `mods`. En multijugador, actualiza SerialCraft en cliente y servidor juntos.
+1. Instala el JAR de tu loader en `mods`. En Fabric instala también Fabric API; en NeoForge instala el JAR NeoForge. En multijugador, actualiza SerialCraft en cliente y servidor juntos.
 2. Conecta tu placa por USB (o ponla en la misma red Wi-Fi que tu PC).
 3. Entra a tu mundo y **craftea la Laptop** y el **Bloque Conector** con las recetas incluidas.
 4. Coloca el Conector y haz clic derecho, o abre la Laptop. Selecciona tu puerto USB o la tarjeta Wi-Fi en la bienvenida de conexión.
@@ -150,9 +150,9 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 
 ### Publicación automática
 
-Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba el JAR y publica **GitHub Releases**. `0.5.2-beta` se publica como **Pre-release**, no como versión estable. El JAR conserva Minecraft 26.2, Fabric Loader 0.19.3 y Java 25.
+Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba ambos JAR y publica **GitHub Releases**. `0.5.2-beta` se publica como **Pre-release**, no como versión estable. Los dos JAR conservan Minecraft 26.2 y Java 25; cada uno contiene sus metadatos de loader.
 
-Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` y `changelogs/<mod_version>.en.md`. Las notas de GitHub se publican en español y las de Modrinth en inglés. La misma versión se inserta automáticamente en `fabric.mod.json` al compilar.
+Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` y `changelogs/<mod_version>.en.md`. Las notas de GitHub se publican en español y las de Modrinth en inglés. La misma versión se inserta automáticamente en los metadatos Fabric y NeoForge al compilar. Modrinth usa versiones separadas por loader (`<versión>-fabric` y `<versión>-neoforge`).
 
 **Modrinth requiere una acción explícita:** ejecuta manualmente **Build and test** en `main` y activa `publish_modrinth`, o incluye `[publish-modrinth]` en el mensaje del commit de lanzamiento que llegue como cabeza de un push a `main`. Esa marca autoriza publicar esa ejecución y sincronizar [MODRINTH.md](MODRINTH.md); los siguientes pushes sin la marca siguen publicando solo en GitHub. Ambas opciones requieren `MODRINTH_TOKEN` con **Read versions** y **Create versions**, y **Write projects** (`PROJECT_WRITE`) para la descripción.
 
@@ -160,11 +160,13 @@ Una versión publicada se conserva sin duplicarla. Para reintentar una publicaci
 
 ### Probar desde IntelliJ IDEA
 
-1. Abre el repositorio y selecciona el tag `v0.5.2-beta` para reproducir esta Beta, o `test` para continuar el desarrollo.
-2. Usa **JDK 25** como SDK del proyecto y como **Gradle JVM**. Importa `build.gradle` usando el wrapper incluido, **Gradle 9.7.1**.
-3. Ejecuta `build` desde el panel de Gradle (Windows: `.\gradlew.bat build`). El JAR queda en `build/libs/serialcraft-0.5.2-beta.jar`.
-4. Ejecuta la tarea `runClient`. En el juego, selecciona **简体中文（中国大陆）** para comprobar chino simplificado.
-5. Revisa Welcome, Home, las cuatro pestañas, las ayudas y ambas secciones del editor IO a varias escalas de GUI. Comprueba USB y Wi-Fi con tu placa; esas pruebas físicas y visuales no las sustituye la CI.
+1. Abre la raíz del repositorio y recarga el proyecto Gradle.
+2. Usa **JDK 25** como SDK y **Gradle JVM**, con el wrapper **Gradle 9.7.1**.
+3. Ejecuta `.\gradlew.bat build`: genera `fabric/build/libs/serialcraft-fabric-0.5.2-beta.jar` y `neoforge/build/libs/serialcraft-neoforge-0.5.2-beta.jar`, y copia ambos a `build/libs`.
+4. Selecciona **Fabric Client**, **Fabric Server**, **NeoForge Client** o **NeoForge Server** en las configuraciones compartidas de IntelliJ. Sus carpetas `fabric/runs/...` y `neoforge/runs/...` son independientes.
+5. Revisa las pestañas y el editor IO a varias escalas e idiomas. Comprueba USB y Wi-Fi con tu placa en cada loader.
+
+Consulta [desarrollo multiloader](DEVELOPMENT.md) para arquitectura, versiones fijadas, tareas, pruebas, publicación y fuentes oficiales.
 
 Para las comprobaciones adicionales: `python scripts/validate_locales.py`, `python -m unittest discover -s scripts -p 'test_*.py'` y, después de compilar, `python scripts/publish_release.py --check`.
 
