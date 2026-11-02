@@ -2,14 +2,13 @@ package com.serialcraft;
 
 import com.serialcraft.block.ModBlocks;
 import com.serialcraft.block.entity.ModBlockEntities;
-import com.serialcraft.board.BoardRegistry;
 import com.serialcraft.item.ModItems;
 import com.serialcraft.network.ModNetworking;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SerialCraft  {
+public class SerialCraft {
 
     public static final String MOD_ID = "serialcraft";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
@@ -23,13 +22,7 @@ public class SerialCraft  {
         ModItems.initialize();
         ModBlockEntities.initialize();
 
-        // 2. Indice de placas. Se engancha a los eventos de carga/descarga de
-        //    BlockEntity, por lo que repuebla solo al cargar chunks; ya no
-        //    depende de que el jugador vuelva a colocar cada bloque tras un
-        //    reinicio del servidor.
-
-
-        // 3. Red.
+        // Loader entrypoints attach lifecycle hooks to the shared board index.
         ModNetworking.registerPayloads();
         ModNetworking.registerServerHandlers();
 

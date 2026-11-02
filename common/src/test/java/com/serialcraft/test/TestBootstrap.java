@@ -10,7 +10,11 @@ public final class TestBootstrap {
         if (ready) return;
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
-        new SerialCraft().initialize();
+        // NeoForge JUnit boots and registers the mod before invoking tests.
+        if (!net.minecraft.core.registries.BuiltInRegistries.BLOCK.containsKey(
+                net.minecraft.resources.Identifier.parse("serialcraft:io_block"))) {
+            new SerialCraft().initialize();
+        }
         ready = true;
     }
 }

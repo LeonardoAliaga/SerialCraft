@@ -1,6 +1,7 @@
 plugins {
     id 'base'
     id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+    id 'net.neoforged.moddev' version "${moddev_version}" apply false
 }
 allprojects {
     group = rootProject.maven_group
@@ -28,4 +29,10 @@ subprojects {
         from(rootProject.file('LICENSE')) { rename { "${it}_serialcraft" } }
     }
 }
-tasks.named('build') { dependsOn ':common:build', ':fabric:build' }
+tasks.named('build') { dependsOn ':common:build', ':fabric:build', ':neoforge:build' }
+tasks.register('stageReleaseJars', Sync) {
+    from(project(':fabric').tasks.named('jar'))
+    from(project(':neoforge').tasks.named('jar'))
+    into layout.buildDirectory.dir('libs')
+}
+tasks.named('build') { dependsOn 'stageReleaseJars' }

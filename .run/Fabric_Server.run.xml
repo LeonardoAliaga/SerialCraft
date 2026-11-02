@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Fabric Server" type="GradleRunConfiguration" factoryName="Gradle">
+    <ExternalSystemSettings>
+      <option name="externalProjectPath" value="$PROJECT_DIR$" />
+      <option name="externalSystemIdString" value="GRADLE" />
+      <option name="taskNames"><list><option value=":fabric:runServer" /></list></option>
+      <option name="vmOptions" value="" />
+    </ExternalSystemSettings>
+    <method v="2" />
+  </configuration>
+</component>

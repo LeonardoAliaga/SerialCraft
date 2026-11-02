@@ -41,8 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *     dimension+dueno, asi que el coste es proporcional a las placas de ese
  *     jugador en esa dimension.
  *
- * El ciclo de vida se engancha a ServerBlockEntityEvents, que es lo que
- * realmente cubre carga y descarga de chunks; setPlacedBy no basta.
+ * Los adaptadores de plataforma notifican carga y descarga reales de las
+ * entidades, incluida la descarga de chunks; setPlacedBy no basta.
  */
 public final class BoardRegistry {
 

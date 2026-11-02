@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[11,)"
+license="MIT"
+issueTrackerURL="https://github.com/LeonardoAliaga/SerialCraft/issues"
+
+[[mods]]
+modId="serialcraft"
+version="${version}"
+displayName="SerialCraft"
+authors="Leonardo Aliaga"
+credits="SK-Xiaohan"
+description='''Conecta placas Arduino y ESP con Minecraft mediante comunicación serial o Wi-Fi.'''
+iconFile="assets/serialcraft/textures/block/arduino_redstone_block.png"
+
+[features.serialcraft]
+javaVersion="[25,)"
+
+[[dependencies.serialcraft]]
+modId="neoforge"
+type="required"
+versionRange="[${neoforge},)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.serialcraft]]
+modId="minecraft"
+type="required"
+versionRange="[${minecraft}]"
+ordering="NONE"
+side="BOTH"
+
+[[mixins]]
+config="serialcraft.neoforge.mixins.json"

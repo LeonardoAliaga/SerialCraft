@@ -31,7 +31,11 @@ dependencies {
 }
 sourceSets.test.compileClasspath += sourceSets.client.output
 sourceSets.test.runtimeClasspath += sourceSets.client.output
-test { useJUnitPlatform() }
+test {
+    useJUnitPlatform()
+    workingDir = layout.buildDirectory.dir('test-run').get().asFile
+    doFirst { workingDir.mkdirs() }
+}
 fabricApi.configureDataGeneration { client = true; outputDirectory = rootProject.file('common/src/main/generated') }
 if (project.hasProperty('ioGameTests')) {
     fabricApi.configureTests {

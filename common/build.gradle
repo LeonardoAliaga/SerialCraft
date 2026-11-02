@@ -3,7 +3,7 @@ plugins { id 'net.fabricmc.fabric-loom' }
 loom { splitEnvironmentSourceSets() }
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    compileOnly 'net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7'
+    compileOnly "net.fabricmc:sponge-mixin:${mixin_version}"
     compileOnly "com.fazecast:jSerialComm:${jserialcomm_version}"
     compileOnly "org.jmdns:jmdns:${jmdns_version}"
 }

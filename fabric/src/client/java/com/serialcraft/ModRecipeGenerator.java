@@ -18,21 +18,7 @@ public final class ModRecipeGenerator extends FabricRecipeProvider {
     }
 
     @Override protected RecipeProvider createRecipeProvider(HolderLookup.Provider registries, RecipeOutput recipes) {
-        return new RecipeProvider(registries, recipes) {
-            @Override public void buildRecipes() {
-                shaped(RecipeCategory.REDSTONE, ModBlocks.CONNECTOR_BLOCK)
-                        .pattern("GGG").pattern("ICI").pattern("SRS")
-                        .define('G', Items.GLASS_PANE).define('I', Items.IRON_INGOT)
-                        .define('C', Items.COMPARATOR).define('S', Items.STONE_SLAB).define('R', Items.REDSTONE)
-                        .unlockedBy("has_iron", has(Items.IRON_INGOT)).save(output);
-                shaped(RecipeCategory.REDSTONE, ModBlocks.IO_BLOCK)
-                        .pattern("TRT").pattern("ICI").pattern("SDS")
-                        .define('T', Items.REDSTONE_TORCH).define('R', Items.REPEATER)
-                        .define('I', Items.IRON_INGOT).define('C', Items.COMPARATOR)
-                        .define('S', Items.SMOOTH_STONE).define('D', Items.REDSTONE)
-                        .unlockedBy("has_repeater", has(Items.REPEATER)).save(output);
-            }
-        };
+        return new com.serialcraft.datagen.SerialCraftRecipes(registries, recipes);
     }
 
     @Override public String getName() { return "SerialCraft Recipes"; }
