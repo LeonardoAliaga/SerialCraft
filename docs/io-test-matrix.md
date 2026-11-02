@@ -76,7 +76,7 @@ Para el perfil pendiente, comparar 0/32/64/128 módulos durante cinco minutos de
 ```powershell
 $env:JAVA_HOME = 'C:/Program Files/Java/jdk-25.0.4.1'
 ./gradlew.bat build
-./gradlew.bat -PioGameTests runGameTest
+./gradlew.bat -PioGameTests :fabric:runGameTest
 ```
 
-En Linux: `./gradlew build` y `./gradlew -PioGameTests runGameTest`. Los GameTests usan un mundo de prueba generado bajo `build/run/gameTest`; no abren mundos del jugador.
+En Linux: `./gradlew build` y `./gradlew -PioGameTests :fabric:runGameTest`. Los GameTests usan un mundo de prueba generado bajo `fabric/build/run/gameTest`; no abren mundos del jugador.

@@ -31,6 +31,9 @@ bin/
 # fabric
 
 run/
+runs/
+fabric/config/
+neoforge/config/
 logs/
 
 # java
@@ -39,6 +42,8 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+__pycache__/
+common/src/main/generated/.cache/
 
 
 # --- Documentation (VitePress & Node.js) ---

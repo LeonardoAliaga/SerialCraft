@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "serialcraft",
+  "version": "${version}",
+  "name": "SerialCraft",
+  "description": "Conecta placas Arduino y ESP con Minecraft mediante comunicación serial o Wi-Fi.",
+  "authors": [
+    "Leonardo Aliaga"
+  ],
+  "contributors": [
+    {
+      "name": "SK-Xiaohan",
+      "contact": {
+        "homepage": "https://github.com/SK-Xiaohan"
+      }
+    }
+  ],
+  "contact": {
+    "homepage": "https://github.com/LeonardoAliaga/serialcraft",
+    "sources": "https://github.com/LeonardoAliaga/serialcraft",
+    "issues": "https://github.com/LeonardoAliaga/serialcraft/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/serialcraft/textures/block/arduino_redstone_block.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.serialcraft.fabric.SerialCraftFabric"
+    ],
+    "client": [
+      "com.serialcraft.fabric.SerialCraftFabricClient"
+    ],
+    "fabric-datagen": [
+      "com.serialcraft.SerialCraftDataGenerator"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "minecraft": "${minecraft}",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

@@ -1,23 +1,29 @@
-# SerialCraft Guide — v0.5.0-beta (Beta)
+# SerialCraft Guide — v0.5.3-beta (Beta)
 
-Welcome to the official **SerialCraft** guide. **0.5.0-beta** integrates the translucent interface developed on `test` and adds Simplified Chinese. It preserves the existing bidirectional hardware protocol, telemetry and Minecraft 26.2 / Java 25 compatibility.
+Welcome to the official **SerialCraft** guide. **0.5.3-beta** adds NeoForge alongside Fabric and configurable output values when connecting and disconnecting a board. It preserves the bidirectional hardware protocol, telemetry and Minecraft 26.2 / Java 25 compatibility.
 
 ## About the project
 
-SerialCraft is an open source project created by **Leonardo Aliaga** (@aliaga1924). It was created as a **learning project** at the intersection of game modding (Fabric/Java), hardware design and telecommunications.
+SerialCraft is an open source project created by **Leonardo Aliaga** (@aliaga1924). It was created as a **learning project** at the intersection of game modding (Fabric, NeoForge and Java), hardware design and telecommunications.
 
 AI tools are used strategically. **The project does not depend on AI to exist.** Architecture and logic are designed first; AI is then used as an assistant to execute, refine and translate those ideas into code faster.
 
 ---
 
-## What's new in v0.5.0 Beta
+## What's new in v0.5.3 Beta
+
+- **Fabric and NeoForge:** separate loader builds sharing the same interface, hardware protocol and board features.
+- **Output settings:** the top-right gear opens independent policies for connection and normal disconnection.
+- **Startup and shutdown values:** zero, custom integers from 0 to 255, restoration on connection or leaving the last state on disconnection, according to your selection.
+
+### Interface and languages introduced in v0.5.0
 
 - **Horizontal navigation:** two tabs on each side of the original centered logo, with the existing icons and page accents.
 - **Home and Welcome:** translucent panels, improved spacing, a random cat sprite, independently scrolling connection properties and a dedicated terminal column.
 - **Shared panel styling:** updated headers, borders, padding and layout across Boards, Events, Visualize and the IO editor, preserving existing functionality.
-- **Simplified Chinese:** 402 translation keys, including dynamic states, help and the IO editor. Thanks to [@SK-Xiaohan](https://github.com/SK-Xiaohan) for [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) and the Chinese name **串连世界**.
+- **Simplified Chinese:** translated dynamic states, help and the IO editor. Thanks to [@SK-Xiaohan](https://github.com/SK-Xiaohan) for [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) and the Chinese name **串连世界**.
 
-This is a **pre-release**. Back up worlds and update clients and servers together. See the [English release notes](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.0-beta.en.md).
+This is a **pre-release**. Back up worlds and update clients and servers together. See the [English release notes](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.3-beta.en.md).
 
 ## Features retained from v0.4.6 (Beta)
 
@@ -32,7 +38,7 @@ This is a **pre-release**. Back up worlds and update clients and servers togethe
 * **Live UI wire indicators**:
   The **Events** tab displays live values next to each toggle (`mc_hunger:20`), and the console highlights incoming and outgoing telemetry with the `TM:` prefix.
 * **Migration to Minecraft 26.2 & Java 25**:
-  The mod runs on Fabric Loader for Minecraft 26.2 and requires **Java 25** as its runtime environment.
+  The mod runs on Fabric Loader or NeoForge for Minecraft 26.2 and requires **Java 25** as its runtime environment.
 * **Visualizer tab (test bench)**:
   The Laptop now has a **Visualizer** tab with three tools: a **timeline** that shows several signals at once (sensors, values the game sends, and `mc_*` telemetry), a **Sensor** view that compares the raw value with its analog redstone conversion and suggests a deadband, and a wave **generator** to check that your board responds without building a redstone circuit. Every message carries its real timestamp, and only real points are joined (never an invented curve). See [Test bench](#test-bench-visualizer-tab).
 * **Board identification**:
@@ -65,10 +71,10 @@ This is a **pre-release**. Back up worlds and update clients and servers togethe
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/) for **Minecraft 26.2** (requires **Java 25**).
-2. Download `Fabric API` and the SerialCraft v0.5.0-beta `.jar`.
-3. Drop both into your `mods` folder.
-4. Launch the game.
+1. Use **Minecraft 26.2** and **Java 25**. Choose [Fabric Loader](https://fabricmc.net/) **0.19.3 or newer**, or [NeoForge](https://neoforged.net/) **26.2.0.93 or newer** for Minecraft 26.2.
+2. Download the SerialCraft **0.5.3-beta** `.jar` for your loader. Fabric also requires [Fabric API](https://modrinth.com/mod/fabric-api) for 26.2.
+3. Put the JAR and its dependencies in `mods`. The NeoForge JAR does not require Fabric API.
+4. Launch the game. In multiplayer, use compatible SerialCraft versions and the same loader on clients and server.
 
 ---
 
@@ -81,6 +87,17 @@ This is a **pre-release**. Back up worlds and update clients and servers togethe
 | **Hardware I/O Module** | The bridge between redstone and hardware. Has a name, **Channel**, data direction, signal type, OR/AND/XOR logic, and five terminal roles configured directly in the world. |
 
 ---
+
+## Values when connecting and disconnecting
+
+Open the **top-right gear** in the interface. These local preferences affect **Minecraft → hardware** I/O channels and are available before connecting a board.
+
+| Moment | Options |
+| --- | --- |
+| On connection | Send zero, send a custom value, or restore the last saved value. |
+| On normal disconnection | Send zero, send a custom value, or leave the last state without sending a final message. |
+
+Custom values are integers from **0 to 255**. Save your settings; startup choices apply to the next connection. Restoration identifies the world, dimension, device and channel; missing saved values start at zero. Abrupt crashes or unplugged cables cannot deliver a final value. Telemetry and the generator's own stop action retain their existing behavior.
 
 ## Connection setup
 

@@ -1,0 +1,53 @@
+plugins { id 'net.fabricmc.fabric-loom' }
+loom {
+    splitEnvironmentSourceSets()
+    mods { serialcraft { sourceSet sourceSets.main; sourceSet sourceSets.client } }
+    runs {
+        client { configName = 'Fabric Client'; ideConfigGenerated true; runDir 'runs/client' }
+        server { configName = 'Fabric Server'; ideConfigGenerated true; runDir 'runs/server' }
+    }
+}
+// Compile shared sources in the loader environment, as in MultiLoader Template.
+sourceSets {
+    main {
+        java.srcDir rootProject.file('common/src/main/java')
+        resources.srcDir rootProject.file('common/src/main/resources')
+        resources.srcDir rootProject.file('common/src/main/generated')
+    }
+    client {
+        java.srcDir rootProject.file('common/src/client/java')
+        resources.srcDir rootProject.file('common/src/client/resources')
+    }
+    test { java.srcDir rootProject.file('common/src/test/java') }
+}
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    implementation include("com.fazecast:jSerialComm:${jserialcomm_version}")
+    implementation include("org.jmdns:jmdns:${jmdns_version}")
+    implementation include("me.lucko:fabric-permissions-api:${permissions_version}")
+    testImplementation "net.fabricmc:fabric-loader-junit:${loader_version}"
+}
+sourceSets.test.compileClasspath += sourceSets.client.output
+sourceSets.test.runtimeClasspath += sourceSets.client.output
+test {
+    useJUnitPlatform()
+    workingDir = layout.buildDirectory.dir('test-run').get().asFile
+    doFirst { workingDir.mkdirs() }
+}
+fabricApi.configureDataGeneration { client = true; outputDirectory = rootProject.file('common/src/main/generated') }
+if (project.hasProperty('ioGameTests')) {
+    fabricApi.configureTests {
+        createSourceSet = true
+        modId = 'serialcraft-io-tests'
+        enableGameTests = true
+        enableClientGameTests = false
+        eula = false
+    }
+}
+processResources {
+    inputs.properties(version: project.version, minecraft: minecraft_version, loader: loader_version)
+    filesMatching('fabric.mod.json') { expand inputs.properties }
+}
+tasks.named('sourcesJar') { mustRunAfter tasks.named('runDatagen') }

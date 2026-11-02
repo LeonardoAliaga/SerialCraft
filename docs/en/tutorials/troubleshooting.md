@@ -4,7 +4,7 @@ description: Diagnose SerialCraft connections, Arduino and ESP32 firmware, chann
 ---
 # Troubleshoot SerialCraft one layer at a time
 
-This guide follows **0.5.0-beta**. When a circuit does not work, check **hardware, transport, protocol, routing and redstone** separately. Changing several layers at once makes it harder to identify the cause.
+This guide follows **0.5.3-beta**. When a circuit does not work, check **hardware, transport, protocol, routing and redstone** separately. Changing several layers at once makes it harder to identify the cause.
 
 ## Five checks before changing your sketch
 
@@ -59,6 +59,6 @@ A redstone control protocol does not replace a dedicated high-frequency data-acq
 
 ## Before reporting an issue
 
-Include the Minecraft, Fabric and SerialCraft versions; board model and USB/Wi-Fi transport; module direction and channel; the expected and observed messages without secrets; and which checks above succeeded.
+Include the Minecraft, loader (Fabric or NeoForge) and SerialCraft versions; board model and USB/Wi-Fi transport; module direction and channel; the expected and observed messages without secrets; and which checks above succeeded.
 
 [Open a reproducible issue](https://github.com/LeonardoAliaga/SerialCraft/issues) and compare your sketch with the [official board examples](/en/examples/).

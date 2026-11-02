@@ -4,7 +4,7 @@ description: Aprende a convertir redstone de 0 a 15 a valores de 0 a 255 y a dis
 ---
 # Digital y analógico: por qué Minecraft utiliza 0–15 y Arduino recibe 0–255
 
-Uno de los aspectos más interesantes de SerialCraft es que sus dos mundos no representan las señales de la misma manera. **Redstone posee 16 niveles posibles (0–15)**, mientras que el protocolo de SerialCraft 0.4.6 utiliza valores **de 0 a 255**.
+Uno de los aspectos más interesantes de SerialCraft es que sus dos mundos no representan las señales de la misma manera. **Redstone posee 16 niveles posibles (0–15)**, mientras que el protocolo de SerialCraft 0.5.3-beta utiliza valores **de 0 a 255**.
 
 Entender la conversión ayuda a escribir sketches compatibles y a localizar comportamientos inesperados.
 

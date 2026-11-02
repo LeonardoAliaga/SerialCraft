@@ -1,0 +1,43 @@
+plugins { id 'net.neoforged.moddev' }
+
+neoForge {
+    version = neoforge_version
+    runs {
+        configureEach { ideName = "NeoForge ${it.name.capitalize()}" }
+        client { client(); gameDirectory = file('runs/client') }
+        server { server(); gameDirectory = file('runs/server'); programArgument '--nogui' }
+        data {
+            clientData()
+            gameDirectory = file('runs/data')
+            programArguments.addAll '--mod', 'serialcraft', '--all', '--output', rootProject.file('common/src/main/generated').absolutePath
+        }
+    }
+    mods { serialcraft { sourceSet sourceSets.main } }
+    unitTest { enable(); testedMod = mods.serialcraft }
+}
+// NeoForge uses one source set; side-specific entrypoints keep client code isolated at runtime.
+sourceSets.main {
+    java.srcDirs rootProject.file('common/src/main/java'), rootProject.file('common/src/client/java'), 'src/client/java'
+    resources.srcDirs rootProject.file('common/src/main/resources'), rootProject.file('common/src/client/resources'), rootProject.file('common/src/main/generated'), 'src/client/resources'
+}
+sourceSets.test.java.srcDir rootProject.file('common/src/test/java')
+test {
+    useJUnitPlatform()
+    workingDir = layout.buildDirectory.dir('test-run').get().asFile
+    doFirst { workingDir.mkdirs() }
+}
+dependencies {
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    jarJar(implementation("com.fazecast:jSerialComm:${jserialcomm_version}")) {
+        version { strictly "[${jserialcomm_version}]"; prefer jserialcomm_version }
+    }
+    jarJar(implementation("org.jmdns:jmdns:${jmdns_version}")) {
+        version { strictly "[${jmdns_version}]"; prefer jmdns_version }
+    }
+}
+processResources {
+    inputs.properties(version: project.version, minecraft: minecraft_version, neoforge: neoforge_version)
+    filesMatching('META-INF/neoforge.mods.toml') { expand inputs.properties }
+}

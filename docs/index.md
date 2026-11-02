@@ -2,7 +2,7 @@
 # Configuración de la portada estilo VitePress
 layout: home
 titleTemplate: false
-title: SerialCraft — Arduino y ESP32 para Minecraft Fabric
+title: SerialCraft — Arduino y ESP32 para Minecraft Fabric y NeoForge
 description: SerialCraft de Leonardo Aliaga conecta Arduino y ESP32 con Minecraft. Documentación oficial, código fuente, descargas y tutoriales.
 
 hero:
@@ -34,9 +34,9 @@ features:
 
 # ¿Qué es SerialCraft?
 
-Esta es la documentación oficial de **SerialCraft**, el mod de Minecraft Fabric de **Leonardo Aliaga**. La versión actual es **0.5.0-beta**, para Minecraft 26.2 y Java 25. [Descarga oficial en Modrinth](https://modrinth.com/mod/serialcraft) · [Código y lanzamientos en GitHub](https://github.com/LeonardoAliaga/SerialCraft).
+Esta es la documentación oficial de **SerialCraft**, el mod de Minecraft Fabric y NeoForge de **Leonardo Aliaga**. La versión actual es **0.5.3-beta**, para Minecraft 26.2 y Java 25. [Descarga oficial en Modrinth](https://modrinth.com/mod/serialcraft) · [Código y lanzamientos en GitHub](https://github.com/LeonardoAliaga/SerialCraft).
 
-**SerialCraft** es un mod para **Minecraft (Fabric)** que rompe la cuarta pared, permitiendo una comunicación bidireccional en tiempo real entre el juego y dispositivos electrónicos externos.
+**SerialCraft** es un mod para **Minecraft (Fabric y NeoForge)** que rompe la cuarta pared, permitiendo una comunicación bidireccional en tiempo real entre el juego y dispositivos electrónicos externos.
 
 ### Sobre la Autoría y Filosofía del Proyecto
 SerialCraft es un proyecto creado por **Leonardo Aliaga** (Instagram: [@aliaga1924](https://instagram.com/aliaga1924)). Nace con el propósito principal de ser un **proyecto de aprendizaje**, enfocado en explorar la intersección y sinergia entre el desarrollo de software (modding en Java mediante Fabric), el diseño de hardware físico y las telecomunicaciones (como estudiante de la Universidad Nacional Mayor de San Marcos).
@@ -71,7 +71,7 @@ Eres libre de estudiar el código, modificarlo o usarlo en tus modpacks.
 
 ## Empieza aprendiendo: tutoriales prácticos
 
-La documentación técnica explica el protocolo, pero los [tutoriales de SerialCraft](/tutoriales/) lo convierten en experimentos que puedes estudiar paso a paso. Esta sección corresponde a **0.5.0-beta (Beta)**, Minecraft **26.2** y Java **25**.
+La documentación técnica explica el protocolo, pero los [tutoriales de SerialCraft](/tutoriales/) lo convierten en experimentos que puedes estudiar paso a paso. Esta sección corresponde a **0.5.3-beta (Beta)**, Minecraft **26.2** y Java **25**.
 
 - [Módulo de E/S: dirección y conectores](/tutoriales/bloque-io)
 - [Encender un LED físico desde Minecraft](/tutoriales/arduino-led-minecraft)

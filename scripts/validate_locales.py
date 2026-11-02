@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import zipfile
 
-LANG = Path("src/main/resources/assets/serialcraft/lang")
+LANG = Path("common/src/main/resources/assets/serialcraft/lang")
 FORMAT = re.compile(r"%(?:(\d+)\$)?([A-Za-z%]|$)")
 
 
@@ -55,7 +55,7 @@ def format_signature(value):
 
 def required_ui_keys(root, reference):
     required = set()
-    for directory in ("src/main/java", "src/client/java"):
+    for directory in ("common/src/main/java", "common/src/client/java", "fabric/src", "neoforge/src"):
         for path in (root / directory).rglob("*.java"):
             source = path.read_text(encoding="utf-8")
             for key in re.findall(r'"((?:gui|message|key|block|item)\.serialcraft\.[\w.]+)"', source):
@@ -70,16 +70,16 @@ def required_ui_keys(root, reference):
 
     # Dynamic keys are composed from serialized modes, identity enums and events.
     for filename, prefix in (("IoMode", "mode"), ("SignalType", "signal"), ("LogicMode", "logic")):
-        source = (root / f"src/main/java/com/serialcraft/board/{filename}.java").read_text(encoding="utf-8")
+        source = (root / f"common/src/main/java/com/serialcraft/board/{filename}.java").read_text(encoding="utf-8")
         for name in re.findall(r'\b[A-Z_]+\("([a-z_]+)"\)', source):
             required.add(f"gui.serialcraft.{prefix}.{name}")
-    identity = (root / "src/client/java/com/serialcraft/identity/BoardIdentity.java").read_text(encoding="utf-8")
+    identity = (root / "common/src/client/java/com/serialcraft/identity/BoardIdentity.java").read_text(encoding="utf-8")
     for enum, prefix in (("Family", "family"), ("Confidence", "confidence")):
         body = re.search(r"enum " + enum + r"\s*\{(.*?)\}", identity, re.S).group(1)
         body = re.sub(r"/\*.*?\*/", "", body, flags=re.S)
         required.update("gui.serialcraft.home." + prefix + "." + name.lower()
                         for name in re.findall(r"\b[A-Z_]+\b", body))
-    events = (root / "src/client/java/com/serialcraft/client/events/GameEvent.java").read_text(encoding="utf-8")
+    events = (root / "common/src/client/java/com/serialcraft/client/events/GameEvent.java").read_text(encoding="utf-8")
     required.update("gui.serialcraft.events.event." + name.lower()
                     for name in re.findall(r"^    ([A-Z_]+)\(Category\.", events, re.M))
     required.update("gui.serialcraft.events.category." + name for name in ("world", "player", "combat"))
@@ -112,7 +112,7 @@ def validate(root=Path("."), jar=None):
                     raise ValueError(f"JAR locale differs from source: {name}")
             for asset in ("cats.png", "icons-w.png", "logo-txt.png"):
                 path = f"assets/serialcraft/textures/gui/{asset}"
-                if package.read(path) != (root / "src/main/resources" / path).read_bytes():
+                if package.read(path) != (root / "common/src/main/resources" / path).read_bytes():
                     raise ValueError(f"JAR UI asset differs from source: {asset}")
         print(f"{jar.name}: archive integrity, packaged locales and UI assets OK")
     print(f"UI coverage: {len(required)} literal and dynamic keys across pages, navigation and IO editor")

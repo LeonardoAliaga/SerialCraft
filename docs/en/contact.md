@@ -4,7 +4,7 @@ description: Report a reproducible issue, contribute to the repository, or reach
 ---
 # Contact and community
 
-The most useful way to discuss technical issues with SerialCraft is to open a [GitHub issue](https://github.com/LeonardoAliaga/SerialCraft/issues). Include Minecraft, Fabric and mod version, board model, connection type, expected result, actual result and steps to reproduce the problem.
+The most useful way to discuss technical issues with SerialCraft is to open a [GitHub issue](https://github.com/LeonardoAliaga/SerialCraft/issues). Include Minecraft, loader (Fabric or NeoForge) and mod version, board model, connection type, expected result, actual result and steps to reproduce the problem.
 
 Other public channels include the [project repository](https://github.com/LeonardoAliaga/SerialCraft) and the creator's [Instagram account](https://www.instagram.com/aliaga1924/).
 

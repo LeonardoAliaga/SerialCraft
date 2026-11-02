@@ -1,23 +1,29 @@
-# Guía SerialCraft — v0.5.0-beta (Beta)
+# Guía SerialCraft — v0.5.3-beta (Beta)
 
-Bienvenido a la guía oficial de **SerialCraft**. **0.5.0-beta** integra la interfaz translúcida desarrollada en `test` y añade chino simplificado. Conserva el protocolo bidireccional, la telemetría y la compatibilidad con Minecraft 26.2 y Java 25.
+Bienvenido a la guía oficial de **SerialCraft**. **0.5.3-beta** incorpora NeoForge junto a Fabric y permite configurar los valores de salida al conectar y desconectar una placa. Conserva el protocolo bidireccional, la telemetría y la compatibilidad con Minecraft 26.2 y Java 25.
 
 ## Sobre el proyecto y su filosofía
 
-SerialCraft es un proyecto de código abierto creado por **Leonardo Aliaga** (@aliaga1924). Nace con el propósito de ser un **proyecto de aprendizaje**, enfocado en la sinergia entre el desarrollo de software (modding en Java con Fabric), el diseño de hardware físico y las telecomunicaciones.
+SerialCraft es un proyecto de código abierto creado por **Leonardo Aliaga** (@aliaga1924). Nace con el propósito de ser un **proyecto de aprendizaje**, enfocado en la sinergia entre el desarrollo de software (modding en Java con Fabric y NeoForge), el diseño de hardware físico y las telecomunicaciones.
 
 El uso de herramientas de inteligencia artificial es estratégico. **El proyecto no depende de las IAs para existir.** Primero se establece la arquitectura y la lógica del sistema; después la IA se usa como asistente para ejecutar, refinar y traducir esas ideas en código más rápido.
 
 ---
 
-## Novedades en v0.5.0 Beta
+## Novedades en v0.5.3 Beta
+
+- **Fabric y NeoForge:** archivos separados para cada loader, con la misma interfaz, protocolo y funciones de placas.
+- **Configuración de salidas:** el engranaje superior derecho abre las políticas independientes de conexión y desconexión normal.
+- **Valores iniciales y finales:** cero, valores personalizados de 0 a 255, restauración al conectar o conservación del estado al desconectar, según la opción elegida.
+
+### Interfaz e idiomas introducidos en v0.5.0
 
 - **Navegación horizontal:** dos pestañas a cada lado del logo original centrado, con los iconos y acentos de cada página.
 - **Inicio y Bienvenida:** paneles translúcidos, mejor espaciado, un gato aleatorio, propiedades de conexión con scroll independiente y una columna dedicada a la terminal.
 - **Estilo compartido:** mejoras de cabeceras, bordes, padding y distribución en Placas, Eventos, Visualizar y el editor IO, conservando sus funciones.
-- **Chino simplificado:** 402 claves, incluidos estados dinámicos, ayudas y editor IO. Gracias a [@SK-Xiaohan](https://github.com/SK-Xiaohan) por el [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) y el nombre chino **串连世界**.
+- **Chino simplificado:** estados dinámicos, ayudas y editor IO traducidos. Gracias a [@SK-Xiaohan](https://github.com/SK-Xiaohan) por el [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) y el nombre chino **串连世界**.
 
-Es una **versión preliminar**. Respalda tus mundos y actualiza cliente y servidor juntos. Consulta las [notas de lanzamiento en español](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.0-beta.es.md).
+Es una **versión preliminar**. Respalda tus mundos y actualiza cliente y servidor juntos. Consulta las [notas de lanzamiento en español](https://github.com/LeonardoAliaga/SerialCraft/blob/main/changelogs/0.5.3-beta.es.md).
 
 ## Funciones conservadas de v0.4.6 (Beta)
 
@@ -32,7 +38,7 @@ Es una **versión preliminar**. Respalda tus mundos y actualiza cliente y servid
 * **Valores en vivo en la interfaz**:
   La pestaña **Eventos** muestra al lado de cada interruptor el valor actual en el cable serial (`mc_hunger:20`), y la consola resalta los paquetes de telemetría (`TM:`).
 * **Migración a Minecraft 26.2 y Java 25**:
-  El mod corre sobre Fabric Loader para Minecraft 26.2 y requiere **Java 25** como entorno de ejecución estándar.
+  El mod corre sobre Fabric Loader o NeoForge para Minecraft 26.2 y requiere **Java 25** como entorno de ejecución estándar.
 * **Pestaña Visualizar (banco de pruebas)**:
   La Laptop incorpora una pestaña **Visualizar** con tres herramientas: una **línea de tiempo** que muestra varias señales a la vez (sensores, valores que envía el juego y telemetría `mc_*`), una vista **Sensor** que compara el valor crudo con su conversión analógica a redstone y sugiere una zona muerta, y un **generador** de ondas para comprobar que la placa responde sin construir un circuito de redstone. Todo con la hora real de cada mensaje, uniendo solo puntos reales (nunca una curva inventada). Ver [Banco de pruebas](#banco-de-pruebas-pestana-visualizar).
 * **Identificación de la placa**:
@@ -65,10 +71,10 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 
 ## Instalación
 
-1. Instala [Fabric Loader](https://fabricmc.net/) para **Minecraft 26.2** (requiere **Java 25**).
-2. Descarga `Fabric API` y el `.jar` de SerialCraft v0.5.0-beta.
-3. Coloca ambos en tu carpeta `mods`.
-4. Inicia el juego.
+1. Usa **Minecraft 26.2** y **Java 25**. Elige [Fabric Loader](https://fabricmc.net/) **0.19.3 o superior**, o [NeoForge](https://neoforged.net/) **26.2.0.93 o superior** para Minecraft 26.2.
+2. Descarga el `.jar` de SerialCraft **0.5.3-beta** correspondiente al loader elegido. En Fabric descarga también [Fabric API](https://modrinth.com/mod/fabric-api) para 26.2.
+3. Coloca el JAR y sus dependencias en `mods`. El archivo NeoForge no requiere Fabric API.
+4. Inicia el juego. En multijugador, usa versiones compatibles de SerialCraft y el mismo loader en cliente y servidor.
 
 ---
 
@@ -81,6 +87,17 @@ Los sketches de la 0.3.x **no funcionan sin cambios**. Consulta la sección [Cam
 | **Módulo de E/S** | Puente entre redstone y hardware. Tiene nombre, **Canal**, dirección de datos, señal digital/analógica, lógica OR/AND/XOR y cinco terminales configurables en el mundo. |
 
 ---
+
+## Valores al conectar y desconectar
+
+Abre el **engranaje superior derecho** de la interfaz. Estas preferencias locales afectan a canales de E/S **Minecraft → hardware** y pueden configurarse antes de conectar la placa.
+
+| Momento | Opciones |
+| --- | --- |
+| Al conectar | Enviar cero, enviar un valor personalizado o restaurar el último valor guardado. |
+| Al desconectar normalmente | Enviar cero, enviar un valor personalizado o dejar el último estado sin enviar un mensaje final. |
+
+Los valores personalizados son enteros de **0 a 255**. Guarda los ajustes; las opciones de inicio se aplican en la siguiente conexión. La restauración identifica el mundo, la dimensión, el dispositivo y el canal; cuando no hay un valor guardado se utiliza cero. Un cierre forzado o un cable desconectado impiden entregar un valor final. La telemetría y la acción de parada del generador conservan su comportamiento propio.
 
 ## Configuración de la conexión
 
@@ -221,7 +238,7 @@ Si hay un servo o un motor conectado, empieza con la amplitud al 25 %.
 
 Vale la pena conocerlos antes de montar algo grande:
 
-* La lista de módulos y el editor usan una distribución adaptable y desplazamiento, pero conviene comprobar visualmente su legibilidad en tu resolución y escala GUI reales. El editor de v0.5.0-beta todavía **no incluye una vista gráfica interactiva de los cinco conectores**; se configuran en el propio mundo.
+* La lista de módulos y el editor usan una distribución adaptable y desplazamiento, pero conviene comprobar visualmente su legibilidad en tu resolución y escala GUI reales. El editor de v0.5.3-beta todavía **no incluye una vista gráfica interactiva de los cinco conectores**; se configuran en el propio mundo.
 * No existe un modo en el que **el servidor** sea dueño del hardware. El puerto serie vive en el ordenador de cada jugador, así que el modelo es "cada jugador controla sus propias placas desde su PC". Esto es una decisión de arquitectura, no un olvido.
 * El canal Wi-Fi no está cifrado.
 * La pestaña Visualizar guarda las últimas ~4000 muestras de hasta 16 señales a la vez. Es un registro de **mensajes**, no un osciloscopio: no ve nada que ocurra entre dos mensajes.

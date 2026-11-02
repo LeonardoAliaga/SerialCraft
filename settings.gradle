@@ -5,6 +5,10 @@ pluginManagement {
 			url = 'https://maven.fabricmc.net/'
 		}
 		mavenCentral()
+		maven { url = 'https://maven.neoforged.net/releases' }
 		gradlePluginPortal()
 	}
 }
+
+rootProject.name = 'SerialCraft'
+include 'common', 'fabric', 'neoforge'

@@ -6,14 +6,14 @@ description: Monta un LED con resistencia en un Arduino Uno R3 y controla su bri
 
 Una palanca de Minecraft puede controlar un LED conectado a una placa Arduino. En este ejercicio recorrerás el camino completo: **redstone → Módulo de E/S → USB serial → Arduino → LED**.
 
-El ejemplo es deliberadamente pequeño para que puedas diagnosticar cada etapa. La versión de desarrollo de referencia es SerialCraft **0.5.0-beta**.
+El ejemplo es deliberadamente pequeño para que puedas diagnosticar cada etapa. La versión de desarrollo de referencia es SerialCraft **0.5.3-beta**.
 
 ## Materiales
 
 - Arduino Uno R3 o placa equivalente con puerto serial USB.
 - Un LED y una resistencia de **220 Ω a 330 Ω**.
 - Protoboard, cables y cable USB de datos.
-- Minecraft Java 26.2, Java 25, Fabric Loader, Fabric API y SerialCraft compatible.
+- Minecraft Java 26.2, Java 25 y el JAR de SerialCraft para Fabric o NeoForge; Fabric API solo es necesaria en Fabric.
 
 Utiliza una resistencia con el LED: conectarlo directamente a un pin puede dañarlo.
 
@@ -103,6 +103,6 @@ En DIGITAL el LED se comporta como interruptor. En ANALOG, una fuente de redston
 
 **Llega el comando, pero no se ilumina:** comprueba polaridad del LED, GND, resistencia y uso del pin D9. Un ejemplo que espera `1` en vez de `255` también fallará.
 
-**El LED queda encendido tras desconectar:** el hardware puede conservar el último PWM. Para montajes donde importe el estado seguro, añade un temporizador de vigilancia en el firmware que apague la salida cuando deje de recibir mensajes.
+**El LED queda encendido tras desconectar:** revisa la política del engranaje **Configuración → Al desconectar normalmente**. Puedes enviar cero, un valor personalizado o conservar el estado. Un cable retirado o un cierre forzado pueden dejar el último PWM en el hardware. Para montajes donde importe el estado seguro, añade un temporizador de vigilancia en el firmware que apague la salida cuando deje de recibir mensajes.
 
 El siguiente desafío es invertir el camino: [controlar redstone con un sensor](/tutoriales/sensor-redstone).

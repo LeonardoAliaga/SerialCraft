@@ -99,6 +99,66 @@ class PublishTests(unittest.TestCase):
         self.assertIn(b'"changelog": "English notes', payload)
         self.assertNotIn(b"Spanish notes", payload)
 
+    def test_both_loaders_upload_before_github_draft_is_published(self):
+        neo = self.jar.with_name("serialcraft-neoforge-0.5.0-beta.jar")
+        neo.write_bytes(b"verified-neoforge-artifact")
+        with patch("publish_release.request", side_effect=self.request):
+            publish({"fabric": self.jar, "neoforge": neo}, *self.args[1:])
+        uploads = [kwargs["data"] for url, kwargs in self.calls if "uploads.github.com" in url]
+        self.assertEqual(uploads, [self.jar.read_bytes(), neo.read_bytes()])
+        self.assertEqual(self.calls[-1][1]["data"], {"draft": False})
+
+    def test_modrinth_metadata_is_specific_to_each_loader(self):
+        os.environ.update(MODRINTH_TOKEN="test-mr-token", MODRINTH_PROJECT_ID="project")
+        def request(url, token, **kwargs):
+            if url == "https://api.modrinth.com/v2/version":
+                self.calls.append((url, kwargs))
+                return {"id": "mr-version"}
+            return self.request(url, token, **kwargs)
+        with patch("publish_release.request", side_effect=request):
+            publish({"fabric": self.jar, "neoforge": self.jar}, *self.args[1:], include_modrinth=True)
+        payloads = [kw["data"] for url, kw in self.calls if url == "https://api.modrinth.com/v2/version"]
+        self.assertIn(b'"loaders": ["fabric"]', payloads[0])
+        self.assertIn(b'"project_id": "P7dR8mSH"', payloads[0])
+        self.assertIn(b'"version_number": "0.5.0-beta-neoforge"', payloads[1])
+        self.assertIn(b'"loaders": ["neoforge"]', payloads[1])
+        self.assertIn(b'"dependencies": []', payloads[1])
+
+    def test_conflict_in_second_loader_is_detected_before_any_upload(self):
+        neo = self.jar.with_name("serialcraft-neoforge-0.5.0-beta.jar")
+        neo.write_bytes(b"verified-neoforge-artifact")
+        release = {**self.draft(), "assets": [{"name": neo.name, "digest": "sha256:different"}]}
+        with patch("publish_release.request", return_value=release) as request:
+            with self.assertRaisesRegex(ValueError, "Existing GitHub JAR differs"):
+                publish({"fabric": self.jar, "neoforge": neo}, *self.args[1:])
+        self.assertEqual(request.call_count, 1)
+
+    def test_neoforge_only_modrinth_publication_keeps_both_github_artifacts(self):
+        os.environ.update(MODRINTH_TOKEN="test-mr-token", MODRINTH_PROJECT_ID="project")
+        neo = self.jar.with_name("serialcraft-neoforge-0.5.0-beta.jar")
+        neo.write_bytes(b"verified-neoforge-artifact")
+        def request(url, token, **kwargs):
+            if url == "https://api.modrinth.com/v2/version":
+                self.calls.append((url, kwargs))
+                return {"id": "mr-neoforge-version"}
+            return self.request(url, token, **kwargs)
+        with patch("publish_release.request", side_effect=request):
+            publish({"fabric": self.jar, "neoforge": neo}, *self.args[1:],
+                    include_modrinth=True, modrinth_loader="neoforge")
+        payloads = [kwargs["data"] for url, kwargs in self.calls if url == "https://api.modrinth.com/v2/version"]
+        self.assertEqual(len(payloads), 1)
+        self.assertIn(b'"loaders": ["neoforge"]', payloads[0])
+        self.assertIn(b'"dependencies": []', payloads[0])
+        self.assertTrue(all(not url.endswith("0.5.0-beta-fabric") for url, _ in self.calls))
+        uploads = [kwargs["data"] for url, kwargs in self.calls if "uploads.github.com" in url]
+        self.assertEqual(uploads, [self.jar.read_bytes(), neo.read_bytes()])
+
+    def test_missing_selected_loader_is_rejected_before_any_request(self):
+        with patch("publish_release.request") as request:
+            with self.assertRaisesRegex(ValueError, "no verified JAR"):
+                publish(*self.args, include_modrinth=True, modrinth_loader="neoforge")
+            request.assert_not_called()
+
 
 class LocaleValidationTests(unittest.TestCase):
     def test_duplicate_keys_are_rejected(self):

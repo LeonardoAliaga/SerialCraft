@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "com.serialcraft.neoforge.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["HardwareIOLifecycleMixin"],
+  "injectors": {"defaultRequire": 1}
+}
