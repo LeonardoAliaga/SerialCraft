@@ -82,3 +82,21 @@ class DiscordTests(unittest.TestCase):
         with patch('notify_discord.send_discord') as send:
             with self.assertRaisesRegex(ValueError, 'different repository or project'): notify(self.manifest)
             send.assert_not_called()
+
+    def test_explicit_resend_overrides_old_receipts_once_without_repeating_on_retry(self):
+        legacy = {'project': {'neoforge-id': 'verified-old-run'}}
+        with patch('notify_discord.send_discord', return_value='message') as send:
+            notify(self.manifest, legacy_receipts=legacy)
+            result = notify(self.manifest, legacy_receipts=legacy, resend_token='restore-original-embed-v1')
+            retry = notify(self.manifest, legacy_receipts=legacy, resend_token='restore-original-embed-v1')
+            regular = notify(self.manifest, legacy_receipts=legacy)
+        self.assertEqual(result['sent'], ['fabric-id', 'neoforge-id'])
+        self.assertEqual(send.call_count, 3)
+        self.assertEqual(retry['sent'], [])
+        self.assertEqual(regular['sent'], [])
+
+    def test_invalid_resend_token_cannot_send_a_notification(self):
+        with patch('notify_discord.send_discord') as send:
+            with self.assertRaisesRegex(ValueError, 'Invalid Discord resend token'):
+                notify(self.manifest, resend_token='invalid token')
+            send.assert_not_called()

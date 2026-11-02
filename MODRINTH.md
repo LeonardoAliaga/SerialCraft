@@ -11,42 +11,14 @@
 [![Version](https://img.shields.io/badge/Version-0.5.3--beta-c96f4a?style=for-the-badge)](https://modrinth.com/mod/serialcraft/versions)
 [![License](https://img.shields.io/badge/License-MIT-8a9a7b?style=for-the-badge)](https://github.com/LeonardoAliaga/SerialCraft/blob/main/LICENSE)
 
-**SerialCraft** is an experimental, educational mod for Fabric and NeoForge that connects **Arduino, ESP32, and other serial or TCP devices** to Minecraft. Send real sensor readings into redstone circuits and use your world to control physical LEDs, buzzers, and other components.
+**SerialCraft** connects Arduino, ESP32 and other boards to Minecraft over USB or Wi-Fi.
 
-The Laptop, Connector, and Hardware I/O Module have crafting recipes, so your electronics can become part of a Survival playthrough.
+## What's new in 0.5.3-beta
 
-## What's new in v0.5.3 Beta
+- **NeoForge support** alongside Fabric, for Minecraft 26.2 and Java 25.
+- **Output settings:** choose connection and normal-disconnection behavior independently: send zero or a custom value (0–255), restore saved values when connecting, or keep the last state when disconnecting.
 
-- **NeoForge support:** SerialCraft now has separate Fabric and NeoForge builds for Minecraft 26.2 and Java 25, sharing the hardware protocol, interface and gameplay features.
-- **Output settings:** open the gear in the top-right corner to choose what Minecraft → hardware channels receive when connecting and disconnecting normally. On connection, send zero, use a custom value or restore the last saved value. On disconnection, send zero, use a custom value or leave the last state without sending a final message.
-- **Independent policies:** custom values are integers from 0 to 255. Save your choices before connecting; startup settings apply to the next connection. Abrupt crashes and unplugged cables cannot deliver a final value.
-
-Thanks to [@MeerukYang](https://github.com/MeerukYang) for reporting the shutdown issue and suggesting customizable values in [issue #10](https://github.com/LeonardoAliaga/SerialCraft/issues/10).
-
-### Jumper-cable branding introduced in 0.5.2
-
-**0.5.2-beta** brings Leonardo Aliaga's jumper-cable branding to the interface header, Laptop screen texture, Hardware I/O Module texture, and mod icon. It also fixes the Welcome screen logo's aspect ratio using the PNG's actual **1038 × 446** dimensions. USB/Wi-Fi behavior and Minecraft 26.2 / Java 25 compatibility are unchanged.
-
-The two main model textures no longer display the previous explicit Arduino and Minecraft logos. An updated [image review](https://github.com/LeonardoAliaga/SerialCraft/blob/v0.5.2-beta/maintenance/asset-audit-0.5.2-beta.md) (Spanish) documents remaining website assets, screenshots, and a legacy texture.
-
-### Interface and languages introduced in 0.5.0
-
-**0.5.0-beta** brings the updated translucent interface and the community's Simplified Chinese translation together. It keeps the existing hardware protocol and Minecraft 26.2 / Java 25 compatibility.
-
-- **Horizontal navigation:** Home and Boards sit to the left of the centered SerialCraft logo; Events and Visualize sit to the right. The existing icons and page accents are preserved.
-- **Home:** connection properties scroll independently beside the bidirectional terminal, keeping the message history and command controls accessible. The connected-device card displays a randomly selected cat from the new sprite atlas.
-- **Welcome:** vertically centered translucent panels, USB and Wi-Fi connection cards, clearer spacing, and a separate remembered-board notice. Pairing controls and connection help remain available.
-- **Consistent panel styling:** glass headers, borders, button padding, margins and text alignment across Home, Boards, Events, Visualize and the IO module editor. Configuration, diagnostics and contextual help retain their existing functions.
-
-### Simplified Chinese — 简体中文
-
-Thanks to [@SK-Xiaohan](https://github.com/SK-Xiaohan) for contributing the Simplified Chinese translation in [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) and suggesting the Chinese name **串连世界**!
-
-The translation covers Welcome, Home, navigation, Boards, Events, Visualize, the IO editor, help dialogs, connection messages and dynamic device states. All five locale files have the same **444 translation keys**, with matching Minecraft format arguments. The original contribution and authorship are preserved in the repository history.
-
-Select **简体中文（中国大陆）** in Minecraft's Language settings to use it.
-
-> **Beta / pre-release:** `0.5.3-beta` is not a stable release. Back up worlds and update clients and servers together. Graphical UI inspection and tests with physical USB/Wi-Fi boards remain manual checks.
+Thanks to [@MeerukYang](https://github.com/MeerukYang) for the report and suggestions in [issue #10](https://github.com/LeonardoAliaga/SerialCraft/issues/10). Simplified Chinese translation by [@SK-Xiaohan](https://github.com/SK-Xiaohan).
 
 ## Main features
 
