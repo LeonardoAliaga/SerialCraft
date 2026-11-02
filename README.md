@@ -157,16 +157,6 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 * [Ejemplos y rutina de prueba](docs/ejemplos/)
 * [Notas de versión en GitHub Releases](https://github.com/LeonardoAliaga/serialcraft/releases)
 
-### Publicación automática
-
-Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba ambos JAR y publica **GitHub Releases**. `0.5.3-beta` se publica como **Pre-release**, no como versión estable. Los dos JAR conservan Minecraft 26.2 y Java 25; cada uno contiene sus metadatos de loader.
-
-Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` y `changelogs/<mod_version>.en.md`. Las notas de GitHub se publican en español y las de Modrinth en inglés. La misma versión se inserta automáticamente en los metadatos Fabric y NeoForge al compilar. Modrinth usa versiones separadas por loader (`<versión>-fabric` y `<versión>-neoforge`).
-
-**Un único flujo publica y notifica:** al integrar una versión nueva en `main`, el mismo job publica los JAR de Fabric y NeoForge en GitHub y Modrinth, sincroniza [MODRINTH.md](MODRINTH.md) y envía un aviso de Discord por loader con su enlace exacto de Modrinth y descarga del JAR. Los avisos confirmados se registran para evitar repetirlos en reintentos. En una ejecución manual, `modrinth_loader` permite seleccionar ambos loaders o uno solo. Se requieren `MODRINTH_TOKEN` y `DISCORD_WEBHOOK_URL`; editar la descripción necesita `PROJECT_WRITE`.
-
-Una versión publicada se conserva sin duplicarla. Para reintentar una publicación parcial, usa **Re-run failed jobs** en la ejecución original, conservando el mismo JAR. El publicador rechaza un archivo diferente si ya hay un asset en el borrador o un tag que apunta a otro commit.
-
 ### Probar desde IntelliJ IDEA
 
 1. Abre la raíz del repositorio y recarga el proyecto Gradle.
