@@ -21,6 +21,8 @@ No es solo una demostración técnica. Está diseñado para encajar de forma nat
 * **Configuración de salidas:** el engranaje de la esquina superior derecha abre los ajustes de Minecraft → hardware. Al conectar puedes enviar cero, un valor personalizado o restaurar el último valor guardado; al desconectar normalmente puedes enviar cero, un valor personalizado o dejar el último estado.
 * **Valores por sesión:** las opciones de conexión y desconexión son independientes. Los valores personalizados aceptan enteros de 0 a 255; los ajustes de inicio se aplican en la siguiente conexión. Un cierre forzado o un cable desconectado no permiten entregar un valor final.
 
+Gracias a [@MeerukYang](https://github.com/MeerukYang) por reportar el problema de cierre y proponer los valores personalizables en el [issue #10](https://github.com/LeonardoAliaga/SerialCraft/issues/10).
+
 ### Identidad visual de 0.5.2-beta
 
 El rediseño de Leonardo Aliaga lleva los jumpers al encabezado, la pantalla de la Laptop, el módulo de E/S y el icono del mod. La bienvenida ahora muestra el logo con su proporción real de **1038 × 446**, sin comprimirlo. Se mantienen Minecraft 26.2, Java 25 y las funciones de USB/Wi-Fi.
@@ -161,7 +163,7 @@ Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, com
 
 Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` y `changelogs/<mod_version>.en.md`. Las notas de GitHub se publican en español y las de Modrinth en inglés. La misma versión se inserta automáticamente en los metadatos Fabric y NeoForge al compilar. Modrinth usa versiones separadas por loader (`<versión>-fabric` y `<versión>-neoforge`).
 
-**Modrinth requiere una acción explícita:** ejecuta manualmente **Build and test** en `main`, activa `publish_modrinth` y elige `modrinth_loader` (`both`, `fabric` o `neoforge`). También puedes incluir `[publish-modrinth]` en el mensaje del commit de lanzamiento para publicar ambos loaders, o `[publish-modrinth-neoforge]` para publicar únicamente NeoForge. Las marcas se evalúan en el commit que llega como cabeza del push a `main` y sincronizan [MODRINTH.md](MODRINTH.md). Los pushes sin marca siguen publicando solo en GitHub. Se requiere `MODRINTH_TOKEN` con **Read versions** y **Create versions**, y **Write projects** (`PROJECT_WRITE`) para la descripción.
+**Un único flujo publica y notifica:** al integrar una versión nueva en `main`, el mismo job publica los JAR de Fabric y NeoForge en GitHub y Modrinth, sincroniza [MODRINTH.md](MODRINTH.md) y envía un aviso de Discord por loader con su enlace exacto de Modrinth y descarga del JAR. Los avisos confirmados se registran para evitar repetirlos en reintentos. En una ejecución manual, `modrinth_loader` permite seleccionar ambos loaders o uno solo. Se requieren `MODRINTH_TOKEN` y `DISCORD_WEBHOOK_URL`; editar la descripción necesita `PROJECT_WRITE`.
 
 Una versión publicada se conserva sin duplicarla. Para reintentar una publicación parcial, usa **Re-run failed jobs** en la ejecución original, conservando el mismo JAR. El publicador rechaza un archivo diferente si ya hay un asset en el borrador o un tag que apunta a otro commit.
 

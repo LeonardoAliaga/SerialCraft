@@ -139,6 +139,21 @@ def sync_modrinth_readme():
     print("Modrinth description synchronized with MODRINTH.md.")
 
 
+def publication_manifest(release, versions, jars, repository, project, version):
+    return {
+        "repository": repository,
+        "version": version,
+        "github_release_id": release["id"],
+        "github_release_url": release["html_url"],
+        "modrinth_project_id": project,
+        "versions": [{"loader": loader, "id": data["id"],
+                      "version_number": version + "-" + loader,
+                      "filename": jars[loader].name,
+                      "sha512": hashlib.sha512(jars[loader].read_bytes()).hexdigest()}
+                     for loader, data in versions.items()],
+    }
+
+
 def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, include_modrinth=False, modrinth_loader="both"):
     # Retain the single-artifact API used by the original publication regression suite.
     jars = {"fabric": jars} if isinstance(jars, Path) else jars
@@ -158,12 +173,23 @@ def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, inclu
     gh = lambda path, **kw: request(github_url + path, "Bearer " + github_token, **kw)
     mr = lambda path, **kw: request("https://api.modrinth.com/v2" + path, modrinth_token, **kw)
     release = gh("/releases/tags/" + urllib.parse.quote(tag, safe=""), missing_ok=True)
+    updates = {}
+    if release:
+        if release.get("prerelease", False) != (kind != "release"):
+            updates["prerelease"] = kind != "release"
+        previous_body = release.get("body", "").replace("\r\n", "\n")
+        origin = re.search(r"\[Commit de origen\]\((https://github\.com/[^\s)]+/commit/[0-9a-f]{40})\)", previous_body)
+        if origin:
+            receipts = re.findall(r"<!-- serialcraft-discord:[A-Za-z0-9_-]+ -->", previous_body)
+            body = changelog_es + f"\n\n---\n[Commit de origen]({origin[1]})"
+            if receipts:
+                body += "\n\n" + "\n".join(dict.fromkeys(receipts))
+            if body.strip() != previous_body.strip():
+                updates["body"] = body
     versions = {loader: mr(f"/project/{project}/version/" + urllib.parse.quote(version + "-" + loader, safe=""), missing_ok=True)
                 for loader in selected_loaders} if include_modrinth else {}
     assets = {asset["name"]: asset for asset in (release or {}).get("assets", [])}
-    if release and not release["draft"] and all(jar.name in assets for jar in jars.values()) and (not include_modrinth or all(versions.values())):
-        print(f"{version} is already published on the requested platforms; nothing to upload.")
-        return
+    complete = release and not release["draft"] and all(jar.name in assets for jar in jars.values()) and (not include_modrinth or all(versions.values()))
     # Validate every existing file before uploading either loader. Never replace published bytes.
     for loader, jar in jars.items():
         asset, modrinth = assets.get(jar.name), versions.get(loader)
@@ -174,6 +200,11 @@ def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, inclu
             raise ValueError("Existing Modrinth JAR differs. Re-run failed jobs from its original build, or use a new version.")
         if release and not release["draft"] and not asset:
             raise ValueError("Existing published GitHub release has no matching JAR; review it before retrying.")
+    if updates:
+        release = gh(f'/releases/{release["id"]}', method="PATCH", data=updates)
+    if complete:
+        print(f"{version} is already published on the requested platforms; nothing to upload.")
+        return publication_manifest(release, versions, jars, repository, project, version)
     source = f"https://github.com/{repository}/commit/{commit}"
     github_body = changelog_es + f"\n\n---\n[Commit de origen]({source})"
     modrinth_body = changelog_en + f"\n\n---\n[Source commit]({source})"
@@ -201,7 +232,7 @@ def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, inclu
             versions[loader] = mr("/version", method="POST", data=data, content_type=content_type)
     # Both loader files must upload successfully before the GitHub draft is made public.
     if release["draft"]:
-        release = gh(f'/releases/{release["id"]}', method="PATCH", data={"draft": False})
+        release = gh(f'/releases/{release["id"]}', method="PATCH", data={"draft": False, "prerelease": kind != "release"})
     links = f'GitHub: {release["html_url"]}\n'
     for loader, modrinth in versions.items():
         links += f'Modrinth ({loader}): https://modrinth.com/mod/{project}/version/{modrinth["id"]}\n'
@@ -209,6 +240,7 @@ def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, inclu
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
             summary.write(f"## Published {version}\n\n" + links)
+    return publication_manifest(release, versions, jars, repository, project, version)
 
 
 def main():
@@ -221,6 +253,7 @@ def main():
     parser.add_argument("--modrinth-loader", choices=("both", "fabric", "neoforge"), default="both",
                         help="Limit Modrinth publication to one loader; GitHub still receives both verified JARs")
     parser.add_argument("--jar-dir", type=Path, default=Path("build/libs"))
+    parser.add_argument("--manifest", type=Path, help="Write verified publication IDs for the Discord notification step")
     args = parser.parse_args()
     if args.modrinth and not args.publish:
         parser.error("--modrinth requires --publish")
@@ -232,7 +265,9 @@ def main():
     inputs = release_inputs(args.jar_dir)
     print(f"Validated {', '.join(jar.name for jar in inputs[0].values())}: Minecraft {inputs[2]}, channel {inputs[3]}")
     if args.publish:
-        publish(*inputs, include_modrinth=args.modrinth, modrinth_loader=args.modrinth_loader)
+        manifest = publish(*inputs, include_modrinth=args.modrinth, modrinth_loader=args.modrinth_loader)
+        if args.manifest:
+            args.manifest.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

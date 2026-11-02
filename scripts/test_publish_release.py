@@ -52,7 +52,7 @@ class PublishTests(unittest.TestCase):
         self.assertTrue(create["body"].startswith("Spanish notes"))
         uploaded = next(kw["data"] for url, kw in self.calls if "uploads.github.com" in url)
         self.assertEqual(uploaded, self.jar.read_bytes())
-        self.assertEqual(self.calls[-1][1]["data"], {"draft": False})
+        self.assertEqual(self.calls[-1][1]["data"], {"draft": False, "prerelease": True})
 
     def test_modrinth_requires_explicit_credentials_before_any_request(self):
         with patch("publish_release.request") as request:
@@ -61,7 +61,7 @@ class PublishTests(unittest.TestCase):
             request.assert_not_called()
 
     def test_existing_github_release_is_not_duplicated(self):
-        release = {**self.draft(), "draft": False, "assets": [{"name": self.jar.name}]}
+        release = {**self.draft(), "draft": False, "assets": [{"name": self.jar.name, "digest": "sha256:" + hashlib.sha256(self.jar.read_bytes()).hexdigest()}]}
         with patch("publish_release.request", return_value=release) as request:
             publish(*self.args)
         self.assertEqual(request.call_count, 1)
@@ -106,7 +106,7 @@ class PublishTests(unittest.TestCase):
             publish({"fabric": self.jar, "neoforge": neo}, *self.args[1:])
         uploads = [kwargs["data"] for url, kwargs in self.calls if "uploads.github.com" in url]
         self.assertEqual(uploads, [self.jar.read_bytes(), neo.read_bytes()])
-        self.assertEqual(self.calls[-1][1]["data"], {"draft": False})
+        self.assertEqual(self.calls[-1][1]["data"], {"draft": False, "prerelease": True})
 
     def test_modrinth_metadata_is_specific_to_each_loader(self):
         os.environ.update(MODRINTH_TOKEN="test-mr-token", MODRINTH_PROJECT_ID="project")
@@ -159,6 +159,34 @@ class PublishTests(unittest.TestCase):
                 publish(*self.args, include_modrinth=True, modrinth_loader="neoforge")
             request.assert_not_called()
 
+
+    def test_existing_stable_beta_is_reclassified_without_reupload(self):
+        release = {**self.draft(), "draft": False, "prerelease": False,
+                   "assets": [{"name": self.jar.name, "digest": "sha256:" + hashlib.sha256(self.jar.read_bytes()).hexdigest()}]}
+        with patch("publish_release.request", side_effect=[release, {**release, "prerelease": True}]) as request:
+            publish(*self.args)
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(request.call_args.kwargs["data"], {"prerelease": True})
+
+    def test_published_release_also_rejects_different_artifact_bytes(self):
+        release = {**self.draft(), "draft": False, "assets": [{"name": self.jar.name, "digest": "sha256:different"}]}
+        with patch("publish_release.request", return_value=release) as request:
+            with self.assertRaisesRegex(ValueError, "Existing GitHub JAR differs"):
+                publish(*self.args)
+        self.assertEqual(request.call_count, 1)
+
+    def test_note_updates_keep_original_source_commit_and_notification_receipts(self):
+        origin = "https://github.com/owner/repo/commit/" + "a" * 40
+        marker = "<!-- serialcraft-discord:version1 -->"
+        release = {**self.draft(), "draft": False,
+                   "body": "Old notes\n\n---\n[Commit de origen](" + origin + ")\n\n" + marker,
+                   "assets": [{"name": self.jar.name, "digest": "sha256:" + hashlib.sha256(self.jar.read_bytes()).hexdigest()}]}
+        with patch("publish_release.request", side_effect=[release, release]) as request:
+            publish(*self.args)
+        body = request.call_args.kwargs["data"]["body"]
+        self.assertIn("Spanish notes", body)
+        self.assertIn(origin, body)
+        self.assertIn(marker, body)
 
 class LocaleValidationTests(unittest.TestCase):
     def test_duplicate_keys_are_rejected(self):

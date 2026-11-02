@@ -6,10 +6,6 @@ on:
     branches: [test, main]
   workflow_dispatch:
     inputs:
-      publish_modrinth:
-        description: Also publish to Modrinth and synchronize its description (main only)
-        type: boolean
-        default: false
       modrinth_loader:
         description: Loader to publish on Modrinth (GitHub always receives both)
         type: choice
@@ -58,7 +54,7 @@ jobs:
             neoforge/build/test-results/
 
   publish:
-    name: Publish GitHub Release
+    name: Publish JARs and notify Discord
     needs: build
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
@@ -73,29 +69,29 @@ jobs:
         with:
           name: serialcraft-jar
           path: release-dist
-      - name: Publish both verified loader JARs to GitHub
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/publish_release.py --publish --jar-dir release-dist
-      - name: Publish to Modrinth only when explicitly requested
-        # A release commit can opt in without enabling Modrinth for later pushes.
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[publish-modrinth]') || contains(github.event.head_commit.message, '[publish-modrinth-neoforge]')))
+      - name: Publish verified JARs to GitHub and Modrinth
         env:
           GH_TOKEN: ${{ github.token }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           MODRINTH_PROJECT_ID: hLV9sPrg
-          MODRINTH_LOADER: ${{ github.event_name == 'workflow_dispatch' && inputs.modrinth_loader || (contains(github.event.head_commit.message, '[publish-modrinth-neoforge]') && 'neoforge' || 'both') }}
-        run: python3 scripts/publish_release.py --publish --modrinth --modrinth-loader "$MODRINTH_LOADER" --jar-dir release-dist
+          MODRINTH_LOADER: ${{ inputs.modrinth_loader || 'both' }}
+        run: python3 scripts/publish_release.py --publish --modrinth --modrinth-loader "$MODRINTH_LOADER" --manifest release-manifest.json --jar-dir release-dist
       - name: Sync English Modrinth description
         id: modrinth-readme
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[publish-modrinth]') || contains(github.event.head_commit.message, '[publish-modrinth-neoforge]')))
         continue-on-error: true
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           MODRINTH_PROJECT_ID: hLV9sPrg
         run: python3 scripts/publish_release.py --sync-readme
+      - name: Notify Discord once per published loader version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: hLV9sPrg
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python3 scripts/notify_discord.py --manifest release-manifest.json
       - name: Report description sync permissions
         if: steps.modrinth-readme.outcome == 'failure'
         run: |
-          echo '::warning::The release was published, but the Modrinth description could not be synchronized. Check the previous step; editing the project requires the PROJECT_WRITE token scope.'
-          echo 'Modrinth description sync failed. See the Sync English Modrinth description step; PROJECT_WRITE is required in addition to version permissions.' >> "$GITHUB_STEP_SUMMARY"
+          echo '::warning::The JARs were published, but Modrinth description sync requires PROJECT_WRITE.'
+          echo 'Modrinth description sync failed; check PROJECT_WRITE permissions.' >> "$GITHUB_STEP_SUMMARY"

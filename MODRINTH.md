@@ -21,6 +21,8 @@ The Laptop, Connector, and Hardware I/O Module have crafting recipes, so your el
 - **Output settings:** open the gear in the top-right corner to choose what Minecraft → hardware channels receive when connecting and disconnecting normally. On connection, send zero, use a custom value or restore the last saved value. On disconnection, send zero, use a custom value or leave the last state without sending a final message.
 - **Independent policies:** custom values are integers from 0 to 255. Save your choices before connecting; startup settings apply to the next connection. Abrupt crashes and unplugged cables cannot deliver a final value.
 
+Thanks to [@MeerukYang](https://github.com/MeerukYang) for reporting the shutdown issue and suggesting customizable values in [issue #10](https://github.com/LeonardoAliaga/SerialCraft/issues/10).
+
 ### Jumper-cable branding introduced in 0.5.2
 
 **0.5.2-beta** brings Leonardo Aliaga's jumper-cable branding to the interface header, Laptop screen texture, Hardware I/O Module texture, and mod icon. It also fixes the Welcome screen logo's aspect ratio using the PNG's actual **1038 × 446** dimensions. USB/Wi-Fi behavior and Minecraft 26.2 / Java 25 compatibility are unchanged.
