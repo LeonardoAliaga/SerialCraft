@@ -28,7 +28,7 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
       - run: chmod +x gradlew
       - run: ./gradlew build --console=plain
-      - name: Validate release JAR and Spanish/English changelogs
+      - name: Validate both loader JARs and Spanish/English changelogs
         run: python3 scripts/publish_release.py --check
       - uses: actions/upload-artifact@v4
         with:
@@ -39,15 +39,18 @@ jobs:
             !build/libs/*-dev.jar
             !build/libs/*-javadoc.jar
           if-no-files-found: error
-      - run: ./gradlew -PioGameTests runGameTest --console=plain
+      - run: ./gradlew -PioGameTests :fabric:runGameTest --console=plain
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: verification
           path: |
-            build/reports/tests/
-            build/test-results/
-            build/run/gameTest/logs/
+            common/build/reports/tests/
+            fabric/build/reports/tests/
+            fabric/build/test-results/
+            fabric/build/run/gameTest/logs/
+            neoforge/build/reports/tests/
+            neoforge/build/test-results/
 
   publish:
     name: Publish GitHub Release
@@ -65,7 +68,7 @@ jobs:
         with:
           name: serialcraft-jar
           path: release-dist
-      - name: Publish the verified JAR to GitHub
+      - name: Publish both verified loader JARs to GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/publish_release.py --publish --jar-dir release-dist
