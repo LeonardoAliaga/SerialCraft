@@ -2,19 +2,26 @@
 
 ### Lleva tu hardware del mundo real a tu mundo Survival.
 
-- [Documentación](https://serialcraft.xyz) · [Descargar la Beta en GitHub](https://github.com/LeonardoAliaga/SerialCraft/releases/tag/v0.5.2-beta) · [Novedades de 0.5.2-beta](changelogs/0.5.2-beta.es.md)
+- [Documentación](https://serialcraft.xyz) · [Descargar la Beta en GitHub](https://github.com/LeonardoAliaga/SerialCraft/releases/tag/v0.5.3-beta) · [Novedades de 0.5.3-beta](changelogs/0.5.3-beta.es.md)
 
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
+[![NeoForge](https://img.shields.io/badge/Loader-NeoForge-d97839?style=for-the-badge)](https://neoforged.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge)](https://adoptium.net/)
-[![Versión](https://img.shields.io/badge/Versión-0.5.2--beta-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
+[![Versión](https://img.shields.io/badge/Versión-0.5.3--beta-c96f4a?style=for-the-badge)](https://github.com/LeonardoAliaga/serialcraft/releases)
 [![Licencia](https://img.shields.io/badge/Licencia-MIT-8a9a7b?style=for-the-badge)](LICENSE)
 
 **SerialCraft** es un mod experimental y educativo que rompe la cuarta pared: permite comunicación bidireccional en tiempo real entre un **Arduino** (o cualquier dispositivo serial) y **Minecraft**, escrito en Java para Fabric y NeoForge, con código compartido.
 
 No es solo una demostración técnica. Está diseñado para encajar de forma natural en una partida **Survival**, convirtiendo la electrónica externa en una parte funcional de tu progresión.
 
-### Nuevo en 0.5.2-beta
+### Nuevo en 0.5.3-beta
+
+* **Fabric y NeoForge:** dos JAR para Minecraft 26.2 y Java 25, con las mismas funciones de placas, interfaz y señales. Instala el archivo que corresponde a tu loader; Fabric requiere además Fabric API.
+* **Configuración de salidas:** el engranaje de la esquina superior derecha abre los ajustes de Minecraft → hardware. Al conectar puedes enviar cero, un valor personalizado o restaurar el último valor guardado; al desconectar normalmente puedes enviar cero, un valor personalizado o dejar el último estado.
+* **Valores por sesión:** las opciones de conexión y desconexión son independientes. Los valores personalizados aceptan enteros de 0 a 255; los ajustes de inicio se aplican en la siguiente conexión. Un cierre forzado o un cable desconectado no permiten entregar un valor final.
+
+### Identidad visual de 0.5.2-beta
 
 El rediseño de Leonardo Aliaga lleva los jumpers al encabezado, la pantalla de la Laptop, el módulo de E/S y el icono del mod. La bienvenida ahora muestra el logo con su proporción real de **1038 × 446**, sin comprimirlo. Se mantienen Minecraft 26.2, Java 25 y las funciones de USB/Wi-Fi.
 
@@ -28,7 +35,7 @@ Las texturas principales de los modelos ya no muestran los logotipos explícitos
 El cerebro de la operación. En SerialCraft la conexión no aparece por arte de magia: hay que construirla.
 
 * **Integración en Survival:** la Laptop es un bloque crafteable. Tienes que reunir los recursos, así que encaja en el equilibrio de una partida de supervivencia.
-* **La interfaz:** al hacer clic derecho se abre una interfaz con cuatro pestañas — Inicio, Placas, Eventos y Visualizar — más la bienvenida de conexión y la consola de Inicio. El escaneo de puertos es automático: no necesitas saber qué es un puerto COM.
+* **La interfaz:** al hacer clic derecho se abre una interfaz con cuatro pestañas — Inicio, Placas, Eventos y Visualizar — más la bienvenida de conexión, la consola de Inicio y los ajustes accesibles desde el engranaje superior derecho. El escaneo de puertos es automático: no necesitas saber qué es un puerto COM.
 
 ### ⚡ Físico ➔ digital (entrada)
 Controla tu mundo con componentes reales.
@@ -60,7 +67,7 @@ Inglés, español de España, México y Argentina (con voseo), y **chino simplif
 
 ## 📦 Bloques y recetas
 
-![Modelos](https://cdn.modrinth.com/data/cached_images/4aea9efd4686b3adf8ea97550df78b0240142c49.png)
+![Modelos](https://cdn.modrinth.com/data/cached_images/f933c2555ff879c7a98afc4b2e0a4cdb33dbb9b7.png)
 
 ### 1. La Laptop (Bloque Conector)
 El cerebro de la operación: gestiona la conexión con tu dispositivo del mundo real.
@@ -81,7 +88,7 @@ El puente real: es lo que traduce entre la redstone y tu placa.
 * **Diagnóstico:** consulta RX, TX, lecturas, salida y conexión. El editor ofrece ayuda con **?** y confirma el guardado con el servidor.
 * **Compuertas lógicas:** OR combina por máximo, AND por mínimo y XOR por paridad. [Guía del Módulo de E/S](docs/io-module.md).
 
-![Modelo del Bloque IO](https://cdn.modrinth.com/data/cached_images/c20ed9d2c7fe7a3a5a28704394c6a64a6cc2839b.png)
+![Modelo del Bloque IO](https://cdn.modrinth.com/data/cached_images/ece626dc8935e0342775c51867791cb4bf644d3d.png)
 
 #### Receta
 ![Receta del Bloque IO](https://cdn.modrinth.com/data/cached_images/07d93e2ac7612058dcfb25f2161efcc182ec78a8_0.webp)
@@ -150,11 +157,11 @@ Merece la pena decirlo antes de que lo descubras montando algo grande:
 
 ### Publicación automática
 
-Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba ambos JAR y publica **GitHub Releases**. `0.5.2-beta` se publica como **Pre-release**, no como versión estable. Los dos JAR conservan Minecraft 26.2 y Java 25; cada uno contiene sus metadatos de loader.
+Al integrar una versión nueva en `main`, GitHub Actions valida los idiomas, compila, ejecuta las pruebas unitarias y los GameTests, comprueba ambos JAR y publica **GitHub Releases**. `0.5.3-beta` se publica como **Pre-release**, no como versión estable. Los dos JAR conservan Minecraft 26.2 y Java 25; cada uno contiene sus metadatos de loader.
 
 Para preparar una versión, actualiza `mod_version` en `gradle.properties` y añade `changelogs/<mod_version>.es.md` y `changelogs/<mod_version>.en.md`. Las notas de GitHub se publican en español y las de Modrinth en inglés. La misma versión se inserta automáticamente en los metadatos Fabric y NeoForge al compilar. Modrinth usa versiones separadas por loader (`<versión>-fabric` y `<versión>-neoforge`).
 
-**Modrinth requiere una acción explícita:** ejecuta manualmente **Build and test** en `main` y activa `publish_modrinth`, o incluye `[publish-modrinth]` en el mensaje del commit de lanzamiento que llegue como cabeza de un push a `main`. Esa marca autoriza publicar esa ejecución y sincronizar [MODRINTH.md](MODRINTH.md); los siguientes pushes sin la marca siguen publicando solo en GitHub. Ambas opciones requieren `MODRINTH_TOKEN` con **Read versions** y **Create versions**, y **Write projects** (`PROJECT_WRITE`) para la descripción.
+**Modrinth requiere una acción explícita:** ejecuta manualmente **Build and test** en `main`, activa `publish_modrinth` y elige `modrinth_loader` (`both`, `fabric` o `neoforge`). También puedes incluir `[publish-modrinth]` en el mensaje del commit de lanzamiento para publicar ambos loaders, o `[publish-modrinth-neoforge]` para publicar únicamente NeoForge. Las marcas se evalúan en el commit que llega como cabeza del push a `main` y sincronizan [MODRINTH.md](MODRINTH.md). Los pushes sin marca siguen publicando solo en GitHub. Se requiere `MODRINTH_TOKEN` con **Read versions** y **Create versions**, y **Write projects** (`PROJECT_WRITE`) para la descripción.
 
 Una versión publicada se conserva sin duplicarla. Para reintentar una publicación parcial, usa **Re-run failed jobs** en la ejecución original, conservando el mismo JAR. El publicador rechaza un archivo diferente si ya hay un asset en el borrador o un tag que apunta a otro commit.
 
@@ -162,7 +169,7 @@ Una versión publicada se conserva sin duplicarla. Para reintentar una publicaci
 
 1. Abre la raíz del repositorio y recarga el proyecto Gradle.
 2. Usa **JDK 25** como SDK y **Gradle JVM**, con el wrapper **Gradle 9.7.1**.
-3. Ejecuta `.\gradlew.bat build`: genera `fabric/build/libs/serialcraft-fabric-0.5.2-beta.jar` y `neoforge/build/libs/serialcraft-neoforge-0.5.2-beta.jar`, y copia ambos a `build/libs`.
+3. Ejecuta `.\gradlew.bat build`: genera `fabric/build/libs/serialcraft-fabric-0.5.3-beta.jar` y `neoforge/build/libs/serialcraft-neoforge-0.5.3-beta.jar`, y copia ambos a `build/libs`.
 4. Selecciona **Fabric Client**, **Fabric Server**, **NeoForge Client** o **NeoForge Server** en las configuraciones compartidas de IntelliJ. Sus carpetas `fabric/runs/...` y `neoforge/runs/...` son independientes.
 5. Revisa las pestañas y el editor IO a varias escalas e idiomas. Comprueba USB y Wi-Fi con tu placa en cada loader.
 

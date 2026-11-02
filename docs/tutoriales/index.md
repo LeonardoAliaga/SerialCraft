@@ -7,7 +7,7 @@ description: Aprende paso a paso a conectar Arduino y ESP32 con Minecraft, leer 
 Esta sección convierte la documentación de SerialCraft en ejercicios que puedes reproducir en casa o en un aula. Cada tutorial describe un objetivo, el montaje, la configuración en Minecraft, el intercambio de mensajes y cómo interpretar el resultado.
 
 ::: tip Antes de comenzar
-Los tutoriales están escritos para la versión en desarrollo **0.5.0-beta (Beta)**, Minecraft Java **26.2**, Java **25**. Verifica la versión del mod y del sketch antes de probar. Son instrucciones y resultados esperados, no certificaciones de pruebas realizadas con tu equipo.
+Los tutoriales están escritos para la versión en desarrollo **0.5.3-beta (Beta)**, Minecraft Java **26.2**, Java **25**. Verifica la versión del mod y del sketch antes de probar. Son instrucciones y resultados esperados, no certificaciones de pruebas realizadas con tu equipo.
 :::
 
 ## Ruta recomendada para principiantes
@@ -28,7 +28,7 @@ Los tutoriales están escritos para la versión en desarrollo **0.5.0-beta (Beta
 
 ## ¿Qué necesito?
 
-Minecraft Java con Fabric Loader, la versión compatible de SerialCraft y Fabric API; una placa compatible con comunicación USB serial o TCP; cables y componentes para el circuito elegido.
+Minecraft Java 26.2 con Fabric o NeoForge, Java 25 y el JAR compatible de SerialCraft (Fabric API solo en Fabric); una placa compatible con comunicación USB serial o TCP; cables y componentes para el circuito elegido.
 
 No es necesario comprar componentes para leer la [referencia del protocolo](/protocol) o comprender la [arquitectura de comunicación](/tutoriales/bloque-io). Si ya tienes Arduino Uno R3, empieza por USB: reduce las variables del experimento.
 

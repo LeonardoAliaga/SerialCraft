@@ -1,8 +1,14 @@
-# Bidirectional Protocol and Hardware (v0.5.0-beta)
+# Bidirectional Protocol and Hardware (v0.5.3-beta)
 
-::: warning Beta 0.5.0-beta
-This specification describes 0.5.0-beta. The [IO module](./io-module) documents the new connector and logic rules. Historical changes to the 0.3.x scale and Wi-Fi direction remain below.
+::: warning Beta 0.5.3-beta
+This specification describes 0.5.3-beta. The [IO module](./io-module) documents the new connector and logic rules. Historical changes to the 0.3.x scale and Wi-Fi direction remain below.
 :::
+
+## Fabric, NeoForge and output policies
+
+Fabric and NeoForge use the same message format on Minecraft 26.2. Switching loader does not change the board sketches or protocol channels.
+
+The settings gear selects the initial value for Minecraft → hardware channels: zero, a custom integer from 0 to 255, or the last saved value. Normal disconnection can send zero, send a custom value, or send no final message. These policies are independent; startup choices apply to the next connection. An unplugged cable or abrupt crash cannot deliver a final value. Event telemetry (`mc_*`), hardware → Minecraft input and the generator's own stop action retain their rules. See the [settings guide](/en/guide#values-when-connecting-and-disconnecting).
 
 ## 1. Communication specification
 

@@ -133,6 +133,32 @@ class PublishTests(unittest.TestCase):
                 publish({"fabric": self.jar, "neoforge": neo}, *self.args[1:])
         self.assertEqual(request.call_count, 1)
 
+    def test_neoforge_only_modrinth_publication_keeps_both_github_artifacts(self):
+        os.environ.update(MODRINTH_TOKEN="test-mr-token", MODRINTH_PROJECT_ID="project")
+        neo = self.jar.with_name("serialcraft-neoforge-0.5.0-beta.jar")
+        neo.write_bytes(b"verified-neoforge-artifact")
+        def request(url, token, **kwargs):
+            if url == "https://api.modrinth.com/v2/version":
+                self.calls.append((url, kwargs))
+                return {"id": "mr-neoforge-version"}
+            return self.request(url, token, **kwargs)
+        with patch("publish_release.request", side_effect=request):
+            publish({"fabric": self.jar, "neoforge": neo}, *self.args[1:],
+                    include_modrinth=True, modrinth_loader="neoforge")
+        payloads = [kwargs["data"] for url, kwargs in self.calls if url == "https://api.modrinth.com/v2/version"]
+        self.assertEqual(len(payloads), 1)
+        self.assertIn(b'"loaders": ["neoforge"]', payloads[0])
+        self.assertIn(b'"dependencies": []', payloads[0])
+        self.assertTrue(all(not url.endswith("0.5.0-beta-fabric") for url, _ in self.calls))
+        uploads = [kwargs["data"] for url, kwargs in self.calls if "uploads.github.com" in url]
+        self.assertEqual(uploads, [self.jar.read_bytes(), neo.read_bytes()])
+
+    def test_missing_selected_loader_is_rejected_before_any_request(self):
+        with patch("publish_release.request") as request:
+            with self.assertRaisesRegex(ValueError, "no verified JAR"):
+                publish(*self.args, include_modrinth=True, modrinth_loader="neoforge")
+            request.assert_not_called()
+
 
 class LocaleValidationTests(unittest.TestCase):
     def test_duplicate_keys_are_rejected(self):

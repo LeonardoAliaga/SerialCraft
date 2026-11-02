@@ -24,7 +24,7 @@ Connect Uno **D9 → resistor → LED anode**, then the LED cathode to **GND**. 
 
 <!-- SC046_MEDIA:V01 -->
 
-1. Install the version-compatible Minecraft **26.2**, **Java 25**, Fabric Loader, Fabric API and SerialCraft.
+1. Install the version-compatible Minecraft **26.2**, **Java 25**, and the SerialCraft JAR for Fabric or NeoForge; add Fabric API only on Fabric.
 2. Connect the Uno at **115200 baud**.
 3. Place an I/O Module, open **Boards → Configuration**, set the **Channel** to `led_verde`, and choose **Minecraft → Hardware**.
 4. **In the world**, right-click one of the module's terminals to set it as a **green input** face and connect a lever or redstone line. The Diagnostics tab does not edit terminals.
@@ -38,4 +38,4 @@ For working firmware and the entire connection procedure, use the maintained [Un
 
 First verify the serial connection, then the I/O Module channel and mode, then the redstone face, and finally LED wiring and polarity. Avoid opening Arduino IDE's serial monitor while SerialCraft is already holding the same USB port.
 
-**Important:** an Arduino can retain the last LED level after a hard disconnect. Hardware-side watchdog logic is appropriate when an output must return to a safe state.
+**Normal disconnection:** use the settings gear to choose zero, a custom value, or leaving the last state. **Important:** an Arduino can retain the last LED level after a hard disconnect. Hardware-side watchdog logic is appropriate when an output must return to a safe state.

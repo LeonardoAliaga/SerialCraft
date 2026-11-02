@@ -14,11 +14,13 @@ Use the `test` branch, a **Java 25 JDK**, and Gradle Wrapper from the repository
 
 | Goal | Windows | Linux / macOS |
 | --- | --- | --- |
-| Unit tests only | `.\gradlew.bat test` | `./gradlew test` |
+| Unit tests only | `.\gradlew.bat :fabric:test :neoforge:test` | `./gradlew :fabric:test :neoforge:test` |
 | Full build and unit tests | `.\gradlew.bat build` | `./gradlew build` |
-| Minecraft GameTests | `.\gradlew.bat -PioGameTests runGameTest` | `./gradlew -PioGameTests runGameTest` |
+| Minecraft GameTests | `.\gradlew.bat -PioGameTests :fabric:runGameTest` | `./gradlew -PioGameTests :fabric:runGameTest` |
 
-The optional `-PioGameTests` switch is a Gradle project property. `build.gradle` uses it to enable Fabric's test source set and GameTest environment.
+The optional `-PioGameTests` switch is a Gradle project property. `fabric/build.gradle` uses it to enable Fabric's test source set and GameTest environment.
+
+JUnit runs the shared suite under **both loaders**. Minecraft GameTests currently use the **Fabric** test harness; they do not establish NeoForge world-test coverage.
 
 ## What does each test cover?
 
@@ -38,14 +40,14 @@ The optional `-PioGameTests` switch is a Gradle project property. `build.gradle`
 
 <!-- SC046_MEDIA:V07 -->
 
-When you push to `test` or open a PR targeting `test`, [GitHub Actions](https://github.com/LeonardoAliaga/SerialCraft/actions) runs `./gradlew build --console=plain` followed by `./gradlew -PioGameTests runGameTest --console=plain`. Reports and logs are uploaded as workflow artifacts.
+When you push to `test` or open a PR targeting `test`, [GitHub Actions](https://github.com/LeonardoAliaga/SerialCraft/actions) runs `./gradlew build --console=plain` followed by `./gradlew -PioGameTests :fabric:runGameTest --console=plain`. Reports and logs are uploaded as workflow artifacts.
 
-Green means the configured commands succeeded; red requires opening the logs. Unit test reports are normally located at `build/reports/tests/test/index.html`, with GameTest logs in `build/run/gameTest/logs`.
+Green means the configured commands succeeded; red requires opening the logs. Unit test reports are normally located at `fabric/build/reports/tests/test/index.html` or `neoforge/build/reports/tests/test/index.html`, with GameTest logs in `fabric/build/run/gameTest/logs`.
 
 For a combined local run:
 
 ~~~powershell
-.\gradlew.bat build -PioGameTests runGameTest
+.\gradlew.bat build -PioGameTests :fabric:runGameTest
 ~~~
 
 ## Test limitations

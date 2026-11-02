@@ -139,9 +139,12 @@ def sync_modrinth_readme():
     print("Modrinth description synchronized with MODRINTH.md.")
 
 
-def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, include_modrinth=False):
+def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, include_modrinth=False, modrinth_loader="both"):
     # Retain the single-artifact API used by the original publication regression suite.
     jars = {"fabric": jars} if isinstance(jars, Path) else jars
+    selected_loaders = tuple(jars) if modrinth_loader == "both" else (modrinth_loader,)
+    if include_modrinth and any(loader not in jars for loader in selected_loaders):
+        raise ValueError("Selected Modrinth loader has no verified JAR")
     github_token = os.environ.get("GH_TOKEN", "")
     modrinth_token = os.environ.get("MODRINTH_TOKEN", "")
     if not github_token:
@@ -156,7 +159,7 @@ def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, inclu
     mr = lambda path, **kw: request("https://api.modrinth.com/v2" + path, modrinth_token, **kw)
     release = gh("/releases/tags/" + urllib.parse.quote(tag, safe=""), missing_ok=True)
     versions = {loader: mr(f"/project/{project}/version/" + urllib.parse.quote(version + "-" + loader, safe=""), missing_ok=True)
-                for loader in jars} if include_modrinth else {}
+                for loader in selected_loaders} if include_modrinth else {}
     assets = {asset["name"]: asset for asset in (release or {}).get("assets", [])}
     if release and not release["draft"] and all(jar.name in assets for jar in jars.values()) and (not include_modrinth or all(versions.values())):
         print(f"{version} is already published on the requested platforms; nothing to upload.")
@@ -189,7 +192,7 @@ def publish(jars, version, minecraft, kind, changelog_es, changelog_en, *, inclu
         if jar.name not in assets:
             upload = release["upload_url"].split("{", 1)[0] + "?name=" + urllib.parse.quote(jar.name)
             request(upload, "Bearer " + github_token, method="POST", data=jar.read_bytes(), content_type="application/java-archive")
-        if include_modrinth and not versions[loader]:
+        if include_modrinth and loader in versions and not versions[loader]:
             data, content_type = multipart({
                 "project_id": project, "name": f"SerialCraft {version} ({loader})", "version_number": version + "-" + loader,
                 "changelog": modrinth_body, "version_type": kind, "loaders": [loader], "game_versions": [minecraft], "featured": False,
@@ -215,17 +218,21 @@ def main():
     mode.add_argument("--publish", action="store_true")
     mode.add_argument("--sync-readme", action="store_true")
     parser.add_argument("--modrinth", action="store_true", help="Explicitly opt into Modrinth publication with --publish")
+    parser.add_argument("--modrinth-loader", choices=("both", "fabric", "neoforge"), default="both",
+                        help="Limit Modrinth publication to one loader; GitHub still receives both verified JARs")
     parser.add_argument("--jar-dir", type=Path, default=Path("build/libs"))
     args = parser.parse_args()
     if args.modrinth and not args.publish:
         parser.error("--modrinth requires --publish")
+    if args.modrinth_loader != "both" and not args.modrinth:
+        parser.error("--modrinth-loader requires --modrinth")
     if args.sync_readme:
         sync_modrinth_readme()
         return
     inputs = release_inputs(args.jar_dir)
     print(f"Validated {', '.join(jar.name for jar in inputs[0].values())}: Minecraft {inputs[2]}, channel {inputs[3]}")
     if args.publish:
-        publish(*inputs, include_modrinth=args.modrinth)
+        publish(*inputs, include_modrinth=args.modrinth, modrinth_loader=args.modrinth_loader)
 
 
 if __name__ == "__main__":

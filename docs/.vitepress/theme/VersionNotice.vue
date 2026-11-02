@@ -5,7 +5,7 @@ import { getVersionContext, linkForVersion } from './version-routing.mjs'
 
 const route = useRoute()
 const context = computed(() => getVersionContext(route.path))
-const currentLink = computed(() => withBase(linkForVersion(route.path, 'v0.5.0-beta')))
+const currentLink = computed(() => withBase(linkForVersion(route.path, 'v0.5.3-beta')))
 </script>
 
 <template>

@@ -4,7 +4,7 @@ description: Learn how SerialCraft converts redstone 0–15 to hardware values 0
 ---
 # Digital and analog signals in SerialCraft
 
-Minecraft redstone has **16 levels, from 0 to 15**. SerialCraft's hardware protocol uses **0–255 in both directions**. These ranges apply to **0.5.0-beta** on Minecraft 26.2.
+Minecraft redstone has **16 levels, from 0 to 15**. SerialCraft's hardware protocol uses **0–255 in both directions**. These ranges apply to **0.5.3-beta** on Minecraft 26.2.
 
 Understanding the conversion helps you write compatible firmware and diagnose signals that appear stuck, dim or noisy.
 

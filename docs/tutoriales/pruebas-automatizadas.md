@@ -25,9 +25,9 @@ Debe aparecer Java 25 y la rama `test`. En Windows, si tienes varios JDK instala
 
 | Comando | Cuándo utilizarlo | Qué hace |
 | --- | --- | --- |
-| `.\gradlew.bat test` | Cambias lógica pura | Ejecuta las pruebas unitarias JUnit |
+| `.\gradlew.bat :fabric:test :neoforge:test` | Cambias lógica pura | Ejecuta las pruebas unitarias JUnit |
 | `.\gradlew.bat build` | Antes de guardar o publicar una revisión | Compila, prueba y empaqueta el mod |
-| `.\gradlew.bat -PioGameTests runGameTest` | Modificas bloques, redstone o comportamiento del mundo | Levanta el entorno de prueba de Minecraft y ejecuta GameTests |
+| `.\gradlew.bat -PioGameTests :fabric:runGameTest` | Modificas bloques, redstone o comportamiento del mundo | Levanta el entorno de prueba de Minecraft y ejecuta GameTests |
 
 En Linux/macOS sustituye `.\gradlew.bat` por `./gradlew`.
 
@@ -45,7 +45,7 @@ Son pruebas Java que validan reglas aisladas, por ejemplo:
 - Verificar límites y prioridades de las colas de comunicación.
 - Comprobar serialización, estados, autenticación y algoritmos del visualizador.
 
-El resultado se guarda normalmente en `build/reports/tests/test/index.html`. Si una prueba falla, Gradle indica cuál es y genera un reporte que puedes abrir en el navegador.
+El resultado se guarda normalmente en `fabric/build/reports/tests/test/index.html` o `neoforge/build/reports/tests/test/index.html`. Si una prueba falla, Gradle indica cuál es y genera un reporte que puedes abrir en el navegador.
 
 ### 2. Compilar y empaquetar
 
@@ -64,10 +64,10 @@ Si se rompe una clase o un recurso, puede fallar **antes** de crear el JAR. Que 
 <!-- SC046_MEDIA:D03 -->
 
 ~~~powershell
-.\gradlew.bat -PioGameTests runGameTest
+.\gradlew.bat -PioGameTests :fabric:runGameTest
 ~~~
 
-`-PioGameTests` es una **propiedad del proyecto Gradle**. En `build.gradle` hace que Fabric configure una fuente de pruebas de Minecraft. La tarea `runGameTest` inicia el entorno necesario y comprueba casos sobre un mundo temporal.
+`-PioGameTests` es una **propiedad del proyecto Gradle**. En `fabric/build.gradle` hace que Fabric configure una fuente de pruebas de Minecraft. La tarea `runGameTest` inicia el entorno necesario y comprueba casos sobre un mundo temporal.
 
 Los GameTests de 0.4.6 comprueban, entre otros:
 
@@ -78,11 +78,11 @@ Los GameTests de 0.4.6 comprueban, entre otros:
 - Separación entre leer redstone y emitirla.
 - Propiedad, distancia, chunks no cargados y una escena con 64 módulos.
 
-El entorno generado bajo `build/run/gameTest` **no necesita abrir ni modificar tus mundos personales**. Aun así, siempre respalda tus mundos antes de realizar otras pruebas manuales.
+El entorno generado bajo `fabric/build/run/gameTest` **no necesita abrir ni modificar tus mundos personales**. Aun así, siempre respalda tus mundos antes de realizar otras pruebas manuales.
 
 ::: tip Ejecutar todo de una vez
 ~~~powershell
-.\gradlew.bat build -PioGameTests runGameTest
+.\gradlew.bat build -PioGameTests :fabric:runGameTest
 ~~~
 Este es el patrón combinado usado en el informe técnico de 0.4.6.
 :::
@@ -100,7 +100,7 @@ Su secuencia principal es:
 1. Descargar el repositorio en el runner.
 2. Preparar Java 25 y Gradle.
 3. Ejecutar `./gradlew build --console=plain`.
-4. Ejecutar `./gradlew -PioGameTests runGameTest --console=plain`.
+4. Ejecutar `./gradlew -PioGameTests :fabric:runGameTest --console=plain`.
 5. Subir reportes de pruebas y logs como artefactos, incluso cuando una etapa falla.
 
 Puedes revisar cada paso desde [GitHub Actions del repositorio](https://github.com/LeonardoAliaga/SerialCraft/actions).
@@ -124,8 +124,8 @@ Empieza leyendo el primer error real, no el último resumen `BUILD FAILED`:
 
 - **No encuentra Java 25:** comprueba `JAVA_HOME` y la configuración Gradle del IDE.
 - **No descarga dependencias:** comprueba conectividad y repositorios; un fallo de red no es necesariamente un bug Java.
-- **JUnit falla:** abre `build/reports/tests/test/index.html` y busca la aserción.
-- **GameTest falla:** consulta los logs en `build/run/gameTest/logs` y la escena de prueba indicada.
+- **JUnit falla:** abre `fabric/build/reports/tests/test/index.html` o `neoforge/build/reports/tests/test/index.html` y busca la aserción.
+- **GameTest falla:** consulta los logs en `fabric/build/run/gameTest/logs` y la escena de prueba indicada.
 - **Falló solo en GitHub:** compara la versión de Java, el comando y los logs del runner con tu equipo.
 
 Para seguir aprendiendo, combina estas pruebas con un ejercicio de [redstone y Arduino](/tutoriales/arduino-led-minecraft) y con la [referencia del Módulo de E/S](/io-module).

@@ -6,7 +6,7 @@ description: Diagnostica conexiones USB y Wi-Fi, canales incorrectos, redstone y
 
 Cuando un circuito de SerialCraft no funciona, conviene evitar la tentación de reescribir todo el sketch. En un puente bidireccional hay varias capas: **hardware, transporte, protocolo, enrutamiento y redstone**. Comprueba cada una por separado.
 
-Esta guía corresponde al protocolo de la versión en desarrollo **0.5.0-beta**.
+Esta guía corresponde al protocolo de la versión en desarrollo **0.5.3-beta**.
 
 ## El método de cinco capas
 
@@ -68,7 +68,7 @@ Si tu aplicación requiere registrar **cada** muestra a alta frecuencia, un prot
 
 Prepara una descripción reproducible:
 
-1. Versión de Minecraft, Fabric y SerialCraft.
+1. Versión de Minecraft, el loader (Fabric o NeoForge) y SerialCraft.
 2. Modelo exacto de placa y tipo de transporte.
 3. Dirección de datos y **Canal** del Módulo de E/S.
 4. Mensaje esperado y mensaje observado, sin contraseñas ni tokens.

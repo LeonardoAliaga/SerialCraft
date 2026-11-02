@@ -27,7 +27,7 @@ Todas están centralizadas en `gradle.properties`, excepto el wrapper en `gradle
 | Componente | Versión |
 | --- | --- |
 | Minecraft / Java / Gradle | 26.2 / 25 / 9.7.1 |
-| SerialCraft | 0.5.2-beta |
+| SerialCraft | 0.5.3-beta |
 | Fabric Loader / Fabric API | 0.19.3 / 0.157.0+26.2 |
 | Fabric Loom | 1.17.21 (sin SNAPSHOT) |
 | NeoForge / ModDevGradle | 26.2.0.93 / 2.0.148 |
@@ -60,8 +60,8 @@ Los JUnit usan las mismas pruebas bajo cada loader: Fabric Loader JUnit y el sop
 `build` compila y ejecuta JUnit en ambos loaders y copia los dos JAR de distribución a `build/libs/`. Los originales están en:
 
 ```text
-fabric/build/libs/serialcraft-fabric-0.5.2-beta.jar
-neoforge/build/libs/serialcraft-neoforge-0.5.2-beta.jar
+fabric/build/libs/serialcraft-fabric-0.5.3-beta.jar
+neoforge/build/libs/serialcraft-neoforge-0.5.3-beta.jar
 ```
 
 Instala exactamente el JAR correspondiente a tu loader. En Fabric instala también Fabric API para 26.2. En NeoForge no se necesita Fabric API. Cliente y servidor deben usar versiones compatibles de SerialCraft. Esta migración no garantiza conexión entre clientes y servidores que usan loaders diferentes.
@@ -87,7 +87,9 @@ Para un servidor Fabric normal, revisa y acepta personalmente la EULA en `fabric
 
 `publish_release.py --check` no usa la red: comprueba ambos metadatos, la versión exacta de Minecraft, recursos compartidos, integridad ZIP, traducciones y bibliotecas incluidas, con comprobación de los nativos Windows/Linux de jSerialComm. Requiere Python 3.11 o posterior para leer TOML.
 
-Cuando se autorice una publicación futura, `--publish` conserva una única release GitHub `v<versión>` y sube ambos JAR antes de publicar su borrador. Reintenta usando los mismos artefactos de la ejecución original: rechaza archivos distintos y tags con otro commit. Modrinth sigue requiriendo autorización explícita mediante `--modrinth`, el input del workflow o la marca `[publish-modrinth]`. Crea `<versión>-fabric` y `<versión>-neoforge`, cada una con su propio archivo, loader y Minecraft 26.2; solo la de Fabric requiere Fabric API. Usa una versión nueva para publicar esta migración si `0.5.2-beta` ya existe en producción. `MODRINTH.md` sigue siendo la descripción sincronizada del proyecto.
+Cuando se autorice una publicación futura, `--publish` conserva una única release GitHub `v<versión>` y sube ambos JAR antes de publicar su borrador. Reintenta usando los mismos artefactos de la ejecución original: rechaza archivos distintos y tags con otro commit. Modrinth sigue requiriendo autorización explícita mediante `--modrinth`, el input del workflow o la marca `[publish-modrinth]`. Crea `<versión>-fabric` y `<versión>-neoforge`, cada una con su propio archivo, loader y Minecraft 26.2; solo la de Fabric requiere Fabric API. La migración se publica como `0.5.3-beta`, conservando intacta la versión anterior `0.5.2-beta`. `MODRINTH.md` sigue siendo la descripción sincronizada del proyecto y conserva los enlaces de imágenes actualizados en la página de Modrinth.
+
+`--modrinth-loader both|fabric|neoforge` permite seleccionar el destino en Modrinth sin cambiar los dos artefactos de GitHub. El input `modrinth_loader` ofrece la misma selección en el workflow. La marca `[publish-modrinth]` publica ambos; `[publish-modrinth-neoforge]` publica solo NeoForge. Los dos casos sincronizan la descripción inglesa. Para esta versión se usa la marca exclusiva de NeoForge.
 
 ## Fuentes contrastadas
 

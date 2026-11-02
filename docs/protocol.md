@@ -1,8 +1,14 @@
-# Protocolo Bidireccional y Hardware (v0.5.0-beta)
+# Protocolo Bidireccional y Hardware (v0.5.3-beta)
 
-::: warning Versión Beta 0.5.0-beta
-Esta especificación corresponde a **SerialCraft v0.5.0-beta**. Si vienes de la versión 0.4.3 o 0.3.x, consulta las secciones [Cambios respecto a 0.4.3](#_9-cambios-respecto-a-0-4-3) y [Cambios respecto a 0.3.x](#_8-cambios-respecto-a-0-3-x) para conocer las diferencias en el cable y la reserva del prefijo `mc_`.
+::: warning Versión Beta 0.5.3-beta
+Esta especificación corresponde a **SerialCraft v0.5.3-beta**. Si vienes de la versión 0.4.3 o 0.3.x, consulta las secciones [Cambios respecto a 0.4.3](#_9-cambios-respecto-a-0-4-3) y [Cambios respecto a 0.3.x](#_8-cambios-respecto-a-0-3-x) para conocer las diferencias en el cable y la reserva del prefijo `mc_`.
 :::
+
+## Fabric, NeoForge y políticas de salida
+
+Fabric y NeoForge usan el mismo formato de mensajes en Minecraft 26.2. La migración de loader no cambia los sketches ni los canales del protocolo.
+
+Desde el engranaje de configuración puedes elegir el valor inicial de los canales Minecraft → hardware: cero, un entero personalizado de 0 a 255 o el último valor guardado. Al desconectar normalmente puedes enviar cero, un valor personalizado o no enviar un mensaje final. Son políticas independientes; las de inicio se aplican en la siguiente conexión. Un cable retirado o un cierre forzado no permiten entregar un valor final. La telemetría `mc_*`, la entrada hardware → Minecraft y la parada propia del generador mantienen sus reglas. Consulta la [guía de configuración](/guide#valores-al-conectar-y-desconectar).
 
 ## 1. Especificaciones de comunicación
 

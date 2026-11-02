@@ -10,6 +10,11 @@ on:
         description: Also publish to Modrinth and synchronize its description (main only)
         type: boolean
         default: false
+      modrinth_loader:
+        description: Loader to publish on Modrinth (GitHub always receives both)
+        type: choice
+        options: [both, fabric, neoforge]
+        default: both
 permissions:
   contents: read
 jobs:
@@ -74,15 +79,16 @@ jobs:
         run: python3 scripts/publish_release.py --publish --jar-dir release-dist
       - name: Publish to Modrinth only when explicitly requested
         # A release commit can opt in without enabling Modrinth for later pushes.
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-modrinth]'))
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[publish-modrinth]') || contains(github.event.head_commit.message, '[publish-modrinth-neoforge]')))
         env:
           GH_TOKEN: ${{ github.token }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           MODRINTH_PROJECT_ID: hLV9sPrg
-        run: python3 scripts/publish_release.py --publish --modrinth --jar-dir release-dist
+          MODRINTH_LOADER: ${{ github.event_name == 'workflow_dispatch' && inputs.modrinth_loader || (contains(github.event.head_commit.message, '[publish-modrinth-neoforge]') && 'neoforge' || 'both') }}
+        run: python3 scripts/publish_release.py --publish --modrinth --modrinth-loader "$MODRINTH_LOADER" --jar-dir release-dist
       - name: Sync English Modrinth description
         id: modrinth-readme
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-modrinth]'))
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_modrinth) || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[publish-modrinth]') || contains(github.event.head_commit.message, '[publish-modrinth-neoforge]')))
         continue-on-error: true
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}

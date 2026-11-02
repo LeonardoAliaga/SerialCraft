@@ -5,16 +5,23 @@
 [Documentation](https://serialcraft.xyz/en/) · [Source code](https://github.com/LeonardoAliaga/SerialCraft) · [Report an issue](https://github.com/LeonardoAliaga/SerialCraft/issues)
 
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-bea67e?style=for-the-badge)](https://fabricmc.net/)
+[![NeoForge](https://img.shields.io/badge/Loader-NeoForge-d97839?style=for-the-badge)](https://neoforged.net/)
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-2d8528?style=for-the-badge)](https://www.minecraft.net/)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge)](https://adoptium.net/)
-[![Version](https://img.shields.io/badge/Version-0.5.2--beta-c96f4a?style=for-the-badge)](https://modrinth.com/mod/serialcraft/versions)
+[![Version](https://img.shields.io/badge/Version-0.5.3--beta-c96f4a?style=for-the-badge)](https://modrinth.com/mod/serialcraft/versions)
 [![License](https://img.shields.io/badge/License-MIT-8a9a7b?style=for-the-badge)](https://github.com/LeonardoAliaga/SerialCraft/blob/main/LICENSE)
 
-**SerialCraft** is an experimental, educational Fabric mod that connects **Arduino, ESP32, and other serial or TCP devices** to Minecraft. Send real sensor readings into redstone circuits and use your world to control physical LEDs, buzzers, and other components.
+**SerialCraft** is an experimental, educational mod for Fabric and NeoForge that connects **Arduino, ESP32, and other serial or TCP devices** to Minecraft. Send real sensor readings into redstone circuits and use your world to control physical LEDs, buzzers, and other components.
 
 The Laptop, Connector, and Hardware I/O Module have crafting recipes, so your electronics can become part of a Survival playthrough.
 
-## What's new in v0.5.2 Beta
+## What's new in v0.5.3 Beta
+
+- **NeoForge support:** SerialCraft now has separate Fabric and NeoForge builds for Minecraft 26.2 and Java 25, sharing the hardware protocol, interface and gameplay features.
+- **Output settings:** open the gear in the top-right corner to choose what Minecraft → hardware channels receive when connecting and disconnecting normally. On connection, send zero, use a custom value or restore the last saved value. On disconnection, send zero, use a custom value or leave the last state without sending a final message.
+- **Independent policies:** custom values are integers from 0 to 255. Save your choices before connecting; startup settings apply to the next connection. Abrupt crashes and unplugged cables cannot deliver a final value.
+
+### Jumper-cable branding introduced in 0.5.2
 
 **0.5.2-beta** brings Leonardo Aliaga's jumper-cable branding to the interface header, Laptop screen texture, Hardware I/O Module texture, and mod icon. It also fixes the Welcome screen logo's aspect ratio using the PNG's actual **1038 × 446** dimensions. USB/Wi-Fi behavior and Minecraft 26.2 / Java 25 compatibility are unchanged.
 
@@ -33,11 +40,11 @@ The two main model textures no longer display the previous explicit Arduino and 
 
 Thanks to [@SK-Xiaohan](https://github.com/SK-Xiaohan) for contributing the Simplified Chinese translation in [PR #4](https://github.com/LeonardoAliaga/SerialCraft/pull/4) and suggesting the Chinese name **串连世界**!
 
-The translation covers Welcome, Home, navigation, Boards, Events, Visualize, the IO editor, help dialogs, connection messages and dynamic device states. All five locale files have the same **402 translation keys**, with matching Minecraft format arguments. The original contribution and authorship are preserved in the repository history.
+The translation covers Welcome, Home, navigation, Boards, Events, Visualize, the IO editor, help dialogs, connection messages and dynamic device states. All five locale files have the same **444 translation keys**, with matching Minecraft format arguments. The original contribution and authorship are preserved in the repository history.
 
 Select **简体中文（中国大陆）** in Minecraft's Language settings to use it.
 
-> **Beta / pre-release:** `0.5.2-beta` is not a stable release. Back up worlds and update clients and servers together. Graphical UI inspection and tests with physical USB/Wi-Fi boards remain manual checks.
+> **Beta / pre-release:** `0.5.3-beta` is not a stable release. Back up worlds and update clients and servers together. Graphical UI inspection and tests with physical USB/Wi-Fi boards remain manual checks.
 
 ## Main features
 
@@ -47,14 +54,15 @@ Select **简体中文（中国大陆）** in Minecraft's Language settings to us
 - **Events:** stream health, hunger, world time, and game events to hardware through dedicated `mc_*` channels.
 - **Visualizer:** inspect RX/TX messages on a timeline, compare a sensor with its redstone conversion, and test an actuator with the waveform generator on a dedicated channel.
 - **Board identification:** USB descriptors and firmware announcements identify supported boards. Generic USB adapters are shown without claiming an unconfirmed board model.
+- **Output behavior:** configure connection and normal-disconnection values from the settings gear. These preferences affect Minecraft → hardware I/O channels; telemetry and the waveform generator keep their own behavior.
 - **Configuration and diagnostics:** configure direction, signal, and OR/AND/XOR logic; inspect RX, TX, redstone, and connection state. Contextual help is available through **?**.
 - **Five locales:** English, Spanish for Spain, Mexico and Argentina, and Simplified Chinese. SerialCraft follows your selected game language.
 
-The Laptop has **Home**, **Boards**, **Events**, and **Visualizer** tabs, a connection welcome screen, and a console within Home. Opening it keeps your world running in singleplayer.
+The Laptop has **Home**, **Boards**, **Events**, and **Visualizer** tabs, a connection welcome screen, a console within Home, and a settings page accessible from the top-right gear. Opening it keeps your world running in singleplayer.
 
 ## Blocks and recipes
 
-![SerialCraft blocks](https://cdn.modrinth.com/data/cached_images/4aea9efd4686b3adf8ea97550df78b0240142c49.png)
+![SerialCraft blocks](https://cdn.modrinth.com/data/cached_images/f933c2555ff879c7a98afc4b2e0a4cdb33dbb9b7.png)
 
 ### Laptop and Connector
 
@@ -70,14 +78,21 @@ Configure the five terminals directly on the placed block: right-click toggles a
 
 OR uses the maximum input, AND the minimum including zero, and XOR passes the maximum when an odd number of inputs are active. In Hardware → Minecraft mode, green inputs act as an enable condition for the received sample.
 
-![Hardware I/O Module](https://cdn.modrinth.com/data/cached_images/c20ed9d2c7fe7a3a5a28704394c6a64a6cc2839b.png)
+![Hardware I/O Module](https://cdn.modrinth.com/data/cached_images/ece626dc8935e0342775c51867791cb4bf644d3d.png)
 ![Hardware I/O Module recipe](https://cdn.modrinth.com/data/cached_images/07d93e2ac7612058dcfb25f2161efcc182ec78a8_0.webp)
 
 ## Installation and first circuit
 
-**Requirements:** Minecraft Java **26.2**, **Java 25 or newer**, **Fabric Loader 0.19.3 or newer**, and [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.2.
+**Common requirements:** Minecraft Java **26.2** and **Java 25 or newer**.
 
-1. Install SerialCraft and Fabric API in your `mods` folder. In multiplayer, update SerialCraft on clients and server together.
+| Build | Loader and dependencies |
+| --- | --- |
+| Fabric | Fabric Loader **0.19.3 or newer** and [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 26.2. |
+| NeoForge | NeoForge **26.2.0.93 or newer** for Minecraft 26.2. Fabric API is not required. |
+
+Install the JAR matching your loader. Multiplayer clients and the server must use compatible versions of SerialCraft and the same loader; mixed-loader multiplayer has not been validated.
+
+1. Install the SerialCraft JAR for your loader in `mods`. Add Fabric API if using Fabric. In multiplayer, update SerialCraft on clients and server together.
 2. Flash a [ready-to-use example](https://serialcraft.xyz/en/examples/) for an Arduino Uno R3, ESP32, or Arduino Uno Q.
 3. Plug the board into USB, or keep it on the same local network as your PC.
 4. Craft the Laptop and Connector. Open the interface and connect through the USB or Wi-Fi welcome card.

@@ -2,7 +2,7 @@
 # VitePress Home Page Configuration
 layout: home
 titleTemplate: false
-title: SerialCraft — Arduino and ESP32 for Minecraft Fabric
+title: SerialCraft — Arduino and ESP32 for Minecraft Fabric and NeoForge
 description: SerialCraft by Leonardo Aliaga connects Arduino and ESP32 to Minecraft. Official documentation, source code, downloads and tutorials.
 
 hero:
@@ -34,9 +34,9 @@ features:
 
 # What is SerialCraft?
 
-This is the official documentation for **SerialCraft**, the Minecraft Fabric mod by **Leonardo Aliaga**. The current version is **0.5.0-beta** for Minecraft 26.2 and Java 25. [Official Modrinth download](https://modrinth.com/mod/serialcraft) · [Source and releases on GitHub](https://github.com/LeonardoAliaga/SerialCraft).
+This is the official documentation for **SerialCraft**, the Minecraft Fabric and NeoForge mod by **Leonardo Aliaga**. The current version is **0.5.3-beta** for Minecraft 26.2 and Java 25. [Official Modrinth download](https://modrinth.com/mod/serialcraft) · [Source and releases on GitHub](https://github.com/LeonardoAliaga/SerialCraft).
 
-**SerialCraft** is a mod for **Minecraft (Fabric)** that breaks the fourth wall, allowing real-time bidirectional communication between the game and external electronic devices.
+**SerialCraft** is a mod for **Minecraft (Fabric and NeoForge)** that breaks the fourth wall, allowing real-time bidirectional communication between the game and external electronic devices.
 
 ### About the Authorship and Project Philosophy
 SerialCraft is a project created by **Leonardo Aliaga** (Instagram: [@aliaga1924](https://instagram.com/aliaga1924)). It was born with the main purpose of being a **learning project**, focused on exploring the intersection and synergy between software development (Java modding via Fabric), physical hardware design, and telecommunications (as a student at Universidad Nacional Mayor de San Marcos).
@@ -71,7 +71,7 @@ You are free to study the code, modify it, or use it in your modpacks.
 
 ## Learn electronics with Minecraft
 
-The [SerialCraft tutorials](/en/tutorials/) take you from reading a signal to driving a physical circuit. This content follows **0.5.0-beta (Beta)**, Minecraft **26.2** and Java **25**.
+The [SerialCraft tutorials](/en/tutorials/) take you from reading a signal to driving a physical circuit. This content follows **0.5.3-beta (Beta)**, Minecraft **26.2** and Java **25**.
 
 - [Understand the I/O Module](/en/tutorials/io-block)
 - [Drive an Arduino LED from Minecraft](/en/tutorials/arduino-led)

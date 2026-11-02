@@ -4,7 +4,7 @@ description: The story and educational purpose of an open-source bridge between 
 ---
 # About SerialCraft
 
-SerialCraft is an independent educational open-source project connecting Minecraft Java (Fabric) with electronic boards through USB serial and local TCP.
+SerialCraft is an independent educational open-source project connecting Minecraft Java (Fabric and NeoForge) with electronic boards through USB serial and local TCP.
 
 Its creator, **Leonardo Aliaga**, explores how Minecraft redstone can provide an approachable introduction to programming, electronics and communication protocols. The [public source code](https://github.com/LeonardoAliaga/SerialCraft), [examples](/en/examples/) and [technical reference](/en/protocol) make the project open for study and feedback.
 
